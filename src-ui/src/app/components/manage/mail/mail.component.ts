@@ -1,5 +1,5 @@
 import { AsyncPipe } from '@angular/common'
-import { Component, OnDestroy, OnInit } from '@angular/core'
+import { Component, OnDestroy, OnInit, inject } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { ActivatedRoute } from '@angular/router'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
@@ -27,6 +27,7 @@ import { MailRuleEditDialogComponent } from '../../common/edit-dialog/mail-rule-
 import { PageHeaderComponent } from '../../common/page-header/page-header.component'
 import { PermissionsDialogComponent } from '../../common/permissions-dialog/permissions-dialog.component'
 import { ComponentWithPermissions } from '../../with-permissions/with-permissions.component'
+import { ProcessedMailDialogComponent } from './processed-mail-dialog/processed-mail-dialog.component'
 
 @Component({
   selector: 'pngx-mail',
@@ -47,6 +48,14 @@ export class MailComponent
   extends ComponentWithPermissions
   implements OnInit, OnDestroy
 {
+  mailAccountService = inject(MailAccountService)
+  mailRuleService = inject(MailRuleService)
+  private toastService = inject(ToastService)
+  private modalService = inject(NgbModal)
+  permissionsService = inject(PermissionsService)
+  private settingsService = inject(SettingsService)
+  private route = inject(ActivatedRoute)
+
   public MailAccountType = MailAccountType
 
   mailAccounts: MailAccount[] = []
@@ -67,18 +76,6 @@ export class MailComponent
   public showRules: boolean = false
   public loadingAccounts: boolean = true
   public showAccounts: boolean = false
-
-  constructor(
-    public mailAccountService: MailAccountService,
-    public mailRuleService: MailRuleService,
-    private toastService: ToastService,
-    private modalService: NgbModal,
-    public permissionsService: PermissionsService,
-    private settingsService: SettingsService,
-    private route: ActivatedRoute
-  ) {
-    super()
-  }
 
   ngOnInit(): void {
     this.mailAccountService
@@ -349,6 +346,14 @@ export class MailComponent
         })
       }
     )
+  }
+
+  viewProcessedMail(rule: MailRule) {
+    const modal = this.modalService.open(ProcessedMailDialogComponent, {
+      backdrop: 'static',
+      size: 'xl',
+    })
+    modal.componentInstance.rule = rule
   }
 
   userCanEdit(obj: ObjectWithPermissions): boolean {

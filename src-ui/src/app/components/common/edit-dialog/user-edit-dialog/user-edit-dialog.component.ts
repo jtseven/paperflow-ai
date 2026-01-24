@@ -1,11 +1,10 @@
-import { Component, OnInit } from '@angular/core'
+import { Component, OnInit, inject } from '@angular/core'
 import {
   FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms'
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { first } from 'rxjs'
 import { EditDialogComponent } from 'src/app/components/common/edit-dialog/edit-dialog.component'
 import { Group } from 'src/app/data/group'
@@ -15,6 +14,7 @@ import { GroupService } from 'src/app/services/rest/group.service'
 import { UserService } from 'src/app/services/rest/user.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
+import { ConfirmButtonComponent } from '../../confirm-button/confirm-button.component'
 import { PasswordComponent } from '../../input/password/password.component'
 import { SelectComponent } from '../../input/select/select.component'
 import { TextComponent } from '../../input/text/text.component'
@@ -29,6 +29,7 @@ import { PermissionsSelectComponent } from '../../permissions-select/permissions
     SelectComponent,
     TextComponent,
     PasswordComponent,
+    ConfirmButtonComponent,
     FormsModule,
     ReactiveFormsModule,
   ],
@@ -37,21 +38,21 @@ export class UserEditDialogComponent
   extends EditDialogComponent<User>
   implements OnInit
 {
+  private toastService = inject(ToastService)
+  private permissionsService = inject(PermissionsService)
+  private groupsService: GroupService
+
   groups: Group[]
   passwordIsSet: boolean = false
   public totpLoading: boolean = false
 
-  constructor(
-    service: UserService,
-    activeModal: NgbActiveModal,
-    groupsService: GroupService,
-    settingsService: SettingsService,
-    private toastService: ToastService,
-    private permissionsService: PermissionsService
-  ) {
-    super(service, activeModal, service, settingsService)
+  constructor() {
+    super()
+    this.service = inject(UserService)
+    this.groupsService = inject(GroupService)
+    this.settingsService = inject(SettingsService)
 
-    groupsService
+    this.groupsService
       .listAll()
       .pipe(first())
       .subscribe((result) => (this.groups = result.results))

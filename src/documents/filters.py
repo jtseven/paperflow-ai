@@ -21,6 +21,7 @@ from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Cast
 from django.utils.translation import gettext_lazy as _
+from django_filters import DateFilter
 from django_filters.rest_framework import BooleanFilter
 from django_filters.rest_framework import Filter
 from django_filters.rest_framework import FilterSet
@@ -48,6 +49,15 @@ CHAR_KWARGS = ["istartswith", "iendswith", "icontains", "iexact"]
 ID_KWARGS = ["in", "exact"]
 INT_KWARGS = ["exact", "gt", "gte", "lt", "lte", "isnull"]
 DATE_KWARGS = [
+    "year",
+    "month",
+    "day",
+    "gt",
+    "gte",
+    "lt",
+    "lte",
+]
+DATETIME_KWARGS = [
     "year",
     "month",
     "day",
@@ -81,6 +91,12 @@ class TagFilterSet(FilterSet):
             "id": ID_KWARGS,
             "name": CHAR_KWARGS,
         }
+
+    is_root = BooleanFilter(
+        label="Is root tag",
+        field_name="tn_parent",
+        lookup_expr="isnull",
+    )
 
 
 class DocumentTypeFilterSet(FilterSet):
@@ -144,6 +160,7 @@ class InboxFilter(Filter):
 @extend_schema_field(serializers.CharField)
 class TitleContentFilter(Filter):
     def filter(self, qs, value):
+        value = value.strip() if isinstance(value, str) else value
         if value:
             return qs.filter(Q(title__icontains=value) | Q(content__icontains=value))
         else:
@@ -198,6 +215,7 @@ class CustomFieldFilterSet(FilterSet):
 @extend_schema_field(serializers.CharField)
 class CustomFieldsFilter(Filter):
     def filter(self, qs, value):
+        value = value.strip() if isinstance(value, str) else value
         if value:
             fields_with_matching_selects = CustomField.objects.filter(
                 extra_data__icontains=value,
@@ -220,6 +238,7 @@ class CustomFieldsFilter(Filter):
                 | qs.filter(custom_fields__value_monetary__icontains=value)
                 | qs.filter(custom_fields__value_document_ids__icontains=value)
                 | qs.filter(custom_fields__value_select__in=option_ids)
+                | qs.filter(custom_fields__value_long_text__icontains=value)
             )
         else:
             return qs
@@ -227,6 +246,7 @@ class CustomFieldsFilter(Filter):
 
 class MimeTypeFilter(Filter):
     def filter(self, qs, value):
+        value = value.strip() if isinstance(value, str) else value
         if value:
             return qs.filter(mime_type__icontains=value)
         else:
@@ -304,6 +324,7 @@ class CustomFieldQueryParser:
         CustomField.FieldDataType.MONETARY: ("basic", "string", "arithmetic"),
         CustomField.FieldDataType.DOCUMENTLINK: ("basic", "containment"),
         CustomField.FieldDataType.SELECT: ("basic",),
+        CustomField.FieldDataType.LONG_TEXT: ("basic", "string"),
     }
 
     DATE_COMPONENTS = [
@@ -731,6 +752,12 @@ class DocumentFilterSet(FilterSet):
 
     mime_type = MimeTypeFilter()
 
+    # Backwards compatibility
+    created__date__gt = DateFilter(field_name="created", lookup_expr="gt")
+    created__date__gte = DateFilter(field_name="created", lookup_expr="gte")
+    created__date__lt = DateFilter(field_name="created", lookup_expr="lt")
+    created__date__lte = DateFilter(field_name="created", lookup_expr="lte")
+
     class Meta:
         model = Document
         fields = {
@@ -739,8 +766,8 @@ class DocumentFilterSet(FilterSet):
             "content": CHAR_KWARGS,
             "archive_serial_number": INT_KWARGS,
             "created": DATE_KWARGS,
-            "added": DATE_KWARGS,
-            "modified": DATE_KWARGS,
+            "added": DATETIME_KWARGS,
+            "modified": DATETIME_KWARGS,
             "original_filename": CHAR_KWARGS,
             "checksum": CHAR_KWARGS,
             "correspondent": ["isnull"],
@@ -764,8 +791,8 @@ class ShareLinkFilterSet(FilterSet):
     class Meta:
         model = ShareLink
         fields = {
-            "created": DATE_KWARGS,
-            "expiration": DATE_KWARGS,
+            "created": DATETIME_KWARGS,
+            "expiration": DATETIME_KWARGS,
         }
 
 
@@ -829,7 +856,10 @@ class DocumentsOrderingFilter(OrderingFilter):
 
             annotation = None
             match field.data_type:
-                case CustomField.FieldDataType.STRING:
+                case (
+                    CustomField.FieldDataType.STRING
+                    | CustomField.FieldDataType.LONG_TEXT
+                ):
                     annotation = Subquery(
                         CustomFieldInstance.objects.filter(
                             document_id=OuterRef("id"),

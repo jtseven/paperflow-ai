@@ -16,7 +16,7 @@ services:
 
   # Frontend development service with hot reloading
   frontend:
-    image: docker.io/node:20-bookworm-slim
+    image: docker.io/node:24-bookworm-slim
     volumes:
       - ./src-ui:/src/src-ui
     working_dir: /src/src-ui
@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
 
   db:
-    image: docker.io/library/postgres:13
+    image: docker.io/library/postgres:14
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data

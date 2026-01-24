@@ -22,7 +22,7 @@ class DocumentMetadataOverrides:
     document_type_id: int | None = None
     tag_ids: list[int] | None = None
     storage_path_id: int | None = None
-    created: datetime.datetime | None = None
+    created: datetime.date | None = None
     asn: int | None = None
     owner_id: int | None = None
     view_users: list[int] | None = None
@@ -100,6 +100,7 @@ class DocumentMetadataOverrides:
         overrides.storage_path_id = doc.storage_path.id if doc.storage_path else None
         overrides.owner_id = doc.owner.id if doc.owner else None
         overrides.tag_ids = list(doc.tags.values_list("id", flat=True))
+        overrides.created = doc.created
 
         overrides.view_users = list(
             get_users_with_perms(
@@ -156,6 +157,7 @@ class ConsumableDocument:
 
     source: DocumentSource
     original_file: Path
+    original_path: Path | None = None
     mailrule_id: int | None = None
     mime_type: str = dataclasses.field(init=False, default=None)
 

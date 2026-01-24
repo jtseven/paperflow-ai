@@ -21,7 +21,7 @@ TEST_CHANNEL_LAYERS = {
 class TestWebSockets(TestCase):
     async def test_no_auth(self):
         communicator = WebsocketCommunicator(application, "/ws/status/")
-        connected, subprotocol = await communicator.connect()
+        connected, _ = await communicator.connect()
         self.assertFalse(connected)
         await communicator.disconnect()
 
@@ -31,7 +31,7 @@ class TestWebSockets(TestCase):
         _authenticated.return_value = True
 
         communicator = WebsocketCommunicator(application, "/ws/status/")
-        connected, subprotocol = await communicator.connect()
+        connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
         message = {"type": "status_update", "data": {"task_id": "test"}}
@@ -63,7 +63,7 @@ class TestWebSockets(TestCase):
         _authenticated.return_value = True
 
         communicator = WebsocketCommunicator(application, "/ws/status/")
-        connected, subprotocol = await communicator.connect()
+        connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
         await communicator.disconnect()
@@ -73,7 +73,7 @@ class TestWebSockets(TestCase):
         _authenticated.return_value = True
 
         communicator = WebsocketCommunicator(application, "/ws/status/")
-        connected, subprotocol = await communicator.connect()
+        connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
         message = {"type": "status_update", "data": {"task_id": "test"}}
@@ -90,12 +90,58 @@ class TestWebSockets(TestCase):
 
         await communicator.disconnect()
 
+    async def test_status_update_check_perms(self):
+        communicator = WebsocketCommunicator(application, "/ws/status/")
+
+        communicator.scope["user"] = mock.Mock()
+        communicator.scope["user"].is_authenticated = True
+        communicator.scope["user"].is_superuser = False
+        communicator.scope["user"].id = 1
+
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+
+        # Test as owner
+        message = {"type": "status_update", "data": {"task_id": "test", "owner_id": 1}}
+        channel_layer = get_channel_layer()
+        await channel_layer.group_send(
+            "status_updates",
+            message,
+        )
+        response = await communicator.receive_json_from()
+        self.assertEqual(response, message)
+
+        # Test with a group that the user belongs to
+        communicator.scope["user"].groups.filter.return_value.exists.return_value = True
+        message = {
+            "type": "status_update",
+            "data": {"task_id": "test", "owner_id": 2, "groups_can_view": [1]},
+        }
+        channel_layer = get_channel_layer()
+        await channel_layer.group_send(
+            "status_updates",
+            message,
+        )
+        response = await communicator.receive_json_from()
+        self.assertEqual(response, message)
+
+        # Test with a different owner_id
+        message = {"type": "status_update", "data": {"task_id": "test", "owner_id": 2}}
+        channel_layer = get_channel_layer()
+        await channel_layer.group_send(
+            "status_updates",
+            message,
+        )
+        response = await communicator.receive_nothing()
+        self.assertNotEqual(response, message)
+        await communicator.disconnect()
+
     @mock.patch("paperless.consumers.StatusConsumer._authenticated")
     async def test_receive_documents_deleted(self, _authenticated):
         _authenticated.return_value = True
 
         communicator = WebsocketCommunicator(application, "/ws/status/")
-        connected, subprotocol = await communicator.connect()
+        connected, _ = await communicator.connect()
         self.assertTrue(connected)
 
         message = {"type": "documents_deleted", "data": {"documents": [1, 2, 3]}}

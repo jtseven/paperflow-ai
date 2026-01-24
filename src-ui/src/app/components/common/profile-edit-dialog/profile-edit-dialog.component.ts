@@ -1,5 +1,5 @@
 import { Clipboard } from '@angular/cdk/clipboard'
-import { Component, OnInit } from '@angular/core'
+import { Component, OnInit, inject } from '@angular/core'
 import {
   FormControl,
   FormGroup,
@@ -18,9 +18,9 @@ import {
   SocialAccountProvider,
   TotpSettings,
 } from 'src/app/data/user-profile'
-import { SafeHtmlPipe } from 'src/app/pipes/safehtml.pipe'
 import { ProfileService } from 'src/app/services/profile.service'
 import { ToastService } from 'src/app/services/toast.service'
+import { setLocationHref } from 'src/app/utils/navigation'
 import { LoadingComponentWithPermissions } from '../../loading-component/loading.component'
 import { ConfirmButtonComponent } from '../confirm-button/confirm-button.component'
 import { PasswordComponent } from '../input/password/password.component'
@@ -36,7 +36,6 @@ import { TextComponent } from '../input/text/text.component'
     PasswordComponent,
     FormsModule,
     ReactiveFormsModule,
-    SafeHtmlPipe,
     NgbAccordionModule,
     NgbPopoverModule,
     NgxBootstrapIconsModule,
@@ -46,6 +45,11 @@ export class ProfileEditDialogComponent
   extends LoadingComponentWithPermissions
   implements OnInit
 {
+  private profileService = inject(ProfileService)
+  activeModal = inject(NgbActiveModal)
+  private toastService = inject(ToastService)
+  private clipboard = inject(Clipboard)
+
   public networkActive: boolean = false
   public error: any
 
@@ -83,13 +87,11 @@ export class ProfileEditDialogComponent
   public socialAccounts: SocialAccount[] = []
   public socialAccountProviders: SocialAccountProvider[] = []
 
-  constructor(
-    private profileService: ProfileService,
-    public activeModal: NgbActiveModal,
-    private toastService: ToastService,
-    private clipboard: Clipboard
-  ) {
-    super()
+  get qrSvgDataUrl(): string | null {
+    if (!this.totpSettings?.qr_svg) {
+      return null
+    }
+    return `data:image/svg+xml;utf8,${encodeURIComponent(this.totpSettings.qr_svg)}`
   }
 
   ngOnInit(): void {
@@ -186,6 +188,7 @@ export class ProfileEditDialogComponent
       this.newPassword && this.currentPassword !== this.newPassword
     const profile = Object.assign({}, this.form.value)
     delete profile.totp_code
+    this.error = null
     this.networkActive = true
     this.profileService
       .update(profile)
@@ -198,13 +201,16 @@ export class ProfileEditDialogComponent
               $localize`Password has been changed, you will be logged out momentarily.`
             )
             setTimeout(() => {
-              window.location.href = `${window.location.origin}/accounts/logout/?next=/accounts/login/?next=/`
+              setLocationHref(
+                `${window.location.origin}/accounts/logout/?next=/accounts/login/?next=/`
+              )
             }, 2500)
           }
           this.activeModal.close()
         },
         error: (error) => {
           this.toastService.showError($localize`Error saving profile`, error)
+          this.error = error?.error
           this.networkActive = false
         },
       })

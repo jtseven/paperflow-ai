@@ -184,8 +184,20 @@ class TestApiWorkflows(DirectoriesMixin, APITestCase):
                             "filter_filename": "*",
                             "filter_path": "*/samples/*",
                             "filter_has_tags": [self.t1.id],
+                            "filter_has_all_tags": [self.t2.id],
+                            "filter_has_not_tags": [self.t3.id],
+                            "filter_has_not_correspondents": [self.c2.id],
+                            "filter_has_not_document_types": [self.dt2.id],
+                            "filter_has_not_storage_paths": [self.sp2.id],
+                            "filter_custom_field_query": json.dumps(
+                                [
+                                    "AND",
+                                    [[self.cf1.id, "exact", "value"]],
+                                ],
+                            ),
                             "filter_has_document_type": self.dt.id,
                             "filter_has_correspondent": self.c.id,
+                            "filter_has_storage_path": self.sp.id,
                         },
                     ],
                     "actions": [
@@ -222,6 +234,36 @@ class TestApiWorkflows(DirectoriesMixin, APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Workflow.objects.count(), 2)
+        workflow = Workflow.objects.get(name="Workflow 2")
+        trigger = workflow.triggers.first()
+        self.assertSetEqual(
+            set(trigger.filter_has_tags.values_list("id", flat=True)),
+            {self.t1.id},
+        )
+        self.assertSetEqual(
+            set(trigger.filter_has_all_tags.values_list("id", flat=True)),
+            {self.t2.id},
+        )
+        self.assertSetEqual(
+            set(trigger.filter_has_not_tags.values_list("id", flat=True)),
+            {self.t3.id},
+        )
+        self.assertSetEqual(
+            set(trigger.filter_has_not_correspondents.values_list("id", flat=True)),
+            {self.c2.id},
+        )
+        self.assertSetEqual(
+            set(trigger.filter_has_not_document_types.values_list("id", flat=True)),
+            {self.dt2.id},
+        )
+        self.assertSetEqual(
+            set(trigger.filter_has_not_storage_paths.values_list("id", flat=True)),
+            {self.sp2.id},
+        )
+        self.assertEqual(
+            trigger.filter_custom_field_query,
+            json.dumps(["AND", [[self.cf1.id, "exact", "value"]]]),
+        )
 
     def test_api_create_invalid_workflow_trigger(self):
         """
@@ -375,6 +417,14 @@ class TestApiWorkflows(DirectoriesMixin, APITestCase):
                         {
                             "type": WorkflowTrigger.WorkflowTriggerType.DOCUMENT_ADDED,
                             "filter_has_tags": [self.t1.id],
+                            "filter_has_all_tags": [self.t2.id],
+                            "filter_has_not_tags": [self.t3.id],
+                            "filter_has_not_correspondents": [self.c2.id],
+                            "filter_has_not_document_types": [self.dt2.id],
+                            "filter_has_not_storage_paths": [self.sp2.id],
+                            "filter_custom_field_query": json.dumps(
+                                ["AND", [[self.cf1.id, "exact", "value"]]],
+                            ),
                             "filter_has_correspondent": self.c.id,
                             "filter_has_document_type": self.dt.id,
                         },
@@ -392,7 +442,75 @@ class TestApiWorkflows(DirectoriesMixin, APITestCase):
         workflow = Workflow.objects.get(id=response.data["id"])
         self.assertEqual(workflow.name, "Workflow Updated")
         self.assertEqual(workflow.triggers.first().filter_has_tags.first(), self.t1)
+        self.assertEqual(
+            workflow.triggers.first().filter_has_all_tags.first(),
+            self.t2,
+        )
+        self.assertEqual(
+            workflow.triggers.first().filter_has_not_tags.first(),
+            self.t3,
+        )
+        self.assertEqual(
+            workflow.triggers.first().filter_has_not_correspondents.first(),
+            self.c2,
+        )
+        self.assertEqual(
+            workflow.triggers.first().filter_has_not_document_types.first(),
+            self.dt2,
+        )
+        self.assertEqual(
+            workflow.triggers.first().filter_has_not_storage_paths.first(),
+            self.sp2,
+        )
+        self.assertEqual(
+            workflow.triggers.first().filter_custom_field_query,
+            json.dumps(["AND", [[self.cf1.id, "exact", "value"]]]),
+        )
         self.assertEqual(workflow.actions.first().assign_title, "Action New Title")
+
+    def test_api_update_workflow_no_trigger_actions(self):
+        """
+        GIVEN:
+            - Existing workflow
+        WHEN:
+            - API request to update an existing workflow with no triggers and actions
+            - API request to update an existing workflow with empty actions and no triggers
+        THEN:
+            - No changes are made to the workflow
+            - Actions are removed, but triggers are not
+        """
+        response = self.client.patch(
+            f"{self.ENDPOINT}{self.workflow.id}/",
+            json.dumps(
+                {
+                    "name": "Workflow Updated",
+                    "order": 1,
+                },
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        workflow = Workflow.objects.get(id=self.workflow.id)
+        self.assertEqual(workflow.name, "Workflow Updated")
+        self.assertEqual(workflow.triggers.count(), 1)
+        self.assertEqual(workflow.actions.count(), 1)
+
+        response = self.client.patch(
+            f"{self.ENDPOINT}{self.workflow.id}/",
+            json.dumps(
+                {
+                    "name": "Workflow Updated 2",
+                    "order": 1,
+                    "actions": [],
+                },
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        workflow = Workflow.objects.get(id=self.workflow.id)
+        self.assertEqual(workflow.name, "Workflow Updated 2")
+        self.assertEqual(workflow.triggers.count(), 1)
+        self.assertEqual(workflow.actions.count(), 0)
 
     def test_api_auto_remove_orphaned_triggers_actions(self):
         """
@@ -630,3 +748,63 @@ class TestApiWorkflows(DirectoriesMixin, APITestCase):
                 content_type="application/json",
             )
             self.assertEqual(response.status_code, expected_resp_code)
+
+    def test_patch_trigger_cannot_change_id(self):
+        """
+        GIVEN:
+            - An existing workflow trigger
+            - An existing workflow action
+        WHEN:
+            - PATCHing the trigger with a different 'id' in the body
+            - PATCHing the action with a different 'id' in the body
+        THEN:
+            - HTTP 400 error is returned
+        """
+        response = self.client.patch(
+            f"/api/workflow_triggers/{self.trigger.id}/",
+            {
+                "id": self.trigger.id + 1,
+                "filter_filename": "patched.pdf",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.trigger.refresh_from_db()
+        self.assertNotEqual(self.trigger.filter_filename, "patched.pdf")
+
+        response = self.client.patch(
+            f"/api/workflow_triggers/{self.trigger.id}/",
+            {
+                "id": self.trigger.id,
+                "filter_filename": "patched.pdf",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.trigger.refresh_from_db()
+        self.assertEqual(self.trigger.filter_filename, "patched.pdf")
+
+        response = self.client.patch(
+            f"/api/workflow_actions/{self.action.id}/",
+            {
+                "id": self.action.id + 1,
+                "assign_title": "Patched Title",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.action.refresh_from_db()
+        self.assertNotEqual(self.action.assign_title, "Patched Title")
+
+        response = self.client.patch(
+            f"/api/workflow_actions/{self.action.id}/",
+            {
+                "id": self.action.id,
+                "assign_title": "Patched Title",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.action.refresh_from_db()
+        self.assertEqual(self.action.assign_title, "Patched Title")

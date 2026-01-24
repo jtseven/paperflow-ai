@@ -2,6 +2,7 @@ import {
   Component,
   EventEmitter,
   forwardRef,
+  inject,
   Input,
   Output,
 } from '@angular/core'
@@ -23,6 +24,7 @@ import { MonetaryComponent } from '../monetary/monetary.component'
 import { NumberComponent } from '../number/number.component'
 import { SelectComponent } from '../select/select.component'
 import { TextComponent } from '../text/text.component'
+import { TextAreaComponent } from '../textarea/textarea.component'
 import { UrlComponent } from '../url/url.component'
 
 @Component({
@@ -50,12 +52,15 @@ import { UrlComponent } from '../url/url.component'
     ReactiveFormsModule,
     RouterModule,
     NgxBootstrapIconsModule,
+    TextAreaComponent,
   ],
 })
 export class CustomFieldsValuesComponent extends AbstractInputComponent<Object> {
   public CustomFieldDataType = CustomFieldDataType
 
-  constructor(customFieldsService: CustomFieldsService) {
+  constructor() {
+    const customFieldsService = inject(CustomFieldsService)
+
     super()
     customFieldsService.listAll().subscribe((items) => {
       this.fields = items.results

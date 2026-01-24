@@ -1,11 +1,10 @@
-import { Component } from '@angular/core'
+import { Component, inject } from '@angular/core'
 import {
   FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms'
-import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { EditDialogComponent } from 'src/app/components/common/edit-dialog/edit-dialog.component'
 import { DEFAULT_MATCHING_ALGORITHM } from 'src/app/data/matching-model'
 import { Tag } from 'src/app/data/tag'
@@ -36,13 +35,16 @@ import { TextComponent } from '../../input/text/text.component'
   ],
 })
 export class TagEditDialogComponent extends EditDialogComponent<Tag> {
-  constructor(
-    service: TagService,
-    activeModal: NgbActiveModal,
-    userService: UserService,
-    settingsService: SettingsService
-  ) {
-    super(service, activeModal, userService, settingsService)
+  tags: Tag[]
+
+  constructor() {
+    super()
+    this.service = inject(TagService)
+    this.userService = inject(UserService)
+    this.settingsService = inject(SettingsService)
+    this.service.listAll().subscribe((result) => {
+      this.tags = result.results
+    })
   }
 
   getCreateTitle() {
@@ -58,6 +60,7 @@ export class TagEditDialogComponent extends EditDialogComponent<Tag> {
       name: new FormControl(''),
       color: new FormControl(randomColor()),
       is_inbox_tag: new FormControl(false),
+      parent: new FormControl(null),
       matching_algorithm: new FormControl(DEFAULT_MATCHING_ALGORITHM),
       match: new FormControl(''),
       is_insensitive: new FormControl(true),

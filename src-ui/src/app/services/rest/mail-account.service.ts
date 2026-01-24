@@ -1,4 +1,3 @@
-import { HttpClient } from '@angular/common/http'
 import { Injectable } from '@angular/core'
 import { tap } from 'rxjs/operators'
 import { MailAccount } from 'src/app/data/mail-account'
@@ -8,17 +7,16 @@ import { AbstractPaperlessService } from './abstract-paperless-service'
   providedIn: 'root',
 })
 export class MailAccountService extends AbstractPaperlessService<MailAccount> {
-  loading: boolean
-
-  constructor(http: HttpClient) {
-    super(http, 'mail_accounts')
+  constructor() {
+    super()
+    this.resourceName = 'mail_accounts'
   }
 
   private reload() {
-    this.loading = true
+    this._loading = true
     this.listAll().subscribe((r) => {
       this.mailAccounts = r.results
-      this.loading = false
+      this._loading = false
     })
   }
 

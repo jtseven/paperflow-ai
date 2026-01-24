@@ -1,6 +1,7 @@
 import { AsyncPipe, NgClass, NgTemplateOutlet } from '@angular/common'
 import {
   Component,
+  inject,
   OnDestroy,
   OnInit,
   QueryList,
@@ -55,6 +56,7 @@ import {
   filterRulesDiffer,
   isFullTextFilterRule,
 } from 'src/app/utils/filter-rules'
+import { ClearableBadgeComponent } from '../common/clearable-badge/clearable-badge.component'
 import { CustomFieldDisplayComponent } from '../common/custom-field-display/custom-field-display.component'
 import { PageHeaderComponent } from '../common/page-header/page-header.component'
 import { PreviewPopupComponent } from '../common/preview-popup/preview-popup.component'
@@ -71,6 +73,7 @@ import { SaveViewConfigDialogComponent } from './save-view-config-dialog/save-vi
   templateUrl: './document-list.component.html',
   styleUrls: ['./document-list.component.scss'],
   imports: [
+    ClearableBadgeComponent,
     CustomFieldDisplayComponent,
     PageHeaderComponent,
     BulkEditorComponent,
@@ -103,24 +106,20 @@ export class DocumentListComponent
   extends ComponentWithPermissions
   implements OnInit, OnDestroy
 {
+  list = inject(DocumentListViewService)
+  savedViewService = inject(SavedViewService)
+  route = inject(ActivatedRoute)
+  private router = inject(Router)
+  private toastService = inject(ToastService)
+  private modalService = inject(NgbModal)
+  private websocketStatusService = inject(WebsocketStatusService)
+  openDocumentsService = inject(OpenDocumentsService)
+  settingsService = inject(SettingsService)
+  private hotKeyService = inject(HotKeyService)
+  permissionService = inject(PermissionsService)
+
   DisplayField = DisplayField
   DisplayMode = DisplayMode
-
-  constructor(
-    public list: DocumentListViewService,
-    public savedViewService: SavedViewService,
-    public route: ActivatedRoute,
-    private router: Router,
-    private toastService: ToastService,
-    private modalService: NgbModal,
-    private websocketStatusService: WebsocketStatusService,
-    public openDocumentsService: OpenDocumentsService,
-    public settingsService: SettingsService,
-    private hotKeyService: HotKeyService,
-    public permissionService: PermissionsService
-  ) {
-    super()
-  }
 
   @ViewChild('filterEditor')
   private filterEditor: FilterEditorComponent
@@ -267,7 +266,9 @@ export class DocumentListComponent
           view,
           convertToParamMap(this.route.snapshot.queryParams)
         )
-        this.list.reload()
+        this.list.reload(() => {
+          this.savedViewService.setDocumentCount(view, this.list.collectionSize)
+        })
         this.updateDisplayCustomFields()
         this.unmodifiedFilterRules = view.filter_rules
       })
@@ -402,7 +403,9 @@ export class DocumentListComponent
       .subscribe((view) => {
         this.unmodifiedSavedView = view
         this.list.activateSavedView(view)
-        this.list.reload()
+        this.list.reload(() => {
+          this.savedViewService.setDocumentCount(view, this.list.collectionSize)
+        })
       })
   }
 

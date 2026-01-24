@@ -5,7 +5,7 @@
 # Purpose: Compiles the frontend
 # Notes:
 #  - Does PNPM stuff with Typescript and such
-FROM --platform=$BUILDPLATFORM docker.io/node:20-bookworm-slim AS compile-frontend
+FROM --platform=$BUILDPLATFORM docker.io/node:20-trixie-slim AS compile-frontend
 
 COPY ./src-ui /src/src-ui
 
@@ -21,7 +21,7 @@ ARG PNGX_TAG_VERSION=
 RUN set -eux && \
   case "${PNGX_TAG_VERSION}" in \
   dev|beta|fix*|feature*) \
-  sed -i -E "s/version: '([0-9\.]+)'/version: '\1 #${PNGX_TAG_VERSION}'/g" /src/src-ui/src/environments/environment.prod.ts \
+  sed -i -E "s/tag: '([a-z\.]+)'/tag: '${PNGX_TAG_VERSION}'/g" /src/src-ui/src/environments/environment.prod.ts \
   ;; \
   esac
 
@@ -32,7 +32,7 @@ RUN set -eux \
 # Purpose: Installs s6-overlay and rootfs
 # Comments:
 #  - Don't leave anything extra in here either
-FROM ghcr.io/astral-sh/uv:0.6.9-python3.12-bookworm-slim AS s6-overlay-base
+FROM ghcr.io/astral-sh/uv:0.9.15-python3.12-trixie-slim AS s6-overlay-base
 
 WORKDIR /usr/src/s6
 
@@ -47,7 +47,7 @@ ENV \
 ARG TARGETARCH
 ARG TARGETVARIANT
 # Lock this version
-ARG S6_OVERLAY_VERSION=3.2.0.2
+ARG S6_OVERLAY_VERSION=3.2.1.0
 
 ARG S6_BUILD_TIME_PKGS="curl \
   xz-utils"
@@ -102,8 +102,6 @@ ARG TARGETARCH
 
 # Can be workflow provided, defaults set for manual building
 ARG JBIG2ENC_VERSION=0.30
-ARG QPDF_VERSION=11.9.0
-ARG GS_VERSION=10.03.1
 
 # Set Python environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -170,20 +168,8 @@ RUN set -eux \
   && apt-get update \
   && apt-get install --yes --quiet --no-install-recommends ${RUNTIME_PACKAGES} \
   && echo "Installing pre-built updates" \
-  && curl --fail --silent --no-progress-meter --show-error --location --remote-name-all --parallel --parallel-max 4 \
-  https://github.com/paperless-ngx/builder/releases/download/qpdf-${QPDF_VERSION}/libqpdf29_${QPDF_VERSION}-1_${TARGETARCH}.deb \
-  https://github.com/paperless-ngx/builder/releases/download/qpdf-${QPDF_VERSION}/qpdf_${QPDF_VERSION}-1_${TARGETARCH}.deb \
-  https://github.com/paperless-ngx/builder/releases/download/ghostscript-${GS_VERSION}/libgs10_${GS_VERSION}.dfsg-1_${TARGETARCH}.deb \
-  https://github.com/paperless-ngx/builder/releases/download/ghostscript-${GS_VERSION}/ghostscript_${GS_VERSION}.dfsg-1_${TARGETARCH}.deb \
-  https://github.com/paperless-ngx/builder/releases/download/ghostscript-${GS_VERSION}/libgs10-common_${GS_VERSION}.dfsg-1_all.deb \
-  https://github.com/paperless-ngx/builder/releases/download/jbig2enc-${JBIG2ENC_VERSION}/jbig2enc_${JBIG2ENC_VERSION}-1_${TARGETARCH}.deb \
-  && echo "Installing qpdf ${QPDF_VERSION}" \
-  && dpkg --install ./libqpdf29_${QPDF_VERSION}-1_${TARGETARCH}.deb \
-  && dpkg --install ./qpdf_${QPDF_VERSION}-1_${TARGETARCH}.deb \
-  && echo "Installing Ghostscript ${GS_VERSION}" \
-  && dpkg --install ./libgs10-common_${GS_VERSION}.dfsg-1_all.deb \
-  && dpkg --install ./libgs10_${GS_VERSION}.dfsg-1_${TARGETARCH}.deb \
-  && dpkg --install ./ghostscript_${GS_VERSION}.dfsg-1_${TARGETARCH}.deb \
+  && curl --fail --silent --no-progress-meter --show-error --location --remote-name-all \
+  https://github.com/paperless-ngx/builder/releases/download/jbig2enc-trixie-v${JBIG2ENC_VERSION}/jbig2enc_${JBIG2ENC_VERSION}-1_${TARGETARCH}.deb \
   && echo "Installing jbig2enc" \
   && dpkg --install ./jbig2enc_${JBIG2ENC_VERSION}-1_${TARGETARCH}.deb \
   && echo "Configuring imagemagick" \
@@ -204,7 +190,9 @@ ARG BUILD_PACKAGES="\
   build-essential \
   # https://github.com/PyMySQL/mysqlclient#linux
   default-libmysqlclient-dev \
-  pkg-config"
+  pkg-config \
+  git \
+  libpq-dev"
 
 # hadolint ignore=DL3042
 RUN --mount=type=cache,target=${UV_CACHE_DIR},id=python-cache \
@@ -254,7 +242,8 @@ RUN set -eux \
   && chown --from root:root --changes --recursive paperless:paperless /usr/src/paperless \
   && echo "Collecting static files" \
   && s6-setuidgid paperless python3 manage.py collectstatic --clear --no-input --link \
-  && s6-setuidgid paperless python3 manage.py compilemessages
+  && s6-setuidgid paperless python3 manage.py compilemessages \
+  && /usr/local/bin/deduplicate.py --verbose /usr/src/paperless/static/
 
 VOLUME ["/usr/src/paperless/data", \
   "/usr/src/paperless/media", \
@@ -265,4 +254,4 @@ ENTRYPOINT ["/init"]
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --retries=5 CMD [ "curl", "-fs", "-S", "--max-time", "2", "http://localhost:8000" ]
+HEALTHCHECK --interval=30s --timeout=10s --retries=5 CMD [ "curl", "-fs", "-S", "-L", "--max-time", "2", "http://localhost:8000" ]

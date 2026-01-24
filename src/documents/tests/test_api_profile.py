@@ -136,6 +136,36 @@ class TestApiProfile(DirectoriesMixin, APITestCase):
             ],
         )
 
+    def test_profile_w_social_removed_app(self):
+        """
+        GIVEN:
+            - Configured user and setup social account
+            - Social app has been removed
+        WHEN:
+            - API call is made to get profile
+        THEN:
+            - Profile is returned with "Unknown App" as name
+        """
+        self.setupSocialAccount()
+
+        # Remove the social app
+        SocialApp.objects.get(provider_id="keycloak-test").delete()
+
+        response = self.client.get(self.ENDPOINT)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertEqual(
+            response.data["social_accounts"],
+            [
+                {
+                    "id": 1,
+                    "provider": "keycloak-test",
+                    "name": "Unknown App",
+                },
+            ],
+        )
+
     def test_update_profile(self):
         """
         GIVEN:
@@ -158,6 +188,65 @@ class TestApiProfile(DirectoriesMixin, APITestCase):
 
         user = User.objects.get(username=self.user.username)
         self.assertTrue(user.check_password(user_data["password"]))
+        self.assertEqual(user.email, user_data["email"])
+        self.assertEqual(user.first_name, user_data["first_name"])
+        self.assertEqual(user.last_name, user_data["last_name"])
+
+    def test_update_profile_invalid_password_returns_field_error(self):
+        """
+        GIVEN:
+            - Configured user
+        WHEN:
+            - API call is made to update profile with weak password
+        THEN:
+            - Profile update fails with password field error
+        """
+
+        user_data = {
+            "email": "new@email.com",
+            "password": "short",  # shorter than default validator threshold
+            "first_name": "new first name",
+            "last_name": "new last name",
+        }
+
+        response = self.client.patch(self.ENDPOINT, user_data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+        self.assertIsInstance(response.data["password"], list)
+        self.assertTrue(
+            any(
+                "too short" in message.lower() for message in response.data["password"]
+            ),
+        )
+
+    def test_update_profile_placeholder_password_skips_validation(self):
+        """
+        GIVEN:
+            - Configured user with existing password
+        WHEN:
+            - API call is made with the obfuscated placeholder password value
+        THEN:
+            - Profile is updated without changing the password or running validators
+        """
+
+        original_password = "orig-pass-12345"
+        self.user.set_password(original_password)
+        self.user.save()
+
+        user_data = {
+            "email": "new@email.com",
+            "password": "*" * 12,  # matches obfuscated value from serializer
+            "first_name": "new first name",
+            "last_name": "new last name",
+        }
+
+        response = self.client.patch(self.ENDPOINT, user_data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user = User.objects.get(username=self.user.username)
+        self.assertTrue(user.check_password(original_password))
         self.assertEqual(user.email, user_data["email"])
         self.assertEqual(user.first_name, user_data["first_name"])
         self.assertEqual(user.last_name, user_data["last_name"])

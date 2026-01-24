@@ -1,9 +1,12 @@
 import json
 import logging
 import os
+import tempfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from zipfile import ZipFile
+from zipfile import is_zipfile
 
 import tqdm
 from django.conf import settings
@@ -47,12 +50,13 @@ if settings.AUDIT_LOG_ENABLED:
 
 
 @contextmanager
-def disable_signal(sig, receiver, sender) -> Generator:
+def disable_signal(sig, receiver, sender, *, weak: bool | None = None) -> Generator:
     try:
         sig.disconnect(receiver=receiver, sender=sender)
         yield
     finally:
-        sig.connect(receiver=receiver, sender=sender)
+        kwargs = {"weak": weak} if weak is not None else {}
+        sig.connect(receiver=receiver, sender=sender, **kwargs)
 
 
 class Command(CryptMixin, BaseCommand):
@@ -244,14 +248,19 @@ class Command(CryptMixin, BaseCommand):
         self.manifest_paths = []
         self.manifest = []
 
+        # Create a temporary directory for extracting a zip file into it, even if supplied source is no zip file to keep code cleaner.
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            if is_zipfile(self.source):
+                with ZipFile(self.source) as zf:
+                    zf.extractall(tmp_dir)
+                self.source = Path(tmp_dir)
+            self._run_import()
+
+    def _run_import(self):
         self.pre_check()
-
         self.load_metadata()
-
         self.load_manifest_files()
-
         self.check_manifest_validity()
-
         self.decrypt_secret_fields()
 
         # see /src/documents/signals/handlers.py
@@ -260,16 +269,19 @@ class Command(CryptMixin, BaseCommand):
                 post_save,
                 receiver=update_filename_and_move_files,
                 sender=Document,
+                weak=False,
             ),
             disable_signal(
                 m2m_changed,
                 receiver=update_filename_and_move_files,
                 sender=Document.tags.through,
+                weak=False,
             ),
             disable_signal(
                 post_save,
                 receiver=update_filename_and_move_files,
                 sender=CustomFieldInstance,
+                weak=False,
             ),
             disable_signal(
                 post_save,

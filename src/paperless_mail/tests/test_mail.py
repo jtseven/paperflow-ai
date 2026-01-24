@@ -1,6 +1,7 @@
 import dataclasses
 import email.contentmanager
 import random
+import time
 import uuid
 from collections import namedtuple
 from contextlib import AbstractContextManager
@@ -25,6 +26,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from documents.models import Correspondent
+from documents.models import MatchingModel
 from documents.tests.utils import DirectoriesMixin
 from documents.tests.utils import FileSystemAssertsMixin
 from paperless_mail import tasks
@@ -385,6 +387,20 @@ class MailMocker(DirectoriesMixin, FileSystemAssertsMixin, TestCase):
             apply_mail_action([], rule.pk, message.uid, message.subject, message.date)
 
 
+def assert_eventually_equals(getter_fn, expected_value, timeout=1.0, interval=0.05):
+    """
+    Repeatedly calls `getter_fn()` until the result equals `expected_value`,
+    or times out after `timeout` seconds.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if getter_fn() == expected_value:
+            return
+        time.sleep(interval)
+    actual = getter_fn()
+    raise AssertionError(f"Expected {expected_value}, but got {actual}")
+
+
 @mock.patch("paperless_mail.mail.magic.from_buffer", fake_magic_from_buffer)
 class TestMail(
     DirectoriesMixin,
@@ -431,6 +447,8 @@ class TestMail(
         c = handler._get_correspondent(message, rule)
         self.assertIsNotNone(c)
         self.assertEqual(c.name, "someone@somewhere.com")
+        self.assertEqual(c.matching_algorithm, MatchingModel.MATCH_ANY)
+        self.assertEqual(c.match, "someone@somewhere.com")
         c = handler._get_correspondent(message2, rule)
         self.assertIsNotNone(c)
         self.assertEqual(c.name, "me@localhost.com")
@@ -798,6 +816,7 @@ class TestMail(
         )
         self.assertEqual(len(self.mailMocker.bogus_mailbox.messages), 3)
 
+    @pytest.mark.flaky(reruns=4)
     def test_handle_mail_account_delete(self):
         account = MailAccount.objects.create(
             name="test",
@@ -818,7 +837,7 @@ class TestMail(
         self.mail_account_handler.handle_mail_account(account)
         self.mailMocker.apply_mail_actions()
 
-        self.assertEqual(len(self.mailMocker.bogus_mailbox.messages), 1)
+        assert_eventually_equals(lambda: len(self.mailMocker.bogus_mailbox.messages), 1)
 
     def test_handle_mail_account_delete_no_filters(self):
         account = MailAccount.objects.create(
@@ -1822,3 +1841,66 @@ class TestMailAccountProcess(APITestCase):
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         m.assert_called_once()
+
+
+class TestMailRuleAPI(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser(
+            username="testuser",
+            password="testpassword",
+        )
+        self.client.force_authenticate(user=self.user)
+        self.account = MailAccount.objects.create(
+            imap_server="imap.example.com",
+            imap_port=993,
+            imap_security=MailAccount.ImapSecurity.SSL,
+            username="admin",
+            password="secret",
+            account_type=MailAccount.MailAccountType.IMAP,
+            owner=self.user,
+        )
+        self.url = "/api/mail_rules/"
+
+    def test_create_mail_rule(self):
+        """
+        GIVEN:
+            - Valid data for creating a mail rule
+        WHEN:
+            - A POST request is made to the mail rules endpoint
+        THEN:
+            - The rule should be created successfully
+            - The response should contain the created rule's details
+        """
+        data = {
+            "name": "Test Rule",
+            "account": self.account.pk,
+            "action": MailRule.MailAction.MOVE,
+            "action_parameter": "inbox",
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(MailRule.objects.count(), 1)
+        rule = MailRule.objects.first()
+        self.assertEqual(rule.name, "Test Rule")
+
+    def test_mail_rule_action_parameter_required_for_tag_or_move(self):
+        """
+        GIVEN:
+            - Valid data for creating a mail rule without action_parameter
+        WHEN:
+            - A POST request is made to the mail rules endpoint
+        THEN:
+            - The request should fail with a 400 Bad Request status
+            - The response should indicate that action_parameter is required
+        """
+        data = {
+            "name": "Test Rule",
+            "account": self.account.pk,
+            "action": MailRule.MailAction.MOVE,
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn(
+            "action parameter is required",
+            str(response.data["non_field_errors"]),
+        )

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http'
-import { Injectable } from '@angular/core'
+import { Injectable, inject } from '@angular/core'
 import { Observable, Subject } from 'rxjs'
-import { first, takeUntil } from 'rxjs/operators'
+import { first, takeUntil, tap } from 'rxjs/operators'
 import {
   PaperlessTask,
   PaperlessTaskName,
@@ -13,6 +13,8 @@ import { environment } from 'src/environments/environment'
   providedIn: 'root',
 })
 export class TasksService {
+  private http = inject(HttpClient)
+
   private baseUrl: string = environment.apiBaseUrl
   private endpoint: string = 'tasks'
 
@@ -48,8 +50,6 @@ export class TasksService {
     return this.fileTasks.filter((t) => t.status == PaperlessTaskStatus.Failed)
   }
 
-  constructor(private http: HttpClient) {}
-
   public reload() {
     if (this.loading) return
     this.loading = true
@@ -68,14 +68,17 @@ export class TasksService {
   }
 
   public dismissTasks(task_ids: Set<number>) {
-    this.http
+    return this.http
       .post(`${this.baseUrl}tasks/acknowledge/`, {
         tasks: [...task_ids],
       })
-      .pipe(first())
-      .subscribe((r) => {
-        this.reload()
-      })
+      .pipe(
+        first(),
+        takeUntil(this.unsubscribeNotifer),
+        tap(() => {
+          this.reload()
+        })
+      )
   }
 
   public cancelPending(): void {

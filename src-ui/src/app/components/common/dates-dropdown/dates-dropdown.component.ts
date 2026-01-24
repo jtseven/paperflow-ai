@@ -1,4 +1,4 @@
-import { NgClass } from '@angular/common'
+import { NgClass, NgTemplateOutlet } from '@angular/common'
 import {
   Component,
   EventEmitter,
@@ -6,6 +6,7 @@ import {
   OnDestroy,
   OnInit,
   Output,
+  inject,
 } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import {
@@ -41,6 +42,10 @@ export enum RelativeDate {
   THIS_MONTH = 6,
   TODAY = 7,
   YESTERDAY = 8,
+  PREVIOUS_WEEK = 9,
+  PREVIOUS_MONTH = 10,
+  PREVIOUS_QUARTER = 11,
+  PREVIOUS_YEAR = 12,
 }
 
 @Component({
@@ -58,12 +63,15 @@ export enum RelativeDate {
     FormsModule,
     ReactiveFormsModule,
     NgClass,
+    NgTemplateOutlet,
   ],
 })
 export class DatesDropdownComponent implements OnInit, OnDestroy {
   public popperOptions = pngxPopperOptions
 
-  constructor(settings: SettingsService) {
+  constructor() {
+    const settings = inject(SettingsService)
+
     this.datePlaceHolder = settings.getLocalizedDateInputFormat()
   }
 
@@ -107,6 +115,46 @@ export class DatesDropdownComponent implements OnInit, OnDestroy {
       id: RelativeDate.YESTERDAY,
       name: $localize`Yesterday`,
       date: new Date().setDate(new Date().getDate() - 1),
+    },
+    {
+      id: RelativeDate.PREVIOUS_WEEK,
+      name: $localize`Previous week`,
+      date: new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        new Date().getDate() - new Date().getDay() - 6
+      ),
+      dateEnd: new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        new Date().getDate() - new Date().getDay()
+      ),
+    },
+    {
+      id: RelativeDate.PREVIOUS_MONTH,
+      name: $localize`Previous month`,
+      date: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+      dateEnd: new Date(new Date().getFullYear(), new Date().getMonth(), 0),
+    },
+    {
+      id: RelativeDate.PREVIOUS_QUARTER,
+      name: $localize`Previous quarter`,
+      date: new Date(
+        new Date().getFullYear(),
+        Math.floor(new Date().getMonth() / 3) * 3 - 3,
+        1
+      ),
+      dateEnd: new Date(
+        new Date().getFullYear(),
+        Math.floor(new Date().getMonth() / 3) * 3,
+        0
+      ),
+    },
+    {
+      id: RelativeDate.PREVIOUS_YEAR,
+      name: $localize`Previous year`,
+      date: new Date('1/1/' + (new Date().getFullYear() - 1)),
+      dateEnd: new Date('12/31/' + (new Date().getFullYear() - 1)),
     },
   ]
 
@@ -162,7 +210,7 @@ export class DatesDropdownComponent implements OnInit, OnDestroy {
   @Input()
   placement: string = 'bottom-start'
 
-  public readonly today: string = new Date().toISOString().split('T')[0]
+  public readonly today: string = new Date().toLocaleDateString('en-CA')
 
   get isActive(): boolean {
     return (

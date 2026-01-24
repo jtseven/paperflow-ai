@@ -1,5 +1,5 @@
-import { CurrencyPipe, getLocaleCurrencyCode } from '@angular/common'
-import { Component, Inject, Input, LOCALE_ID, OnInit } from '@angular/core'
+import { CurrencyPipe, getLocaleCurrencyCode, SlicePipe } from '@angular/common'
+import { Component, inject, Input, LOCALE_ID, OnInit } from '@angular/core'
 import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap'
 import { takeUntil } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
@@ -14,12 +14,15 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
   selector: 'pngx-custom-field-display',
   templateUrl: './custom-field-display.component.html',
   styleUrl: './custom-field-display.component.scss',
-  imports: [CustomDatePipe, CurrencyPipe, NgbTooltipModule],
+  imports: [CustomDatePipe, CurrencyPipe, NgbTooltipModule, SlicePipe],
 })
 export class CustomFieldDisplayComponent
   extends LoadingComponentWithPermissions
   implements OnInit
 {
+  private customFieldService = inject(CustomFieldsService)
+  private documentService = inject(DocumentService)
+
   CustomFieldDataType = CustomFieldDataType
 
   private _document: Document
@@ -63,11 +66,9 @@ export class CustomFieldDisplayComponent
 
   private defaultCurrencyCode: any
 
-  constructor(
-    private customFieldService: CustomFieldsService,
-    private documentService: DocumentService,
-    @Inject(LOCALE_ID) currentLocale: string
-  ) {
+  constructor() {
+    const currentLocale = inject(LOCALE_ID)
+
     super()
     this.defaultCurrencyCode = getLocaleCurrencyCode(currentLocale)
     this.customFieldService.listAll().subscribe((r) => {

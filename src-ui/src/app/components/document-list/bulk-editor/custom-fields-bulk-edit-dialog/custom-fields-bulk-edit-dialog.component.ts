@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core'
+import { Component, EventEmitter, Output, inject } from '@angular/core'
 import {
   FormControl,
   FormGroup,
@@ -18,6 +18,7 @@ import { TextComponent } from 'src/app/components/common/input/text/text.compone
 import { UrlComponent } from 'src/app/components/common/input/url/url.component'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import { DocumentService } from 'src/app/services/rest/document.service'
+import { TextAreaComponent } from '../../../common/input/textarea/textarea.component'
 
 @Component({
   selector: 'pngx-custom-fields-bulk-edit-dialog',
@@ -35,9 +36,13 @@ import { DocumentService } from 'src/app/services/rest/document.service'
     FormsModule,
     ReactiveFormsModule,
     NgxBootstrapIconsModule,
+    TextAreaComponent,
   ],
 })
 export class CustomFieldsBulkEditDialogComponent {
+  private activeModal = inject(NgbActiveModal)
+  private documentService = inject(DocumentService)
+
   CustomFieldDataType = CustomFieldDataType
 
   @Output()
@@ -72,11 +77,6 @@ export class CustomFieldsBulkEditDialogComponent {
   public form: FormGroup = new FormGroup({})
 
   public documents: number[] = []
-
-  constructor(
-    private activeModal: NgbActiveModal,
-    private documentService: DocumentService
-  ) {}
 
   initForm() {
     Object.keys(this.form.controls).forEach((key) => {

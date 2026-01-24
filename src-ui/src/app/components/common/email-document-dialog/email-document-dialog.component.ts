@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core'
+import { Component, Input, inject } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
@@ -13,11 +13,12 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
   imports: [FormsModule, NgxBootstrapIconsModule],
 })
 export class EmailDocumentDialogComponent extends LoadingComponentWithPermissions {
-  @Input()
-  title = $localize`Email Document`
+  private activeModal = inject(NgbActiveModal)
+  private documentService = inject(DocumentService)
+  private toastService = inject(ToastService)
 
   @Input()
-  documentId: number
+  documentIds: number[]
 
   private _hasArchiveVersion: boolean = true
 
@@ -37,20 +38,16 @@ export class EmailDocumentDialogComponent extends LoadingComponentWithPermission
   public emailSubject: string = ''
   public emailMessage: string = ''
 
-  constructor(
-    private activeModal: NgbActiveModal,
-    private documentService: DocumentService,
-    private toastService: ToastService
-  ) {
+  constructor() {
     super()
     this.loading = false
   }
 
-  public emailDocument() {
+  public emailDocuments() {
     this.loading = true
     this.documentService
-      .emailDocument(
-        this.documentId,
+      .emailDocuments(
+        this.documentIds,
         this.emailAddress,
         this.emailSubject,
         this.emailMessage,
@@ -67,7 +64,11 @@ export class EmailDocumentDialogComponent extends LoadingComponentWithPermission
         },
         error: (e) => {
           this.loading = false
-          this.toastService.showError($localize`Error emailing document`, e)
+          const errorMessage =
+            this.documentIds.length > 1
+              ? $localize`Error emailing documents`
+              : $localize`Error emailing document`
+          this.toastService.showError(errorMessage, e)
         },
       })
   }

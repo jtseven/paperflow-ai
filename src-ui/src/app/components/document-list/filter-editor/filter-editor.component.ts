@@ -8,6 +8,7 @@ import {
   OnInit,
   Output,
   ViewChild,
+  inject,
 } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import {
@@ -96,6 +97,7 @@ import {
   CustomFieldQueryExpression,
 } from 'src/app/utils/custom-field-query-element'
 import { filterRulesDiffer } from 'src/app/utils/filter-rules'
+import { flattenTags } from 'src/app/utils/flatten-tags'
 import {
   CustomFieldQueriesModel,
   CustomFieldsQueryDropdownComponent,
@@ -171,6 +173,22 @@ const RELATIVE_DATE_QUERYSTRINGS = [
     relativeDate: RelativeDate.YESTERDAY,
     dateQuery: 'yesterday',
   },
+  {
+    relativeDate: RelativeDate.PREVIOUS_WEEK,
+    dateQuery: 'previous week',
+  },
+  {
+    relativeDate: RelativeDate.PREVIOUS_MONTH,
+    dateQuery: 'previous month',
+  },
+  {
+    relativeDate: RelativeDate.PREVIOUS_QUARTER,
+    dateQuery: 'previous quarter',
+  },
+  {
+    relativeDate: RelativeDate.PREVIOUS_YEAR,
+    dateQuery: 'previous year',
+  },
 ]
 
 const DEFAULT_TEXT_FILTER_TARGET_OPTIONS = [
@@ -240,6 +258,15 @@ export class FilterEditorComponent
   extends LoadingComponentWithPermissions
   implements OnInit, OnDestroy, AfterViewInit
 {
+  private documentTypeService = inject(DocumentTypeService)
+  private tagService = inject(TagService)
+  private correspondentService = inject(CorrespondentService)
+  private documentService = inject(DocumentService)
+  private storagePathService = inject(StoragePathService)
+  permissionsService = inject(PermissionsService)
+  private customFieldService = inject(CustomFieldsService)
+  private searchService = inject(SearchService)
+
   generateFilterName() {
     if (this.filterRules.length == 1) {
       let rule = this.filterRules[0]
@@ -311,19 +338,6 @@ export class FilterEditorComponent
     }
 
     return ''
-  }
-
-  constructor(
-    private documentTypeService: DocumentTypeService,
-    private tagService: TagService,
-    private correspondentService: CorrespondentService,
-    private documentService: DocumentService,
-    private storagePathService: StoragePathService,
-    public permissionsService: PermissionsService,
-    private customFieldService: CustomFieldsService,
-    private searchService: SearchService
-  ) {
-    super()
   }
 
   @ViewChild('textFilterInput')
@@ -402,6 +416,9 @@ export class FilterEditorComponent
 
   @Input()
   set filterRules(value: FilterRule[]) {
+    if (value === this._filterRules) {
+      return
+    }
     this._filterRules = value
 
     this.documentTypeSelectionModel.clear(false)
@@ -749,7 +766,7 @@ export class FilterEditorComponent
     ) {
       filterRules.push({
         rule_type: FILTER_TITLE_CONTENT,
-        value: this._textFilter,
+        value: this._textFilter.trim(),
       })
     }
     if (this._textFilter && this.textFilterTarget == TEXT_FILTER_TARGET_TITLE) {
@@ -807,7 +824,7 @@ export class FilterEditorComponent
     ) {
       filterRules.push({
         rule_type: FILTER_FULLTEXT_QUERY,
-        value: this._textFilter,
+        value: this._textFilter.trim(),
       })
     }
     if (
@@ -1100,7 +1117,13 @@ export class FilterEditorComponent
   rulesModified: boolean = false
 
   updateRules() {
-    this.filterRulesChange.next(this.filterRules)
+    const updatedRules = this.filterRules
+    this._filterRules = updatedRules
+    this.rulesModified = filterRulesDiffer(
+      this._unmodifiedFilterRules,
+      updatedRules
+    )
+    this.filterRulesChange.next(updatedRules)
   }
 
   get textFilter() {
@@ -1137,7 +1160,7 @@ export class FilterEditorComponent
     ) {
       this.loadingCountTotal++
       this.tagService.listAll().subscribe((result) => {
-        this.tagSelectionModel.items = result.results
+        this.tagSelectionModel.items = flattenTags(result.results)
         this.maybeCompleteLoading()
       })
     }
@@ -1219,6 +1242,7 @@ export class FilterEditorComponent
 
   resetSelected() {
     this.textFilterTarget = TEXT_FILTER_TARGET_TITLE_CONTENT
+    this.documentService.searchQuery = ''
     this.filterRules = this._unmodifiedFilterRules
     this.updateRules()
   }

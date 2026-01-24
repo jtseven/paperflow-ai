@@ -1,12 +1,16 @@
 import '@angular/localize/init'
 import { jest } from '@jest/globals'
 import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone'
-import { TextDecoder, TextEncoder } from 'util'
+import { TextDecoder, TextEncoder } from 'node:util'
 if (process.env.NODE_ENV === 'test') {
   setupZoneTestEnv()
 }
-global.TextEncoder = TextEncoder
-global.TextDecoder = TextDecoder
+;(globalThis as any).TextEncoder = TextEncoder as unknown as {
+  new (): TextEncoder
+}
+;(globalThis as any).TextDecoder = TextDecoder as unknown as {
+  new (): TextDecoder
+}
 
 import { registerLocaleData } from '@angular/common'
 import localeAf from '@angular/common/locales/af'
@@ -20,6 +24,7 @@ import localeDe from '@angular/common/locales/de'
 import localeEl from '@angular/common/locales/el'
 import localeEnGb from '@angular/common/locales/en-GB'
 import localeEs from '@angular/common/locales/es'
+import localeFa from '@angular/common/locales/fa'
 import localeFi from '@angular/common/locales/fi'
 import localeFr from '@angular/common/locales/fr'
 import localeHu from '@angular/common/locales/hu'
@@ -39,6 +44,7 @@ import localeSr from '@angular/common/locales/sr'
 import localeSv from '@angular/common/locales/sv'
 import localeTr from '@angular/common/locales/tr'
 import localeUk from '@angular/common/locales/uk'
+import localeVi from '@angular/common/locales/vi'
 import localeZh from '@angular/common/locales/zh'
 import localeZhHant from '@angular/common/locales/zh-Hant'
 
@@ -53,6 +59,7 @@ registerLocaleData(localeDe)
 registerLocaleData(localeEl)
 registerLocaleData(localeEnGb)
 registerLocaleData(localeEs)
+registerLocaleData(localeFa)
 registerLocaleData(localeFi)
 registerLocaleData(localeFr)
 registerLocaleData(localeHu)
@@ -73,6 +80,7 @@ registerLocaleData(localeSr)
 registerLocaleData(localeSv)
 registerLocaleData(localeTr)
 registerLocaleData(localeUk)
+registerLocaleData(localeVi)
 registerLocaleData(localeZh)
 registerLocaleData(localeZhHant)
 
@@ -112,28 +120,43 @@ if (!URL.revokeObjectURL) {
   Object.defineProperty(window.URL, 'revokeObjectURL', { value: jest.fn() })
 }
 Object.defineProperty(window, 'ResizeObserver', { value: mock() })
-Object.defineProperty(window, 'location', {
-  configurable: true,
-  value: { reload: jest.fn() },
-})
+
+if (typeof IntersectionObserver === 'undefined') {
+  class MockIntersectionObserver {
+    constructor(
+      public callback: IntersectionObserverCallback,
+      public options?: IntersectionObserverInit
+    ) {}
+
+    observe = jest.fn()
+    unobserve = jest.fn()
+    disconnect = jest.fn()
+    takeRecords = jest.fn()
+  }
+
+  Object.defineProperty(window, 'IntersectionObserver', {
+    writable: true,
+    configurable: true,
+    value: MockIntersectionObserver,
+  })
+}
 
 HTMLCanvasElement.prototype.getContext = <
   typeof HTMLCanvasElement.prototype.getContext
 >jest.fn()
 
-// pdfjs
-jest.mock('pdfjs-dist', () => ({
-  getDocument: jest.fn(() => ({
-    promise: Promise.resolve({ numPages: 3 }),
-  })),
-  GlobalWorkerOptions: { workerSrc: '' },
-  VerbosityLevel: { ERRORS: 0 },
-  globalThis: {
-    pdfjsLib: {
-      GlobalWorkerOptions: {
-        workerSrc: '',
-      },
-    },
-  },
+if (!HTMLElement.prototype.scrollTo) {
+  HTMLElement.prototype.scrollTo = jest.fn()
+}
+
+jest.mock('uuid', () => ({
+  v4: jest.fn(() =>
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char: string) => {
+      const random = Math.floor(Math.random() * 16)
+      const value = char === 'x' ? random : (random & 0x3) | 0x8
+      return value.toString(16)
+    })
+  ),
 }))
-jest.mock('pdfjs-dist/web/pdf_viewer', () => ({}))
+
+jest.mock('pdfjs-dist')

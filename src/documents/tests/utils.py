@@ -21,6 +21,7 @@ from django.test import TransactionTestCase
 from django.test import override_settings
 
 from documents.consumer import ConsumerPlugin
+from documents.consumer import ConsumerPreflightPlugin
 from documents.data_models import ConsumableDocument
 from documents.data_models import DocumentMetadataOverrides
 from documents.data_models import DocumentSource
@@ -326,6 +327,19 @@ class TestMigrations(TransactionTestCase):
     def setUpBeforeMigration(self, apps):
         pass
 
+    def tearDown(self):
+        """
+        Ensure the database schema is restored to the latest migration after
+        each migration test, so subsequent tests run against HEAD.
+        """
+        try:
+            executor = MigrationExecutor(connection)
+            executor.loader.build_graph()
+            targets = executor.loader.graph.leaf_nodes()
+            executor.migrate(targets)
+        finally:
+            super().tearDown()
+
 
 class SampleDirMixin:
     SAMPLE_DIR = Path(__file__).parent / "samples"
@@ -344,12 +358,21 @@ class GetConsumerMixin:
     ) -> Generator[ConsumerPlugin, None, None]:
         # Store this for verification
         self.status = DummyProgressManager(filepath.name, None)
+        doc = ConsumableDocument(
+            source,
+            original_file=filepath,
+            mailrule_id=mailrule_id or None,
+        )
+        preflight_plugin = ConsumerPreflightPlugin(
+            doc,
+            overrides or DocumentMetadataOverrides(),
+            self.status,  # type: ignore
+            self.dirs.scratch_dir,
+            "task-id",
+        )
+        preflight_plugin.setup()
         reader = ConsumerPlugin(
-            ConsumableDocument(
-                source,
-                original_file=filepath,
-                mailrule_id=mailrule_id or None,
-            ),
+            doc,
             overrides or DocumentMetadataOverrides(),
             self.status,  # type: ignore
             self.dirs.scratch_dir,
@@ -357,6 +380,7 @@ class GetConsumerMixin:
         )
         reader.setup()
         try:
+            preflight_plugin.run()
             yield reader
         finally:
             reader.cleanup()

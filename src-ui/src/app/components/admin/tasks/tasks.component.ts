@@ -1,5 +1,5 @@
 import { NgTemplateOutlet, SlicePipe } from '@angular/common'
-import { Component, OnDestroy, OnInit } from '@angular/core'
+import { Component, inject, OnDestroy, OnInit } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { Router } from '@angular/router'
 import {
@@ -24,6 +24,7 @@ import { PaperlessTask } from 'src/app/data/paperless-task'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
 import { TasksService } from 'src/app/services/tasks.service'
+import { ToastService } from 'src/app/services/toast.service'
 import { ConfirmDialogComponent } from '../../common/confirm-dialog/confirm-dialog.component'
 import { PageHeaderComponent } from '../../common/page-header/page-header.component'
 import { LoadingComponentWithPermissions } from '../../loading-component/loading.component'
@@ -69,6 +70,11 @@ export class TasksComponent
   extends LoadingComponentWithPermissions
   implements OnInit, OnDestroy
 {
+  tasksService = inject(TasksService)
+  private modalService = inject(NgbModal)
+  private readonly router = inject(Router)
+  private readonly toastService = inject(ToastService)
+
   public activeTab: TaskTab
   public selectedTasks: Set<number> = new Set()
   public togggleAll: boolean = false
@@ -103,14 +109,6 @@ export class TasksComponent
     return this.selectedTasks.size > 0
       ? $localize`Dismiss selected`
       : $localize`Dismiss all`
-  }
-
-  constructor(
-    public tasksService: TasksService,
-    private modalService: NgbModal,
-    private readonly router: Router
-  ) {
-    super()
   }
 
   ngOnInit() {
@@ -158,11 +156,19 @@ export class TasksComponent
       modal.componentInstance.confirmClicked.pipe(first()).subscribe(() => {
         modal.componentInstance.buttonsEnabled = false
         modal.close()
-        this.tasksService.dismissTasks(tasks)
+        this.tasksService.dismissTasks(tasks).subscribe({
+          error: (e) => {
+            this.toastService.showError($localize`Error dismissing tasks`, e)
+            modal.componentInstance.buttonsEnabled = true
+          },
+        })
         this.clearSelection()
       })
     } else {
-      this.tasksService.dismissTasks(tasks)
+      this.tasksService.dismissTasks(tasks).subscribe({
+        error: (e) =>
+          this.toastService.showError($localize`Error dismissing task`, e),
+      })
       this.clearSelection()
     }
   }

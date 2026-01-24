@@ -2,6 +2,7 @@ import json
 import tempfile
 from io import StringIO
 from pathlib import Path
+from zipfile import ZipFile
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
@@ -39,10 +40,10 @@ class TestCommandImport(
                 "--no-progress-bar",
                 str(self.dirs.scratch_dir),
             )
-            self.assertIn(
-                "That directory doesn't appear to contain a manifest.json file.",
-                str(e),
-            )
+        self.assertIn(
+            "That directory doesn't appear to contain a manifest.json file.",
+            str(e.exception),
+        )
 
     def test_check_manifest_malformed(self):
         """
@@ -65,10 +66,10 @@ class TestCommandImport(
                 "--no-progress-bar",
                 str(self.dirs.scratch_dir),
             )
-            self.assertIn(
-                "The manifest file contains a record which does not refer to an actual document file.",
-                str(e),
-            )
+        self.assertIn(
+            "The manifest file contains a record which does not refer to an actual document file.",
+            str(e.exception),
+        )
 
     def test_check_manifest_file_not_found(self):
         """
@@ -94,7 +95,7 @@ class TestCommandImport(
                 "--no-progress-bar",
                 str(self.dirs.scratch_dir),
             )
-            self.assertIn('The manifest file refers to "noexist.pdf"', str(e))
+        self.assertIn('The manifest file refers to "noexist.pdf"', str(e.exception))
 
     def test_import_permission_error(self):
         """
@@ -128,14 +129,14 @@ class TestCommandImport(
             cmd.data_only = False
             with self.assertRaises(CommandError) as cm:
                 cmd.check_manifest_validity()
-                self.assertInt("Failed to read from original file", str(cm.exception))
+            self.assertIn("Failed to read from original file", str(cm.exception))
 
             original_path.chmod(0o444)
             archive_path.chmod(0o222)
 
             with self.assertRaises(CommandError) as cm:
                 cmd.check_manifest_validity()
-                self.assertInt("Failed to read from archive file", str(cm.exception))
+            self.assertIn("Failed to read from archive file", str(cm.exception))
 
     def test_import_source_not_existing(self):
         """
@@ -148,7 +149,7 @@ class TestCommandImport(
         """
         with self.assertRaises(CommandError) as cm:
             call_command("document_importer", Path("/tmp/notapath"))
-            self.assertInt("That path doesn't exist", str(cm.exception))
+        self.assertIn("That path doesn't exist", str(cm.exception))
 
     def test_import_source_not_readable(self):
         """
@@ -164,10 +165,10 @@ class TestCommandImport(
             path.chmod(0o222)
             with self.assertRaises(CommandError) as cm:
                 call_command("document_importer", path)
-                self.assertInt(
-                    "That path doesn't appear to be readable",
-                    str(cm.exception),
-                )
+            self.assertIn(
+                "That path doesn't appear to be readable",
+                str(cm.exception),
+            )
 
     def test_import_source_does_not_exist(self):
         """
@@ -184,8 +185,7 @@ class TestCommandImport(
 
         with self.assertRaises(CommandError) as e:
             call_command("document_importer", "--no-progress-bar", str(path))
-
-            self.assertIn("That path doesn't exist", str(e))
+        self.assertIn("That path doesn't exist", str(e.exception))
 
     def test_import_files_exist(self):
         """
@@ -335,3 +335,42 @@ class TestCommandImport(
 
         self.assertIn("Version mismatch:", stdout_str)
         self.assertIn("importing 2.8.1", stdout_str)
+
+    def test_import_zipped_export(self):
+        """
+        GIVEN:
+            - A zip file with correct content (manifest.json and version.json inside)
+        WHEN:
+            - An import is attempted using the zip file as the source
+        THEN:
+            - The command reads from the zip without warnings or errors
+        """
+
+        stdout = StringIO()
+        zip_path = self.dirs.scratch_dir / "export.zip"
+
+        # Create manifest.json and version.json in a temp dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+
+            (temp_dir_path / "manifest.json").touch()
+            (temp_dir_path / "version.json").touch()
+
+            # Create the zip file
+            with ZipFile(zip_path, "w") as zf:
+                zf.write(temp_dir_path / "manifest.json", arcname="manifest.json")
+                zf.write(temp_dir_path / "version.json", arcname="version.json")
+
+        # Try to import from the zip file
+        with self.assertRaises(json.decoder.JSONDecodeError):
+            call_command(
+                "document_importer",
+                "--no-progress-bar",
+                str(zip_path),
+                stdout=stdout,
+            )
+        stdout.seek(0)
+        stdout_str = str(stdout.read())
+
+        # There should be no error or warnings. Therefore the output should be empty.
+        self.assertEqual(stdout_str, "")
