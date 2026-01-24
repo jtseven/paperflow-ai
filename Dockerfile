@@ -5,7 +5,7 @@
 # Purpose: Compiles the frontend
 # Notes:
 #  - Does PNPM stuff with Typescript and such
-FROM --platform=$BUILDPLATFORM docker.io/node:20-bookworm-slim AS compile-frontend
+FROM --platform=$BUILDPLATFORM docker.io/node:24-bookworm-slim AS compile-frontend
 
 COPY ./src-ui /src/src-ui
 
@@ -204,7 +204,9 @@ ARG BUILD_PACKAGES="\
   build-essential \
   # https://github.com/PyMySQL/mysqlclient#linux
   default-libmysqlclient-dev \
-  pkg-config"
+  pkg-config \
+  git \
+  libpq-dev"
 
 # hadolint ignore=DL3042
 RUN --mount=type=cache,target=${UV_CACHE_DIR},id=python-cache \

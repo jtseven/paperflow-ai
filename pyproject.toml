@@ -25,7 +25,7 @@ dependencies = [
   # WARNING: django does not use semver.
   #          Only patch versions are guaranteed to not introduce breaking changes.
   "django~=5.2.5",
-  "django-allauth[socialaccount,mfa]~=65.4.0",
+  "django-allauth[socialaccount,mfa]~=65.9.0",
   "django-auditlog~=3.2.1",
   "django-cachalot~=2.8.0",
   "django-celery-results~=2.6.0",
@@ -77,6 +77,7 @@ dependencies = [
   "langchain-redis>=0.2",
   "langgraph>=0.3.21",
   "mistralai>=1.6",
+  "fido2>=2.0.0",
 ]
 
 optional-dependencies.mariadb = ["mysqlclient~=2.2.7"]
@@ -306,15 +307,6 @@ package = false
 environments = ["sys_platform == 'darwin'", "sys_platform == 'linux'"]
 
 [tool.uv.sources]
-# Markers are chosen to select these almost exclusively when building the Docker image
-psycopg-c = [
-  { url = "https://github.com/paperless-ngx/builder/releases/download/psycopg-3.2.9/psycopg_c-3.2.9-cp312-cp312-linux_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.12'" },
-  { url = "https://github.com/paperless-ngx/builder/releases/download/psycopg-3.2.9/psycopg_c-3.2.9-cp312-cp312-linux_aarch64.whl", marker = "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version == '3.12'" },
-]
-zxing-cpp = [
-  { url = "https://github.com/paperless-ngx/builder/releases/download/zxing-2.3.0/zxing_cpp-2.3.0-cp312-cp312-linux_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.12'" },
-  { url = "https://github.com/paperless-ngx/builder/releases/download/zxing-2.3.0/zxing_cpp-2.3.0-cp312-cp312-linux_aarch64.whl", marker = "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version == '3.12'" },
-]
 whoosh-reloaded = { git = "https://github.com/Sygil-Dev/whoosh-reloaded.git" }
 
 [tool.django-stubs]
