@@ -2,22 +2,16 @@ import logging
 import os
 import re
 from collections.abc import Iterable
-from datetime import date
-from datetime import datetime
 from pathlib import PurePath
 
 import pathvalidate
-from babel import Locale
-from babel import dates
 from django.utils import timezone
-from django.utils.dateparse import parse_date
 from django.utils.text import slugify as django_slugify
 from jinja2 import StrictUndefined
 from jinja2 import Template
 from jinja2 import TemplateSyntaxError
 from jinja2 import UndefinedError
 from jinja2 import make_logging_undefined
-from jinja2.sandbox import SandboxedEnvironment
 from jinja2.sandbox import SecurityError
 
 from documents.models import Correspondent
@@ -27,37 +21,14 @@ from documents.models import Document
 from documents.models import DocumentType
 from documents.models import StoragePath
 from documents.models import Tag
+from documents.templating.environment import _template_environment
+from documents.templating.filters import format_datetime
+from documents.templating.filters import get_cf_value
+from documents.templating.filters import localize_date
 
 logger = logging.getLogger("paperless.templating")
 
 _LogStrictUndefined = make_logging_undefined(logger, StrictUndefined)
-
-
-class FilePathEnvironment(SandboxedEnvironment):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.undefined_tracker = None
-
-    def is_safe_callable(self, obj):
-        # Block access to .save() and .delete() methods
-        if callable(obj) and getattr(obj, "__name__", None) in (
-            "save",
-            "delete",
-            "update",
-        ):
-            return False
-        # Call the parent method for other cases
-        return super().is_safe_callable(obj)
-
-
-_template_environment = FilePathEnvironment(
-    trim_blocks=True,
-    lstrip_blocks=True,
-    keep_trailing_newline=False,
-    autoescape=False,
-    extensions=["jinja2.ext.loopcontrols"],
-    undefined=_LogStrictUndefined,
-)
 
 
 class FilePathTemplate(Template):
@@ -81,54 +52,34 @@ class FilePathTemplate(Template):
         return clean_filepath(original_render)
 
 
-def get_cf_value(
-    custom_field_data: dict[str, dict[str, str]],
-    name: str,
-    default: str | None = None,
-) -> str | None:
-    if name in custom_field_data and custom_field_data[name]["value"] is not None:
-        return custom_field_data[name]["value"]
-    elif default is not None:
-        return default
-    return None
-
-
-def format_datetime(value: str | datetime, format: str) -> str:
-    if isinstance(value, str):
-        value = parse_date(value)
-    return value.strftime(format=format)
-
-
-def localize_date(value: date | datetime, format: str, locale: str) -> str:
+class PlaceholderString(str):
     """
-    Format a date or datetime object into a localized string using Babel.
+    String subclass used as a sentinel for empty metadata values inside templates.
 
-    Args:
-        value (date | datetime): The date or datetime to format. If a datetime
-            is provided, it should be timezone-aware (e.g., UTC from a Django DB object).
-        format (str): The format to use. Can be one of Babel's preset formats
-            ('short', 'medium', 'long', 'full') or a custom pattern string.
-        locale (str): The locale code (e.g., 'en_US', 'fr_FR') to use for
-            localization.
-
-    Returns:
-        str: The localized, formatted date string.
-
-    Raises:
-        TypeError: If `value` is not a date or datetime instance.
+    - Renders as \"-none-\" to preserve existing filename cleaning logic.
+    - Compares equal to either \"-none-\" or \"none\" so templates can check for either.
+    - Evaluates to False so {% if correspondent %} behaves intuitively.
     """
-    try:
-        Locale.parse(locale)
-    except Exception as e:
-        raise ValueError(f"Invalid locale identifier: {locale}") from e
 
-    if isinstance(value, datetime):
-        return dates.format_datetime(value, format=format, locale=locale)
-    elif isinstance(value, date):
-        return dates.format_date(value, format=format, locale=locale)
-    else:
-        raise TypeError(f"Unsupported type {type(value)} for localize_date")
+    def __new__(cls, value: str = "-none-"):
+        return super().__new__(cls, value)
 
+    def __bool__(self) -> bool:
+        return False
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, str) and other == "none":
+            other = "-none-"
+        return super().__eq__(other)
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)
+
+
+NO_VALUE_PLACEHOLDER = PlaceholderString("-none-")
+
+
+_template_environment.undefined = _LogStrictUndefined
 
 _template_environment.filters["get_cf_value"] = get_cf_value
 
@@ -204,7 +155,7 @@ def get_added_date_context(document: Document) -> dict[str, str]:
 def get_basic_metadata_context(
     document: Document,
     *,
-    no_value_default: str,
+    no_value_default: str = NO_VALUE_PLACEHOLDER,
 ) -> dict[str, str]:
     """
     Given a Document, constructs some basic information about it.  If certain values are not set,
@@ -278,6 +229,7 @@ def get_custom_fields_context(
             CustomField.FieldDataType.MONETARY,
             CustomField.FieldDataType.STRING,
             CustomField.FieldDataType.URL,
+            CustomField.FieldDataType.LONG_TEXT,
         }:
             value = pathvalidate.sanitize_filename(
                 field_instance.value,
@@ -308,6 +260,17 @@ def get_custom_fields_context(
             "value": value,
         }
     return field_data
+
+
+def _is_safe_relative_path(value: str) -> bool:
+    if value == "":
+        return True
+
+    path = PurePath(value)
+    if path.is_absolute() or path.drive:
+        return False
+
+    return ".." not in path.parts
 
 
 def validate_filepath_template_and_render(
@@ -341,7 +304,7 @@ def validate_filepath_template_and_render(
     # Build the context dictionary
     context = (
         {"document": document}
-        | get_basic_metadata_context(document, no_value_default="-none-")
+        | get_basic_metadata_context(document, no_value_default=NO_VALUE_PLACEHOLDER)
         | get_creation_date_context(document)
         | get_added_date_context(document)
         | get_tags_context(tags_list)
@@ -356,6 +319,12 @@ def validate_filepath_template_and_render(
             template_class=FilePathTemplate,
         )
         rendered_template = template.render(context)
+
+        if not _is_safe_relative_path(rendered_template):
+            logger.warning(
+                "Template rendered an unsafe path (absolute or containing traversal).",
+            )
+            return None
 
         # We're good!
         return rendered_template

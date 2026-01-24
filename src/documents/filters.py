@@ -92,6 +92,12 @@ class TagFilterSet(FilterSet):
             "name": CHAR_KWARGS,
         }
 
+    is_root = BooleanFilter(
+        label="Is root tag",
+        field_name="tn_parent",
+        lookup_expr="isnull",
+    )
+
 
 class DocumentTypeFilterSet(FilterSet):
     class Meta:
@@ -154,6 +160,7 @@ class InboxFilter(Filter):
 @extend_schema_field(serializers.CharField)
 class TitleContentFilter(Filter):
     def filter(self, qs, value):
+        value = value.strip() if isinstance(value, str) else value
         if value:
             return qs.filter(Q(title__icontains=value) | Q(content__icontains=value))
         else:
@@ -208,6 +215,7 @@ class CustomFieldFilterSet(FilterSet):
 @extend_schema_field(serializers.CharField)
 class CustomFieldsFilter(Filter):
     def filter(self, qs, value):
+        value = value.strip() if isinstance(value, str) else value
         if value:
             fields_with_matching_selects = CustomField.objects.filter(
                 extra_data__icontains=value,
@@ -230,6 +238,7 @@ class CustomFieldsFilter(Filter):
                 | qs.filter(custom_fields__value_monetary__icontains=value)
                 | qs.filter(custom_fields__value_document_ids__icontains=value)
                 | qs.filter(custom_fields__value_select__in=option_ids)
+                | qs.filter(custom_fields__value_long_text__icontains=value)
             )
         else:
             return qs
@@ -237,6 +246,7 @@ class CustomFieldsFilter(Filter):
 
 class MimeTypeFilter(Filter):
     def filter(self, qs, value):
+        value = value.strip() if isinstance(value, str) else value
         if value:
             return qs.filter(mime_type__icontains=value)
         else:
@@ -314,6 +324,7 @@ class CustomFieldQueryParser:
         CustomField.FieldDataType.MONETARY: ("basic", "string", "arithmetic"),
         CustomField.FieldDataType.DOCUMENTLINK: ("basic", "containment"),
         CustomField.FieldDataType.SELECT: ("basic",),
+        CustomField.FieldDataType.LONG_TEXT: ("basic", "string"),
     }
 
     DATE_COMPONENTS = [
@@ -845,7 +856,10 @@ class DocumentsOrderingFilter(OrderingFilter):
 
             annotation = None
             match field.data_type:
-                case CustomField.FieldDataType.STRING:
+                case (
+                    CustomField.FieldDataType.STRING
+                    | CustomField.FieldDataType.LONG_TEXT
+                ):
                     annotation = Subquery(
                         CustomFieldInstance.objects.filter(
                             document_id=OuterRef("id"),

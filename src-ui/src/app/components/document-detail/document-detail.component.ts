@@ -22,7 +22,7 @@ import { PDFDocumentProxy, PdfViewerModule } from 'ng2-pdf-viewer'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { DeviceDetectorService } from 'ngx-device-detector'
 import { MarkdownModule } from 'ngx-markdown'
-import { BehaviorSubject, Observable, of, Subject } from 'rxjs'
+import { BehaviorSubject, Observable, of, Subject, timer } from 'rxjs'
 import {
   catchError,
   debounceTime,
@@ -99,6 +99,7 @@ import { PermissionsFormComponent } from '../common/input/permissions/permission
 import { SelectComponent } from '../common/input/select/select.component'
 import { TagsComponent } from '../common/input/tags/tags.component'
 import { TextComponent } from '../common/input/text/text.component'
+import { TextAreaComponent } from '../common/input/textarea/textarea.component'
 import { UrlComponent } from '../common/input/url/url.component'
 import { PageHeaderComponent } from '../common/page-header/page-header.component'
 import {
@@ -177,6 +178,7 @@ export enum ZoomSetting {
     NgxBootstrapIconsModule,
     PdfViewerModule,
     MarkdownModule,
+    TextAreaComponent,
   ],
 })
 export class DocumentDetailComponent
@@ -295,6 +297,10 @@ export class DocumentDetailComponent
 
   get useNativePdfViewer(): boolean {
     return this.settings.get(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER)
+  }
+
+  get isMobile(): boolean {
+    return this.deviceDetectorService.isMobile()
   }
 
   get archiveContentRenderType(): ContentRenderType {
@@ -614,7 +620,10 @@ export class DocumentDetailComponent
       })
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe(() => {
-        if (this.openDocumentService.isDirty(this.document)) this.saveEditNext()
+        if (this.openDocumentService.isDirty(this.document)) {
+          if (this.hasNext()) this.saveEditNext()
+          else this.save(true)
+        }
       })
   }
 
@@ -1425,6 +1434,53 @@ export class DocumentDetailComponent
       })
   }
 
+  printDocument() {
+    const printUrl = this.documentsService.getDownloadUrl(
+      this.document.id,
+      false
+    )
+    this.http
+      .get(printUrl, { responseType: 'blob' })
+      .pipe(takeUntil(this.unsubscribeNotifier))
+      .subscribe({
+        next: (blob) => {
+          const blobUrl = URL.createObjectURL(blob)
+          const iframe = document.createElement('iframe')
+          iframe.style.display = 'none'
+          iframe.src = blobUrl
+          document.body.appendChild(iframe)
+          iframe.onload = () => {
+            try {
+              iframe.contentWindow.focus()
+              iframe.contentWindow.print()
+              iframe.contentWindow.onafterprint = () => {
+                document.body.removeChild(iframe)
+                URL.revokeObjectURL(blobUrl)
+              }
+            } catch (err) {
+              // FF throws cross-origin error on onafterprint
+              const isCrossOriginAfterPrintError =
+                err instanceof DOMException &&
+                err.message.includes('onafterprint')
+              if (!isCrossOriginAfterPrintError) {
+                this.toastService.showError($localize`Print failed.`, err)
+              }
+              timer(100).subscribe(() => {
+                // delay to avoid FF print failure
+                document.body.removeChild(iframe)
+                URL.revokeObjectURL(blobUrl)
+              })
+            }
+          }
+        },
+        error: () => {
+          this.toastService.showError(
+            $localize`Error loading document for printing.`
+          )
+        },
+      })
+  }
+
   public openShareLinks() {
     const modal = this.modalService.open(ShareLinksDialogComponent)
     modal.componentInstance.documentId = this.document.id
@@ -1440,7 +1496,7 @@ export class DocumentDetailComponent
     const modal = this.modalService.open(EmailDocumentDialogComponent, {
       backdrop: 'static',
     })
-    modal.componentInstance.documentId = this.document.id
+    modal.componentInstance.documentIds = [this.document.id]
     modal.componentInstance.hasArchiveVersion =
       !!this.document?.archived_file_name
   }

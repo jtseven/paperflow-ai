@@ -43,7 +43,6 @@ from documents.models import DocumentType
 from documents.models import PaperlessTask
 from documents.models import StoragePath
 from documents.models import Tag
-from documents.models import Workflow
 from documents.models import WorkflowRun
 from documents.models import WorkflowTrigger
 from documents.parsers import DocumentParser
@@ -57,6 +56,7 @@ from documents.signals import document_ids_deleted
 from documents.signals import document_updated
 from documents.signals.handlers import cleanup_document_deletion
 from documents.signals.handlers import run_workflows
+from documents.workflows.utils import get_workflows_for_trigger
 
 if settings.AUDIT_LOG_ENABLED:
     from auditlog.models import LogEntry
@@ -451,13 +451,8 @@ def check_scheduled_workflows():
 
     Once a document satisfies this condition, and recurring/non-recurring constraints are met, the workflow is run.
     """
-    scheduled_workflows: list[Workflow] = (
-        Workflow.objects.filter(
-            triggers__type=WorkflowTrigger.WorkflowTriggerType.SCHEDULED,
-            enabled=True,
-        )
-        .distinct()
-        .prefetch_related("triggers")
+    scheduled_workflows = get_workflows_for_trigger(
+        WorkflowTrigger.WorkflowTriggerType.SCHEDULED,
     )
     if scheduled_workflows.count() > 0:
         logger.debug(f"Checking {len(scheduled_workflows)} scheduled workflows")
@@ -549,7 +544,7 @@ def check_scheduled_workflows():
                             trigger.schedule_is_recurring
                             and workflow_runs.exists()
                             and (
-                                workflow_runs.last().run_at
+                                workflow_runs.first().run_at
                                 > now
                                 - datetime.timedelta(
                                     days=trigger.schedule_recurring_interval_days,
@@ -605,3 +600,51 @@ def create_missing_embeddings():
     logger.info(
         f"Embedding generation completed. Success: {success_count}, Errors: {error_count}"
     )
+
+
+def update_document_parent_tags(tag: Tag, new_parent: Tag) -> None:
+    """
+    When a tag's parent changes, ensure all documents containing the tag also have
+    the parent tag (and its ancestors) applied.
+    """
+    doc_tag_relationship = Document.tags.through
+
+    doc_ids: list[int] = list(
+        Document.objects.filter(tags=tag).values_list("pk", flat=True),
+    )
+
+    if not doc_ids:
+        return
+
+    parent_ids = [new_parent.id, *new_parent.get_ancestors_pks()]
+
+    parent_ids = list(dict.fromkeys(parent_ids))
+
+    existing_pairs = set(
+        doc_tag_relationship.objects.filter(
+            document_id__in=doc_ids,
+            tag_id__in=parent_ids,
+        ).values_list("document_id", "tag_id"),
+    )
+
+    to_create: list = []
+    affected: set[int] = set()
+
+    for doc_id in doc_ids:
+        for parent_id in parent_ids:
+            if (doc_id, parent_id) in existing_pairs:
+                continue
+
+            to_create.append(
+                doc_tag_relationship(document_id=doc_id, tag_id=parent_id),
+            )
+            affected.add(doc_id)
+
+    if to_create:
+        doc_tag_relationship.objects.bulk_create(
+            to_create,
+            ignore_conflicts=True,
+        )
+
+    if affected:
+        bulk_update_documents.delay(document_ids=list(affected))

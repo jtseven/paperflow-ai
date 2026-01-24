@@ -1212,7 +1212,7 @@ describe('DocumentDetailComponent', () => {
   it('should support keyboard shortcuts', () => {
     initNormally()
 
-    jest.spyOn(component, 'hasNext').mockReturnValue(true)
+    const hasNextSpy = jest.spyOn(component, 'hasNext').mockReturnValue(true)
     const nextSpy = jest.spyOn(component, 'nextDoc')
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'arrowright', ctrlKey: true })
@@ -1226,20 +1226,31 @@ describe('DocumentDetailComponent', () => {
     )
     expect(prevSpy).toHaveBeenCalled()
 
-    jest.spyOn(openDocumentsService, 'isDirty').mockReturnValue(true)
+    const isDirtySpy = jest
+      .spyOn(openDocumentsService, 'isDirty')
+      .mockReturnValue(true)
     const saveSpy = jest.spyOn(component, 'save')
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 's', ctrlKey: true })
     )
     expect(saveSpy).toHaveBeenCalled()
 
-    jest.spyOn(openDocumentsService, 'isDirty').mockReturnValue(true)
-    jest.spyOn(component, 'hasNext').mockReturnValue(true)
+    hasNextSpy.mockReturnValue(true)
     const saveNextSpy = jest.spyOn(component, 'saveEditNext')
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 's', ctrlKey: true, shiftKey: true })
     )
     expect(saveNextSpy).toHaveBeenCalled()
+
+    saveSpy.mockClear()
+    saveNextSpy.mockClear()
+    isDirtySpy.mockReturnValue(true)
+    hasNextSpy.mockReturnValue(false)
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 's', ctrlKey: true, shiftKey: true })
+    )
+    expect(saveNextSpy).not.toHaveBeenCalled()
+    expect(saveSpy).toHaveBeenCalledWith(true)
 
     const closeSpy = jest.spyOn(component, 'close')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'escape' }))
@@ -1414,5 +1425,186 @@ describe('DocumentDetailComponent', () => {
       .expectOne(component.previewUrl)
       .flush('fail', { status: 500, statusText: 'Server Error' })
     expect(component.previewText).toContain('An error occurred loading content')
+  })
+
+  it('should print document successfully', fakeAsync(() => {
+    initNormally()
+
+    const appendChildSpy = jest
+      .spyOn(document.body, 'appendChild')
+      .mockImplementation((node: Node) => node)
+    const removeChildSpy = jest
+      .spyOn(document.body, 'removeChild')
+      .mockImplementation((node: Node) => node)
+    const createObjectURLSpy = jest
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:mock-url')
+    const revokeObjectURLSpy = jest
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {})
+
+    const mockContentWindow = {
+      focus: jest.fn(),
+      print: jest.fn(),
+      onafterprint: null,
+    }
+
+    const mockIframe = {
+      style: {},
+      src: '',
+      onload: null,
+      contentWindow: mockContentWindow,
+    }
+
+    const createElementSpy = jest
+      .spyOn(document, 'createElement')
+      .mockReturnValue(mockIframe as any)
+
+    const blob = new Blob(['test'], { type: 'application/pdf' })
+    component.printDocument()
+
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}documents/${doc.id}/download/`
+    )
+    req.flush(blob)
+
+    tick()
+
+    expect(createElementSpy).toHaveBeenCalledWith('iframe')
+    expect(appendChildSpy).toHaveBeenCalledWith(mockIframe)
+    expect(createObjectURLSpy).toHaveBeenCalledWith(blob)
+
+    if (mockIframe.onload) {
+      mockIframe.onload({} as any)
+    }
+
+    expect(mockContentWindow.focus).toHaveBeenCalled()
+    expect(mockContentWindow.print).toHaveBeenCalled()
+
+    if (mockIframe.onload) {
+      mockIframe.onload(new Event('load'))
+    }
+
+    if (mockContentWindow.onafterprint) {
+      mockContentWindow.onafterprint(new Event('afterprint'))
+    }
+
+    tick(500)
+
+    expect(removeChildSpy).toHaveBeenCalledWith(mockIframe)
+    expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url')
+
+    createElementSpy.mockRestore()
+    appendChildSpy.mockRestore()
+    removeChildSpy.mockRestore()
+    createObjectURLSpy.mockRestore()
+    revokeObjectURLSpy.mockRestore()
+  }))
+
+  it('should show error toast if print document fails', () => {
+    initNormally()
+    const toastSpy = jest.spyOn(toastService, 'showError')
+    component.printDocument()
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}documents/${doc.id}/download/`
+    )
+    req.error(new ErrorEvent('failed'))
+    expect(toastSpy).toHaveBeenCalledWith(
+      'Error loading document for printing.'
+    )
+  })
+
+  const iframePrintErrorCases: Array<{
+    description: string
+    thrownError: Error
+    expectToast: boolean
+  }> = [
+    {
+      description: 'should show error toast if printing throws inside iframe',
+      thrownError: new Error('focus failed'),
+      expectToast: true,
+    },
+    {
+      description:
+        'should suppress toast if cross-origin afterprint error occurs',
+      thrownError: new DOMException(
+        'Accessing onafterprint triggered a cross-origin violation',
+        'SecurityError'
+      ),
+      expectToast: false,
+    },
+  ]
+
+  iframePrintErrorCases.forEach(({ description, thrownError, expectToast }) => {
+    it(
+      description,
+      fakeAsync(() => {
+        initNormally()
+
+        const appendChildSpy = jest
+          .spyOn(document.body, 'appendChild')
+          .mockImplementation((node: Node) => node)
+        const removeChildSpy = jest
+          .spyOn(document.body, 'removeChild')
+          .mockImplementation((node: Node) => node)
+        const createObjectURLSpy = jest
+          .spyOn(URL, 'createObjectURL')
+          .mockReturnValue('blob:mock-url')
+        const revokeObjectURLSpy = jest
+          .spyOn(URL, 'revokeObjectURL')
+          .mockImplementation(() => {})
+
+        const toastSpy = jest.spyOn(toastService, 'showError')
+
+        const mockContentWindow = {
+          focus: jest.fn().mockImplementation(() => {
+            throw thrownError
+          }),
+          print: jest.fn(),
+          onafterprint: null,
+        }
+
+        const mockIframe: any = {
+          style: {},
+          src: '',
+          onload: null,
+          contentWindow: mockContentWindow,
+        }
+
+        const createElementSpy = jest
+          .spyOn(document, 'createElement')
+          .mockReturnValue(mockIframe as any)
+
+        const blob = new Blob(['test'], { type: 'application/pdf' })
+        component.printDocument()
+
+        const req = httpTestingController.expectOne(
+          `${environment.apiBaseUrl}documents/${doc.id}/download/`
+        )
+        req.flush(blob)
+
+        tick()
+
+        if (mockIframe.onload) {
+          mockIframe.onload(new Event('load'))
+        }
+
+        tick(200)
+
+        if (expectToast) {
+          expect(toastSpy).toHaveBeenCalled()
+        } else {
+          expect(toastSpy).not.toHaveBeenCalled()
+        }
+        expect(removeChildSpy).toHaveBeenCalledWith(mockIframe)
+        expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url')
+
+        createElementSpy.mockRestore()
+        appendChildSpy.mockRestore()
+        removeChildSpy.mockRestore()
+        createObjectURLSpy.mockRestore()
+        revokeObjectURLSpy.mockRestore()
+      })
+    )
   })
 })

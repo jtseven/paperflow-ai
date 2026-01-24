@@ -37,6 +37,7 @@ import { StoragePathService } from 'src/app/services/rest/storage-path.service'
 import { TagService } from 'src/app/services/rest/tag.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
+import { flattenTags } from 'src/app/utils/flatten-tags'
 import { MergeConfirmDialogComponent } from '../../common/confirm-dialog/merge-confirm-dialog/merge-confirm-dialog.component'
 import { RotateConfirmDialogComponent } from '../../common/confirm-dialog/rotate-confirm-dialog/rotate-confirm-dialog.component'
 import { CorrespondentEditDialogComponent } from '../../common/edit-dialog/correspondent-edit-dialog/correspondent-edit-dialog.component'
@@ -45,6 +46,7 @@ import { DocumentTypeEditDialogComponent } from '../../common/edit-dialog/docume
 import { EditDialogMode } from '../../common/edit-dialog/edit-dialog.component'
 import { StoragePathEditDialogComponent } from '../../common/edit-dialog/storage-path-edit-dialog/storage-path-edit-dialog.component'
 import { TagEditDialogComponent } from '../../common/edit-dialog/tag-edit-dialog/tag-edit-dialog.component'
+import { EmailDocumentDialogComponent } from '../../common/email-document-dialog/email-document-dialog.component'
 import {
   ChangedItems,
   FilterableDropdownComponent,
@@ -164,7 +166,10 @@ export class BulkEditorComponent
       this.tagService
         .listAll()
         .pipe(first())
-        .subscribe((result) => (this.tagSelectionModel.items = result.results))
+        .subscribe(
+          (result) =>
+            (this.tagSelectionModel.items = flattenTags(result.results))
+        )
     }
     if (
       this.permissionService.currentUserCan(
@@ -648,7 +653,7 @@ export class BulkEditorComponent
       )
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe(({ newTag, tags }) => {
-        this.tagSelectionModel.items = tags.results
+        this.tagSelectionModel.items = flattenTags(tags.results)
         this.tagSelectionModel.toggle(newTag.id)
       })
   }
@@ -897,5 +902,21 @@ export class BulkEditorComponent
         error
       )
     })
+  }
+
+  public get emailEnabled(): boolean {
+    return this.settings.get(SETTINGS_KEYS.EMAIL_ENABLED)
+  }
+
+  emailSelected() {
+    const allHaveArchiveVersion = this.list.documents
+      .filter((d) => this.list.selected.has(d.id))
+      .every((doc) => !!doc.archived_file_name)
+
+    const modal = this.modalService.open(EmailDocumentDialogComponent, {
+      backdrop: 'static',
+    })
+    modal.componentInstance.documentIds = Array.from(this.list.selected)
+    modal.componentInstance.hasArchiveVersion = allHaveArchiveVersion
   }
 }
