@@ -7,6 +7,7 @@ from typing import Any
 from typing import TypedDict
 
 from django.conf import settings
+from langchain.chat_models import init_chat_model
 from langchain_community.callbacks import get_openai_callback
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import AIMessage
@@ -15,7 +16,6 @@ from langchain_core.messages import HumanMessage
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.prompts import MessagesPlaceholder
-from langchain_openai import ChatOpenAI
 from langchain_redis import RedisChatMessageHistory
 from langgraph.graph import END
 from langgraph.graph import StateGraph
@@ -41,7 +41,7 @@ def get_chat_history(session_id: str) -> BaseChatMessageHistory:
         logger.error("EMBEDDING_REDIS_URL is not set, AI Chat will not work")
         raise ValueError("EMBEDDING_REDIS_URL is not set")
     logger.info(
-        f"Creating RedisChatMessageHistory with URL {redis_url} for session {session_id}"
+        f"Creating RedisChatMessageHistory with URL {redis_url} for session {session_id}",
     )
     return RedisChatMessageHistory(
         session_id=session_id,
@@ -77,7 +77,7 @@ def search_documents(query: str) -> tuple[str, list[str]]:
                     "id": doc.pk,
                     "content": context_text,
                     "link": f"{settings.PAPERLESS_URL}/documents/{doc.pk}/",
-                }
+                },
             )
             for doc, context_text in zip(documents, context_texts)
         )
@@ -105,9 +105,8 @@ def create_chat_graph() -> CompiledStateGraph:
     if not api_key:
         raise ValueError("OpenAI API key is not set")
 
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",  # Using latest model
-        temperature=0,
+    llm = init_chat_model(
+        model=settings.CHAT_MODEL_NAME,
         api_key=api_key,
     )
 
@@ -138,7 +137,7 @@ def create_chat_graph() -> CompiledStateGraph:
             ("system", system_template),
             MessagesPlaceholder(variable_name="messages"),
             ("human", user_template),
-        ]
+        ],
     )
 
     # Create the graph
@@ -176,7 +175,7 @@ def create_chat_graph() -> CompiledStateGraph:
                 "messages": state["messages"][:-1],  # Exclude the last message
                 "context": state["context"],
                 "question": last_message.content,
-            }
+            },
         )
 
         return {
@@ -200,7 +199,7 @@ def create_chat_graph() -> CompiledStateGraph:
 
 
 def process_question(
-    question: str, user_id: int, session_id: str | None = None
+    question: str, user_id: int, session_id: str | None = None,
 ) -> tuple[str, list[str], str]:
     """
     Process a user question through the chat agent and handle chat history.
@@ -236,7 +235,7 @@ def process_question(
         with get_openai_callback() as cb:
             final_state = chat_graph.invoke(initial_state)
             logger.info(
-                f"OpenAI API usage: {cb.total_tokens} tokens, cost: ${cb.total_cost}"
+                f"OpenAI API usage: {cb.total_tokens} tokens, cost: ${cb.total_cost}",
             )
 
         # Get the last AI message
@@ -291,7 +290,7 @@ def get_chat_messages(session_id: str) -> list[dict[str, Any]]:
         messages = []
 
         logger.info(
-            f"Found {len(history.messages)} messages in chat history for session: {session_id}"
+            f"Found {len(history.messages)} messages in chat history for session: {session_id}",
         )
         for message in history.messages:
             logger.info(f"Message of type {type(message)}: {message.content}")
@@ -300,14 +299,14 @@ def get_chat_messages(session_id: str) -> list[dict[str, Any]]:
                     {
                         "text": message.content,
                         "fromUser": True,
-                    }
+                    },
                 )
             elif isinstance(message, AIMessage):
                 messages.append(
                     {
                         "text": message.content,
                         "fromUser": False,
-                    }
+                    },
                 )
 
         return messages

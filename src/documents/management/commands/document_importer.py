@@ -440,32 +440,38 @@ class Command(CryptMixin, BaseCommand):
                 for i, ocr_image_path in enumerate(ocr_image_paths):
                     if i < len(document.ocr_image_paths):
                         copy_file_with_basic_stats(
-                            ocr_image_path,
-                            document.ocr_image_paths[i]
+                            ocr_image_path, document.ocr_image_paths[i],
                         )
 
             document.save()
 
         # Regenerate embeddings for imported documents
-        if not self.data_only and hasattr(settings, "EMBEDDING_PROVIDER") and settings.EMBEDDING_PROVIDER and not self.no_embeddings:
+        if (
+            not self.data_only
+            and hasattr(settings, "EMBEDDING_PROVIDER")
+            and settings.EMBEDDING_PROVIDER
+            and not self.no_embeddings
+        ):
             self.stdout.write("Regenerating document embeddings...")
             try:
                 embeddings = DocumentEmbeddings()
-                for record in tqdm.tqdm(manifest_documents, disable=self.no_progress_bar):
+                for record in tqdm.tqdm(
+                    manifest_documents, disable=self.no_progress_bar,
+                ):
                     document = Document.objects.get(pk=record["pk"])
                     try:
                         embeddings.embedd_document(document)
                     except Exception as e:
                         self.stdout.write(
                             self.style.WARNING(
-                                f"Failed to generate embeddings for document {document.title}: {e}"
-                            )
+                                f"Failed to generate embeddings for document {document.title}: {e}",
+                            ),
                         )
             except Exception as e:
                 self.stdout.write(
                     self.style.WARNING(
-                        f"Error initializing document embeddings: {e}. Skipping embeddings generation."
-                    )
+                        f"Error initializing document embeddings: {e}. Skipping embeddings generation.",
+                    ),
                 )
 
     def decrypt_secret_fields(self) -> None:

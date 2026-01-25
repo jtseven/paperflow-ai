@@ -10,8 +10,8 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 from time import mktime
-from typing import Literal
 from typing import Any
+from typing import Literal
 from typing import cast
 from unicodedata import normalize
 from urllib.parse import quote
@@ -3213,26 +3213,26 @@ def serve_logo(request, filename=None):
 
 class QuestionSerializer(serializers.Serializer):
     question = serializers.CharField(
-        required=True, help_text="The question to ask the AI assistant"
+        required=True, help_text="The question to ask the AI assistant",
     )
     session_id = serializers.CharField(
-        required=False, help_text="Session ID for tracking conversation history"
+        required=False, help_text="Session ID for tracking conversation history",
     )
 
 
 class ClearHistorySerializer(serializers.Serializer):
     session_id = serializers.CharField(
-        required=True, help_text="Session ID for tracking conversation history"
+        required=True, help_text="Session ID for tracking conversation history",
     )
 
 
 class AnswerResponseSerializer(serializers.Serializer):
     reply = serializers.CharField(help_text="The answer of the AI assistant")
     document_ids = serializers.ListField(
-        help_text="The document ids of the documents that are relevant to the question"
+        help_text="The document ids of the documents that are relevant to the question",
     )
     session_id = serializers.CharField(
-        help_text="Session ID for tracking conversation history"
+        help_text="Session ID for tracking conversation history",
     )
 
 
@@ -3250,7 +3250,7 @@ class QuestionView(APIView):
             return Response(serializer.errors, status=400)
 
         # Get validated data
-        validated_data = cast(dict[str, Any], serializer.validated_data)
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
         question = validated_data["question"]
         session_id = validated_data.get("session_id")
 
@@ -3259,7 +3259,7 @@ class QuestionView(APIView):
             from documents.ai_chat import process_question
 
             reply, document_ids, session_id = process_question(
-                question=question, user_id=request.user.id, session_id=session_id
+                question=question, user_id=request.user.id, session_id=session_id,
             )
 
             return Response(
@@ -3267,7 +3267,7 @@ class QuestionView(APIView):
                     "reply": reply,
                     "document_ids": document_ids,
                     "session_id": session_id,
-                }
+                },
             )
 
         except Exception as e:
@@ -3295,7 +3295,7 @@ class ClearChatHistoryView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
 
-        validated_data = cast(dict[str, Any], serializer.validated_data)
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
         session_id = validated_data["session_id"]
 
         try:
@@ -3322,7 +3322,7 @@ class ClearChatHistoryView(APIView):
 
 class ChatHistorySerializer(serializers.Serializer):
     session_id = serializers.CharField(
-        required=True, help_text="The session ID to get the chat history for"
+        required=True, help_text="The session ID to get the chat history for",
     )
 
 
@@ -3344,7 +3344,7 @@ class ChatHistorySerializer(serializers.Serializer):
                     },
                 },
             },
-        }
+        },
     },
 )
 class ChatHistoryView(APIView):
@@ -3355,7 +3355,7 @@ class ChatHistoryView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
 
-        validated_data = cast(dict[str, Any], serializer.validated_data)
+        validated_data = cast("dict[str, Any]", serializer.validated_data)
         session_id = validated_data["session_id"]
 
         try:

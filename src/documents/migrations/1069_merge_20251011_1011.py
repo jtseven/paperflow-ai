@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('documents', '1068_alter_document_created'),
-        ('documents', '1068_remove_document_ocr_image_paths_and_more'),
+        ("documents", "1068_alter_document_created"),
+        ("documents", "1068_remove_document_ocr_image_paths_and_more"),
     ]
 
-    operations = [
-    ]
+    operations = []

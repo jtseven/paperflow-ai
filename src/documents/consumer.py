@@ -433,7 +433,7 @@ class ConsumerPlugin(
 
             # Check if the parser has OCR image paths
             if hasattr(document_parser, "get_ocr_images") and callable(
-                getattr(document_parser, "get_ocr_images")
+                getattr(document_parser, "get_ocr_images"),
             ):
                 ocr_images = document_parser.get_ocr_images()
                 self.log.debug(f"Found {len(ocr_images)} OCR images")
@@ -841,7 +841,6 @@ class ConsumerPreflightPlugin(
         settings.ORIGINALS_DIR.mkdir(parents=True, exist_ok=True)
         settings.ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
         settings.OCR_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-
 
     def pre_check_asn_value(self):
         """

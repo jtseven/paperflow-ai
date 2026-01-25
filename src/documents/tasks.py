@@ -276,9 +276,9 @@ def update_document_content_maybe_archive_file(document_id):
             document.get_public_filename(),
         )
 
-                    # Handle OCR images if available
+        # Handle OCR images if available
         if hasattr(parser, "get_ocr_images") and callable(
-            getattr(parser, "get_ocr_images")
+            getattr(parser, "get_ocr_images"),
         ):
             ocr_images = parser.get_ocr_images()
         else:
@@ -347,7 +347,6 @@ def update_document_content_maybe_archive_file(document_id):
                     shutil.move(parser.get_archive_path(), document.archive_path)
                 shutil.move(thumbnail, document.thumbnail_path)
 
-
                 if ocr_images:
                     import base64
 
@@ -371,7 +370,7 @@ def update_document_content_maybe_archive_file(document_id):
 
                     # Update the document with the number of OCR images
                     Document.objects.filter(pk=document.pk).update(
-                        ocr_image_count=len(ocr_images)
+                        ocr_image_count=len(ocr_images),
                     )
 
         document.refresh_from_db()
@@ -413,7 +412,7 @@ def empty_trash(doc_ids=None):
     try:
         deleted_document_ids = list(documents.values_list("id", flat=True))
         deleted_documents_embedding_ids = list(
-            chain.from_iterable(documents.values_list("embedding_index_ids", flat=True))
+            chain.from_iterable(documents.values_list("embedding_index_ids", flat=True)),
         )
         # Temporarily connect the cleanup handler
         models.signals.post_delete.connect(cleanup_document_deletion, sender=Document)
@@ -421,7 +420,7 @@ def empty_trash(doc_ids=None):
         logger.info(f"Deleted {len(deleted_document_ids)} documents from trash")
 
         document_ids_deleted.send(
-            sender=Document, embedding_index_ids=deleted_documents_embedding_ids
+            sender=Document, embedding_index_ids=deleted_documents_embedding_ids,
         )
 
         if settings.AUDIT_LOG_ENABLED:
@@ -580,7 +579,7 @@ def create_missing_embeddings():
         return
 
     logger.info(
-        f"Found {documents.count()} documents without embeddings. Creating embeddings..."
+        f"Found {documents.count()} documents without embeddings. Creating embeddings...",
     )
 
     embeddings = DocumentEmbeddings()
@@ -598,7 +597,7 @@ def create_missing_embeddings():
             error_count += 1
 
     logger.info(
-        f"Embedding generation completed. Success: {success_count}, Errors: {error_count}"
+        f"Embedding generation completed. Success: {success_count}, Errors: {error_count}",
     )
 
 

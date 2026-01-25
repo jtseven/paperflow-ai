@@ -713,12 +713,12 @@ def compute_and_store_embeddings(sender, document, **kwargs):
 
     if not settings.EMBEDDING_ENABLED:
         logger.info(
-            f"Embedding is disabled. Skipping document '{document.title}'. Enable by setting PAPERLESS_EMBEDDING_ENABLED=true"
+            f"Embedding is disabled. Skipping document '{document.title}'. Enable by setting PAPERLESS_EMBEDDING_ENABLED=true",
         )
         return
     else:
         logger.info(
-            f"Embedding is enabled. Computing and storing embeddings for document '{document.title}'"
+            f"Embedding is enabled. Computing and storing embeddings for document '{document.title}'",
         )
 
     embeddings = DocumentEmbeddings()
@@ -747,7 +747,7 @@ def update_embeddings(sender, document: Document, **kwargs):
         success = embeddings.embedd_document(document)
         if success:
             logger.info(
-                f"Successfully updated embeddings for document {document.title}"
+                f"Successfully updated embeddings for document {document.title}",
             )
         else:
             logger.error(f"Error updating embeddings for document {document.pk}")

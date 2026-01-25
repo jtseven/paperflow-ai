@@ -4,11 +4,9 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('documents', '1069_merge_20251011_1011'),
-        ('documents', '1075_workflowaction_order'),
+        ("documents", "1069_merge_20251011_1011"),
+        ("documents", "1075_workflowaction_order"),
     ]
 
-    operations = [
-    ]
+    operations = []

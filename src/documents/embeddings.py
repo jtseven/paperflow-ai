@@ -31,32 +31,32 @@ class DocumentEmbeddings:
         if settings.EMBEDDING_PROVIDER == "openai":
             if not settings.OPENAI_API_KEY:
                 logger.warning(
-                    "PAPERLESS_OPENAI_API_KEY is not set. Embeddings will not work."
+                    "PAPERLESS_OPENAI_API_KEY is not set. Embeddings will not work.",
                 )
                 raise ValueError("PAPERLESS_OPENAI_API_KEY is not set")
             self.embedding_model = OpenAIEmbeddings(
-                api_key=settings.OPENAI_API_KEY, model=settings.EMBEDDING_MODEL
+                api_key=settings.OPENAI_API_KEY, model=settings.EMBEDDING_MODEL,
             )
         elif settings.EMBEDDING_PROVIDER == "mistralai":
             if not settings.MISTRAL_API_KEY:
                 logger.warning(
-                    "PAPERLESS_MISTRAL_API_KEY is not set. Embeddings will not work."
+                    "PAPERLESS_MISTRAL_API_KEY is not set. Embeddings will not work.",
                 )
                 raise ValueError("PAPERLESS_MISTRAL_API_KEY is not set")
             # rate_limiter = InMemoryRateLimiter(requests_per_second=1)
             self.embedding_model = MistralAIEmbeddings(
-                api_key=settings.MISTRAL_API_KEY, model=settings.EMBEDDING_MODEL
+                api_key=settings.MISTRAL_API_KEY, model=settings.EMBEDDING_MODEL,
             )
         else:
             raise ValueError(
-                f"Unknown embedding provider: {settings.EMBEDDING_PROVIDER}"
+                f"Unknown embedding provider: {settings.EMBEDDING_PROVIDER}",
             )
 
         self.splitter = SemanticChunker(self.embedding_model, min_chunk_size=2000)
 
         if not settings.EMBEDDING_REDIS_URL:
             logger.warning(
-                "PAPERLESS_EMBEDDING_REDIS_URL is not set. Embeddings will not work."
+                "PAPERLESS_EMBEDDING_REDIS_URL is not set. Embeddings will not work.",
             )
             raise ValueError("PAPERLESS_EMBEDDING_REDIS_URL is not set")
         redis_config = RedisConfig(
@@ -68,7 +68,7 @@ class DocumentEmbeddings:
     def embedd_document(self, document: Document) -> bool:
         if document.content is None:
             logger.warning(
-                f"Document '{document.title}' has no content. Skipping embedding generation."
+                f"Document '{document.title}' has no content. Skipping embedding generation.",
             )
             return False
 
@@ -94,29 +94,29 @@ class DocumentEmbeddings:
             ]
         except Exception as e:
             logger.error(
-                f"Error generating metadatas for document '{document.title}': {e}"
+                f"Error generating metadatas for document '{document.title}': {e}",
             )
             return False
         try:
             logger.debug(
-                f"Adding {len(chunks)} chunks to vector store for document '{document.title}'"
+                f"Adding {len(chunks)} chunks to vector store for document '{document.title}'",
             )
             # index_ids = self.vector_store.add_texts(chunks, metadatas=metadatas)
             index_ids = self.vector_store.add_documents(
                 [
                     LangchainDocument(page_content=chunk, metadata=metadata)
                     for chunk, metadata in zip(chunks, metadatas)
-                ]
+                ],
             )
             document.embedding_index_ids = index_ids
             document.save(update_fields=("embedding_index_ids",))
         except Exception as e:
             logger.error(
-                f"Error adding texts to vector store for document '{document.title}': {e}"
+                f"Error adding texts to vector store for document '{document.title}': {e}",
             )
             return False
         logger.info(
-            f"Successfully generated and stored embeddings for document '{document.title}'"
+            f"Successfully generated and stored embeddings for document '{document.title}'",
         )
         return True
 
@@ -126,11 +126,11 @@ class DocumentEmbeddings:
                 count = self.vector_store.index.drop_keys(embedding_index_ids)
                 if count == len(embedding_index_ids):
                     logger.info(
-                        f"Successfully deleted {count} entries from vector store"
+                        f"Successfully deleted {count} entries from vector store",
                     )
                 else:
                     logger.warning(
-                        f"Only {count} entries were deleted from vector store ({len(embedding_index_ids)} were given)"
+                        f"Only {count} entries were deleted from vector store ({len(embedding_index_ids)} were given)",
                     )
             except Exception as e:
                 logger.error(f"Error deleting entries from vector store: {e}")

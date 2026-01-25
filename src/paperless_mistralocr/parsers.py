@@ -35,7 +35,7 @@ class MistralOcrDocumentParser(DocumentParser):
 
     if not HAS_MISTRAL:
         raise ParseError(
-            "mistralai package is not installed. Please install it with: pip install mistralai"
+            "mistralai package is not installed. Please install it with: pip install mistralai",
         )
 
     def __init__(self, *args, **kwargs):
@@ -203,7 +203,7 @@ class MistralOcrDocumentParser(DocumentParser):
         api_key = self.settings.api_key
         if not api_key:
             raise ParseError(
-                "Mistral API key not configured. Please set PAPERLESS_MISTRAL_API_KEY in environment."
+                "Mistral API key not configured. Please set PAPERLESS_MISTRAL_API_KEY in environment.",
             )
 
         model = self.settings.model
@@ -212,7 +212,7 @@ class MistralOcrDocumentParser(DocumentParser):
         file_size = Path(document_path).stat().st_size
         if file_size > 50 * 1024 * 1024:  # 50MB limit
             raise ParseError(
-                f"File size too large for Mistral API: {file_size / (1024 * 1024):.2f}MB (max 50MB)"
+                f"File size too large for Mistral API: {file_size / (1024 * 1024):.2f}MB (max 50MB)",
             )
 
         try:

@@ -19,7 +19,7 @@ class TestMistralOcrParser(TestCase):
         self.tempdir.cleanup()
 
     @mock.patch(
-        "paperless_mistralocr.parsers.MistralOcrDocumentParser._call_mistral_api"
+        "paperless_mistralocr.parsers.MistralOcrDocumentParser._call_mistral_api",
     )
     def test_parse_basic(self, mock_call_api):
         # Mock the API response
@@ -30,7 +30,7 @@ class TestMistralOcrParser(TestCase):
                     "markdown": "# Sample Document\n\nThis is a test document.",
                     "images": [],
                     "dimensions": {"width": 595, "height": 842, "dpi": 72},
-                }
+                },
             ],
             "metadata": {"title": "Test Document", "date": "2023-04-15"},
         }
@@ -45,7 +45,7 @@ class TestMistralOcrParser(TestCase):
 
         # Verify results
         self.assertEqual(
-            self.parser.text, "# Sample Document\n\nThis is a test document."
+            self.parser.text, "# Sample Document\n\nThis is a test document.",
         )
         mock_call_api.assert_called_once()
 
@@ -70,8 +70,8 @@ class TestMistralOcrParser(TestCase):
                     "markdown": "# Test Document\n\nThis is a sample document content.",
                     "images": [],
                     "dimensions": {"width": 595, "height": 842, "dpi": 72},
-                }
-            ]
+                },
+            ],
         }
 
         # Setup test environment
@@ -81,7 +81,7 @@ class TestMistralOcrParser(TestCase):
 
         # Mock settings
         with mock.patch(
-            "paperless_mistralocr.parsers.MistralOcrDocumentParser.get_settings"
+            "paperless_mistralocr.parsers.MistralOcrDocumentParser.get_settings",
         ) as mock_settings:
             mock_settings.return_value.api_key = "test_api_key"
             mock_settings.return_value.model = "mistral-ocr-latest"
@@ -109,7 +109,7 @@ class TestMistralOcrParser(TestCase):
                 {"markdown": "Page 1 content", "images": []},
                 {"markdown": "Page 2 content", "images": []},
                 {"markdown": "Page 3 content", "images": []},
-            ]
+            ],
         }
 
         result = self.parser.get_combined_markdown(ocr_response)
@@ -122,7 +122,7 @@ class TestMistralOcrParser(TestCase):
 
         # For None, we'll need to mock to avoid errors
         with mock.patch(
-            "paperless_mistralocr.parsers.MistralOcrDocumentParser.get_combined_markdown"
+            "paperless_mistralocr.parsers.MistralOcrDocumentParser.get_combined_markdown",
         ) as mock_method:
             mock_method.return_value = ""
             self.assertEqual(mock_method(None), "")
