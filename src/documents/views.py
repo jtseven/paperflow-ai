@@ -3213,16 +3213,19 @@ def serve_logo(request, filename=None):
 
 class QuestionSerializer(serializers.Serializer):
     question = serializers.CharField(
-        required=True, help_text="The question to ask the AI assistant",
+        required=True,
+        help_text="The question to ask the AI assistant",
     )
     session_id = serializers.CharField(
-        required=False, help_text="Session ID for tracking conversation history",
+        required=False,
+        help_text="Session ID for tracking conversation history",
     )
 
 
 class ClearHistorySerializer(serializers.Serializer):
     session_id = serializers.CharField(
-        required=True, help_text="Session ID for tracking conversation history",
+        required=True,
+        help_text="Session ID for tracking conversation history",
     )
 
 
@@ -3258,14 +3261,15 @@ class QuestionView(APIView):
             # Process the question using the chat component
             from documents.ai_chat import process_question
 
-            reply, document_ids, session_id = process_question(
-                question=question, user_id=request.user.id, session_id=session_id,
+            reply, session_id = process_question(
+                question=question,
+                user_id=request.user.id,
+                session_id=session_id,
             )
 
             return Response(
                 {
                     "reply": reply,
-                    "document_ids": document_ids,
                     "session_id": session_id,
                 },
             )
@@ -3322,7 +3326,8 @@ class ClearChatHistoryView(APIView):
 
 class ChatHistorySerializer(serializers.Serializer):
     session_id = serializers.CharField(
-        required=True, help_text="The session ID to get the chat history for",
+        required=True,
+        help_text="The session ID to get the chat history for",
     )
 
 

@@ -45,7 +45,8 @@ class TestMistralOcrParser(TestCase):
 
         # Verify results
         self.assertEqual(
-            self.parser.text, "# Sample Document\n\nThis is a test document.",
+            self.parser.text,
+            "# Sample Document\n\nThis is a test document.",
         )
         mock_call_api.assert_called_once()
 
