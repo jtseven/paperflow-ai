@@ -35,7 +35,8 @@ class DocumentEmbeddings:
                 )
                 raise ValueError("PAPERLESS_OPENAI_API_KEY is not set")
             self.embedding_model = OpenAIEmbeddings(
-                api_key=settings.OPENAI_API_KEY, model=settings.EMBEDDING_MODEL,
+                api_key=settings.OPENAI_API_KEY,
+                model=settings.EMBEDDING_MODEL,
             )
         elif settings.EMBEDDING_PROVIDER == "mistralai":
             if not settings.MISTRAL_API_KEY:
@@ -45,7 +46,8 @@ class DocumentEmbeddings:
                 raise ValueError("PAPERLESS_MISTRAL_API_KEY is not set")
             # rate_limiter = InMemoryRateLimiter(requests_per_second=1)
             self.embedding_model = MistralAIEmbeddings(
-                api_key=settings.MISTRAL_API_KEY, model=settings.EMBEDDING_MODEL,
+                api_key=settings.MISTRAL_API_KEY,
+                model=settings.EMBEDDING_MODEL,
             )
         else:
             raise ValueError(

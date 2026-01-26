@@ -16,21 +16,27 @@ from documents.embeddings import DocumentEmbeddings
 from documents.models import Document
 
 logger = logging.getLogger("paperless.ai_chat")
+embeddings = DocumentEmbeddings()
 
 
 @tool
 def search_documents(query: str) -> tuple[str, list[str]]:
     """Search for relevant documents using semantic similarity"""
     try:
-        embeddings = DocumentEmbeddings()
-        vector_store = embeddings.vector_store
-
         # Get most relevant documents for the query
-        search_results = vector_store.similarity_search(
+        search_results = embeddings.vector_store.similarity_search(
             query,
             k=3,  # Retrieve top 3 most relevant chunks
             return_metadata=True,
             return_all=True,
+        )
+        if len(search_results) == 0:
+            logger.warning(
+                "No relevant documents found using embedding similarity search!"
+            )
+            return "", []
+        logger.info(
+            f"Found {len(search_results)} relevant vector store entries for query."
         )
 
         # Extract content from the search results
@@ -50,6 +56,7 @@ def search_documents(query: str) -> tuple[str, list[str]]:
             for doc, context_text in zip(documents, context_texts)
         )
         # Get document IDs
+        # TODO fix this unnecessary (?) duplication
         document_ids = []
         for doc in search_results:
             doc_id = doc.metadata.get("document_id")
