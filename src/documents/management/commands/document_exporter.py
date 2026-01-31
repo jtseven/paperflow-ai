@@ -137,6 +137,14 @@ class Command(CryptMixin, BaseCommand):
         )
 
         parser.add_argument(
+            "-no",
+            "--no-ocr-images",
+            default=False,
+            action="store_true",
+            help="Avoid exporting ocr image files (Only applicable for Mistral OCR)",
+        )
+
+        parser.add_argument(
             "-p",
             "--use-folder-prefix",
             default=False,
@@ -199,6 +207,7 @@ class Command(CryptMixin, BaseCommand):
         self.delete: bool = options["delete"]
         self.no_archive: bool = options["no_archive"]
         self.no_thumbnail: bool = options["no_thumbnail"]
+        self.no_ocr_images: bool = options["no_ocr_images"]
         self.zip_export: bool = options["zip"]
         self.data_only: bool = options["data_only"]
         self.no_progress_bar: bool = options["no_progress_bar"]
@@ -470,18 +479,21 @@ class Command(CryptMixin, BaseCommand):
         else:
             archive_target = None
 
-        # Handle OCR images
-        ocr_image_targets = []
-        if document.ocr_image_count > 0:
-            ocr_image_names = []
-            for i in range(document.ocr_image_count):
-                ocr_image_name = f"{base_name}-ocr-image-{i}.jpg"
-                if self.use_folder_prefix:
-                    ocr_image_name = os.path.join("ocr_images", ocr_image_name)
-                ocr_image_target = (self.target / Path(ocr_image_name)).resolve()
-                ocr_image_targets.append(ocr_image_target)
-                ocr_image_names.append(ocr_image_name)
-            document_dict[EXPORTER_OCR_IMAGES] = ocr_image_names
+        if not self.no_ocr_images:
+            # Handle OCR images
+            ocr_image_targets = []
+            if document.ocr_image_count > 0:
+                ocr_image_names = []
+                for i in range(document.ocr_image_count):
+                    ocr_image_name = f"{base_name}-ocr-image-{i}.jpg"
+                    if self.use_folder_prefix:
+                        ocr_image_name = os.path.join("ocr_images", ocr_image_name)
+                    ocr_image_target = (self.target / Path(ocr_image_name)).resolve()
+                    ocr_image_targets.append(ocr_image_target)
+                    ocr_image_names.append(ocr_image_name)
+                document_dict[EXPORTER_OCR_IMAGES] = ocr_image_names
+        else:
+            ocr_image_targets = None
 
         return original_target, thumbnail_target, archive_target, ocr_image_targets
 
