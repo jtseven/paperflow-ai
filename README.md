@@ -1,156 +1,120 @@
-[![ci](https://github.com/paperless-ngx/paperless-ngx/workflows/ci/badge.svg)](https://github.com/paperless-ngx/paperless-ngx/actions)
-[![Crowdin](https://badges.crowdin.net/paperless-ngx/localized.svg)](https://crowdin.com/project/paperless-ngx)
-[![Documentation Status](https://img.shields.io/github/deployments/paperless-ngx/paperless-ngx/github-pages?label=docs)](https://docs.paperless-ngx.com)
-[![codecov](https://codecov.io/gh/paperless-ngx/paperless-ngx/branch/main/graph/badge.svg?token=VK6OUPJ3TY)](https://codecov.io/gh/paperless-ngx/paperless-ngx)
-[![Chat on Matrix](https://matrix.to/img/matrix-badge.svg)](https://matrix.to/#/%23paperlessngx%3Amatrix.org)
-[![demo](https://cronitor.io/badges/ve7ItY/production/W5E_B9jkelG9ZbDiNHUPQEVH3MY.svg)](https://demo.paperless-ngx.com)
+# Paperflow AI
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/paperless-ngx/paperless-ngx/blob/main/resources/logo/web/png/White%20logo%20-%20no%20background.png" width="50%">
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/paperless-ngx/paperless-ngx/raw/main/resources/logo/web/png/Black%20logo%20-%20no%20background.png" width="50%">
-    <img src="https://github.com/paperless-ngx/paperless-ngx/raw/main/resources/logo/web/png/Black%20logo%20-%20no%20background.png" width="50%">
-  </picture>
-</p>
+Paperflow AI is a fork of [paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) that focuses on **AI-assisted document management** while keeping the core "scan, archive, search" workflow that paperless-ngx is known for.
 
-<!-- omit in toc -->
+This repository intentionally trims down some of the upstream project’s scope:
 
-# Paperless-ngx
+- ✅ Keep: core document management, search, tags, web UI
+- ✅ Add: AI-powered features (chat over your documents, smarter extraction, Mistral integration)
+- ✅ Keep: modern tooling (Python 3.11, `uv`, Docker support)
+- ❌ Drop: complex multi-target release packaging and container publishing logic from upstream CI
+- ❌ Drop: upstream-specific badges, demo links, and community references
 
-Paperless-ngx is a document management system that transforms your physical documents into a searchable online archive so you can keep, well, _less paper_.
+Paperflow AI is **not** a drop-in replacement for paperless-ngx, but a focused fork optimized for experimentation with AI features on top of a solid DMS foundation.
 
-Paperless-ngx is the official successor to the original [Paperless](https://github.com/the-paperless-project/paperless) & [Paperless-ng](https://github.com/jonaswinkler/paperless-ng) projects and is designed to distribute the responsibility of advancing and supporting the project among a team of people. [Consider joining us!](#community-support)
+---
 
-Thanks to the generous folks at [DigitalOcean](https://m.do.co/c/8d70b916d462), a demo is available at [demo.paperless-ngx.com](https://demo.paperless-ngx.com) using login `demo` / `demo`. _Note: demo content is reset frequently and confidential information should not be uploaded._
+## Key differences vs paperless-ngx
 
-- [Features](#features)
-- [Getting started](#getting-started)
-- [Contributing](#contributing)
-  - [Community Support](#community-support)
-  - [Translation](#translation)
-  - [Feature Requests](#feature-requests)
-  - [Bugs](#bugs)
-- [Related Projects](#related-projects)
-- [Important Note](#important-note)
+Compared to upstream paperless-ngx, Paperflow AI:
 
-<p align="right">This project is supported by:<br/>
-  <a href="https://m.do.co/c/8d70b916d462" style="padding-top: 4px; display: block;">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_white.svg" width="140px">
-      <source media="(prefers-color-scheme: light)" srcset="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="140px">
-      <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_black_.svg" width="140px">
-    </picture>
-  </a>
-</p>
+- Integrates **AI chat** over your documents (see `src/documents/ai_chat.py`).
+- Adds first-class support for **Mistral-based OCR / LLM features** (see the Mistral-related env vars in `docker-compose.yml`).
+- Uses **`uv` as the Python dependency manager** for local development and CI.
+- Simplifies the **CI pipeline** to focus on static checks and documentation instead of multi-target releases and Docker image publishing.
 
-# Features
+The goal is to make it easy to:
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/paperless-ngx/paperless-ngx/main/docs/assets/screenshots/documents-smallcards-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/paperless-ngx/paperless-ngx/main/docs/assets/screenshots/documents-smallcards.png">
-  <img src="https://raw.githubusercontent.com/paperless-ngx/paperless-ngx/main/docs/assets/screenshots/documents-smallcards.png">
-</picture>
+- Run a personal document archive at home.
+- Experiment with new AI-powered extraction, search and chat flows.
+- Keep the project maintainable as a smaller fork.
 
-A full list of [features](https://docs.paperless-ngx.com/#features) and [screenshots](https://docs.paperless-ngx.com/#screenshots) are available in the [documentation](https://docs.paperless-ngx.com/).
+---
 
-# Getting started
+## Getting started
 
-The easiest way to deploy paperless is `docker compose`. The files in the [`/docker/compose` directory](https://github.com/paperless-ngx/paperless-ngx/tree/main/docker/compose) are configured to pull the image from the GitHub container registry.
+The recommended way to run Paperflow AI is via Docker Compose, similar to upstream paperless-ngx.
 
-If you'd like to jump right in, you can configure a `docker compose` environment with our install script:
+### Quick start with Docker Compose
+
+From this repository on your server:
 
 ```bash
-bash -c "$(curl -L https://raw.githubusercontent.com/paperless-ngx/paperless-ngx/main/install-paperless-ngx.sh)"
+cd paperflow-ai
+cp docker-compose.yml docker-compose.override.yml  # adjust as needed
+docker compose up -d
 ```
 
-More details and step-by-step guides for alternative installation methods can be found in [the documentation](https://docs.paperless-ngx.com/setup/#installation).
+The provided `docker-compose.yml` expects environment variables for API keys and secrets (e.g. Mistral, database password). Check the `webserver` service section and configure the relevant variables (preferably via a `.env` file) before running in production.
 
-Migrating from Paperless-ng is easy, just drop in the new docker image! See the [documentation on migrating](https://docs.paperless-ngx.com/setup/#migrating-to-paperless-ngx) for more details.
+> Note: This fork assumes you are comfortable managing your own Docker deployment. There is no one-line install script or hosted demo like the upstream project.
 
-<!-- omit in toc -->
+---
 
-### Documentation
+## Development setup (with `uv`)
 
-The documentation for Paperless-ngx is available at [https://docs.paperless-ngx.com](https://docs.paperless-ngx.com/).
+Paperflow AI uses [`uv`](https://github.com/astral-sh/uv) for Python dependency management and tooling.
 
-# Contributing
+### Prerequisites
 
-If you feel like contributing to the project, please do! Bug fixes, enhancements, visual fixes etc. are always welcome. If you want to implement something big: Please start a discussion about that! The [documentation](https://docs.paperless-ngx.com/development/) has some basic information on how to get started.
+- Python 3.11
+- `uv` installed (`pip install uv` or via your package manager)
 
-## Community Support
+### Install dependencies
 
-People interested in continuing the work on paperless-ngx are encouraged to reach out here on github and in the [Matrix Room](https://matrix.to/#/#paperless:matrix.org). If you would like to contribute to the project on an ongoing basis there are multiple [teams](https://github.com/orgs/paperless-ngx/people) (frontend, ci/cd, etc) that could use your help so please reach out!
+```bash
+cd paperflow-ai
+uv sync --dev
+```
 
-## Translation
+This will create and manage a virtual environment and install all development dependencies defined in `pyproject.toml`.
 
-Paperless-ngx is available in many languages that are coordinated on Crowdin. If you want to help out by translating paperless-ngx into your language, please head over to https://crowdin.com/project/paperless-ngx, and thank you! More details can be found in [CONTRIBUTING.md](https://github.com/paperless-ngx/paperless-ngx/blob/main/CONTRIBUTING.md#translating-paperless-ngx).
+### Common tasks
 
-## Feature Requests
+Run tests (if/when they are re-enabled):
 
-Feature requests can be submitted via [GitHub Discussions](https://github.com/paperless-ngx/paperless-ngx/discussions/categories/feature-requests), you can search for existing ideas, add your own and vote for the ones you care about.
+```bash
+uv run pytest
+```
 
-## Bugs
+Run the development server (Django):
 
-For bugs please [open an issue](https://github.com/paperless-ngx/paperless-ngx/issues) or [start a discussion](https://github.com/paperless-ngx/paperless-ngx/discussions) if you have questions.
+```bash
+cd src
+uv run manage.py runserver
+```
 
-# Related Projects
+Lint and format using pre-commit hooks (also used in CI):
 
-Please see [the wiki](https://github.com/paperless-ngx/paperless-ngx/wiki/Related-Projects) for a user-maintained list of related projects and software that is compatible with Paperless-ngx.
+```bash
+uv run pre-commit run --all-files
+```
 
-# Important Note
+---
 
-> Document scanners are typically used to scan sensitive documents like your social insurance number, tax records, invoices, etc. **Paperless-ngx should never be run on an untrusted host** because information is stored in clear text without encryption. No guarantees are made regarding security (but we do try!) and you use the app at your own risk.
-> **The safest way to run Paperless-ngx is on a local server in your own home with backups in place**.
+## CI pipeline (fork-specific)
 
-## Mistral OCR Integration
+The GitHub Actions workflow in `.github/workflows/ci.yml` has been simplified for this fork:
 
-Paperless-ngx now includes an optional integration with Mistral AI's OCR API for improved document text extraction.
+- ✅ Keep: static checks via `pre-commit`.
+- ✅ Keep: documentation build via `mkdocs` (no deploy step).
+- ❌ Remove: backend and frontend test matrices that depend on heavy Docker orchestration.
+- ❌ Remove: Docker image build & publish and release packaging logic.
 
-### Setup
+This makes the CI pipeline faster and easier to maintain for a personal / small-team fork while still catching obvious issues in pull requests.
 
-1. Install the required Python package:
+---
 
-   ```
-   pip install mistralai
-   ```
+## Security note
 
-2. Get a Mistral API key from [Mistral AI Console](https://console.mistral.ai/).
+As with upstream paperless-ngx:
 
-3. Add your API key to your environment:
+> Document scanners are typically used to scan sensitive documents like your social insurance number, tax records, invoices, etc. **Paperflow AI should never be run on an untrusted host** because information is stored in clear text without encryption. No guarantees are made regarding security (but we do try!) and you use the app at your own risk.
+>
+> **The safest way to run Paperflow AI is on a local server in your own home with backups in place.**
 
-   ```
-   PAPERLESS_MISTRAL_API_KEY=your_api_key_here
-   ```
+---
 
-4. Restart the application. The system will automatically use Mistral OCR for document processing.
+## License
 
-For more details, see the [Mistral OCR module documentation](src/paperless_mistralocr/README.md).
-
-## Development Setup
-
-### Using uv for dependency management
-
-This project uses [uv](https://github.com/astral-sh/uv) for dependency management. uv is a fast Python package installer and resolver that has replaced pipenv in this project.
-
-1. Install uv:
-
-   ```
-   pip install uv
-   ```
-
-2. Install dependencies using uv:
-
-   ```
-   uv pip install -e ".[dev,typing]"
-   ```
-
-3. Add new dependencies to pyproject.toml and install them:
-
-   ```
-   uv pip install -e ".[dev,typing]"
-   ```
-
-4. Generate a requirements.txt file if needed:
-   ```
-   uv pip compile pyproject.toml --output-file requirements.txt
-   ```
+Paperflow AI is licensed under the same license as paperless-ngx. See [LICENSE](LICENSE) for details.

@@ -65,6 +65,7 @@ import { SafeUrlPipe } from 'src/app/pipes/safeurl.pipe'
 import { ComponentRouterService } from 'src/app/services/component-router.service'
 import { DocumentListViewService } from 'src/app/services/document-list-view.service'
 import { HotKeyService } from 'src/app/services/hot-key.service'
+import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
 import { OpenDocumentsService } from 'src/app/services/open-documents.service'
 import {
   PermissionAction,
@@ -101,6 +102,7 @@ import { TagsComponent } from '../common/input/tags/tags.component'
 import { TextComponent } from '../common/input/text/text.component'
 import { TextAreaComponent } from '../common/input/textarea/textarea.component'
 import { UrlComponent } from '../common/input/url/url.component'
+import { MarkdownModalComponent } from '../common/markdown-modal'
 import { PageHeaderComponent } from '../common/page-header/page-header.component'
 import {
   PDFEditorComponent,
@@ -111,8 +113,6 @@ import { DocumentHistoryComponent } from '../document-history/document-history.c
 import { DocumentNotesComponent } from '../document-notes/document-notes.component'
 import { ComponentWithPermissions } from '../with-permissions/with-permissions.component'
 import { MetadataCollapseComponent } from './metadata-collapse/metadata-collapse.component'
-import { MarkdownModalComponent } from '../common/markdown-modal'
-import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
 
 enum DocumentDetailNavIDs {
   Details = 1,
@@ -183,7 +183,8 @@ export enum ZoomSetting {
 })
 export class DocumentDetailComponent
   extends ComponentWithPermissions
-  implements OnInit, OnDestroy, DirtyComponent {
+  implements OnInit, OnDestroy, DirtyComponent
+{
   private documentsService = inject(DocumentService)
   private route = inject(ActivatedRoute)
   private correspondentService = inject(CorrespondentService)
@@ -419,7 +420,8 @@ export class DocumentDetailComponent
       .subscribe({
         next: (res) => (this.previewText = res.toString()),
         error: (err) =>
-        (this.previewText = $localize`An error occurred loading content: ${err.message ?? err.toString()
+          (this.previewText = $localize`An error occurred loading content: ${
+            err.message ?? err.toString()
           }`),
       })
     this.thumbUrl = this.documentsService.getThumbUrl(documentId)
@@ -858,7 +860,7 @@ export class DocumentDetailComponent
 
   save(close: boolean = false) {
     this.networkActive = true
-      ; (document.activeElement as HTMLElement)?.dispatchEvent(new Event('change'))
+    ;(document.activeElement as HTMLElement)?.dispatchEvent(new Event('change'))
     this.documentsService
       .patch(this.getChangedFields())
       .pipe(first())
@@ -1190,7 +1192,7 @@ export class DocumentDetailComponent
     this.previewZoomScale = ZoomSetting.PageWidth
     this.previewZoomSetting =
       Object.values(ZoomSetting)[
-      Math.min(Object.values(ZoomSetting).length - 1, currentIndex + 1)
+        Math.min(Object.values(ZoomSetting).length - 1, currentIndex + 1)
       ]
   }
 

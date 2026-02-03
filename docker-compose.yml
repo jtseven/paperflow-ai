@@ -1,90 +1,54 @@
 services:
   broker:
-    image: redis/redis-stack-server:latest
+    image: docker.io/library/redis:8
+    container_name: paperflow-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - redisdata:/data
-    command: redis-stack-server --protected-mode no
-    healthcheck:
-      test: ["CMD", "redis-cli", "-h", "localhost", "ping"]
-      interval: 2s
-      timeout: 1m30s
-      retries: 5
-      start_period: 5s
-
-  # Frontend development service with hot reloading
-  frontend:
-    image: docker.io/node:24-bookworm-slim
-    volumes:
-      - ./src-ui:/src/src-ui
-    working_dir: /src/src-ui
-    ports:
-      - "4200:4200"
-    command: bash -c "npm update -g pnpm && npm install -g corepack@latest && corepack enable && pnpm install && ./node_modules/.bin/ng serve --host 0.0.0.0 --disable-host-check"
-    restart: unless-stopped
-
   db:
-    image: docker.io/library/postgres:14
+    image: docker.io/library/postgres:17
+    container_name: paperflow-db
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: paperless
       POSTGRES_USER: paperless
-      POSTGRES_PASSWORD: paperless
-
+      POSTGRES_PASSWORD: ${PAPERLESS_DB_PASSWORD}
   webserver:
     build:
       context: .
+      dockerfile: Dockerfile
+    image: paperflow-ai:local
+    container_name: paperflow
     restart: unless-stopped
     depends_on:
       - db
       - broker
-      - gotenberg
-      - tika
     ports:
-      - "8000:8000"
-    healthcheck:
-      test: ["CMD", "curl", "-fs", "-S", "--max-time", "2", "http://localhost:8000"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      - "8010:8000"
     volumes:
-      - ./data/data:/usr/src/paperless/data
-      - ./data/media:/usr/src/paperless/media
-      - ./data/export:/usr/src/paperless/export
-      - ./data/consume:/usr/src/paperless/consume
-      - ./src:/usr/src/paperless/src
-      - ./src-ui:/usr/src/paperless/src-ui
-    env_file: docker-compose.env
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export
+      - ./consume:/usr/src/paperless/consume
     environment:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db
-      PAPERLESS_TIKA_ENABLED: 1
-      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
-      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
-
-
-  gotenberg:
-    image: docker.io/gotenberg/gotenberg:7.8
-    restart: unless-stopped
-
-    # The gotenberg chromium route is used to convert .eml files. We do not
-    # want to allow external content like tracking pixels or even javascript.
-    command:
-      - "gotenberg"
-      - "--chromium-disable-javascript=true"
-      - "--chromium-allow-list=file:///tmp/.*"
-
-  tika:
-    image: ghcr.io/paperless-ngx/tika:latest
-    restart: unless-stopped
-
+      PAPERLESS_URL: ${PAPERLESS_URL:-http://localhost:8010}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_TIME_ZONE: ${PAPERLESS_TIME_ZONE:-UTC}
+      PAPERLESS_OCR_LANGUAGE: ${PAPERLESS_OCR_LANGUAGE:-eng}
+      PAPERLESS_MISTRAL_API_KEY: ${PAPERLESS_MISTRAL_API_KEY}
+      PAPERLESS_OPENAI_API_KEY: ${PAPERLESS_OPENAI_API_KEY:-}
+      PAPERLESS_CHAT_MODEL_NAME: ${PAPERLESS_CHAT_MODEL_NAME:-mistral-large-latest}
+      PAPERLESS_EMBEDDING_MODEL: ${PAPERLESS_EMBEDDING_MODEL:-mistral-embed}
+      PAPERLESS_REDIS_EMBEDDING_URL: ${PAPERLESS_REDIS_EMBEDDING_URL:-redis://broker:6379}
+      PAPERLESS_EMBEDDING_ENABLED: ${PAPERLESS_EMBEDDING_ENABLED:-true}
+      USERMAP_UID: ${USERMAP_UID:-1000}
+      USERMAP_GID: ${USERMAP_GID:-1000}
 volumes:
+  data:
+  media:
   pgdata:
   redisdata:
-  redis_data:

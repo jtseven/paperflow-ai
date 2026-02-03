@@ -7,7 +7,6 @@ from django.conf import settings
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
-from langchain_community.callbacks import get_openai_callback
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
@@ -32,11 +31,11 @@ def search_documents(query: str) -> tuple[str, list[str]]:
         )
         if len(search_results) == 0:
             logger.warning(
-                "No relevant documents found using embedding similarity search!"
+                "No relevant documents found using embedding similarity search!",
             )
             return "", []
         logger.info(
-            f"Found {len(search_results)} relevant vector store entries for query."
+            f"Found {len(search_results)} relevant vector store entries for query.",
         )
 
         # Extract content from the search results
@@ -86,6 +85,7 @@ SYSTEM_PROMPT = """You are a helpful assistant for a document management system.
     [3]: [title](link)
     If you are citing different chunks from the same document (same id), use the same citation number for each chunk.
     """
+
 model = init_chat_model(
     model=settings.CHAT_MODEL_NAME,
     api_key=settings.OPENAI_API_KEY.get_secret_value(),
@@ -123,11 +123,7 @@ def process_question(
 
     try:
         # Run the chat graph
-        with get_openai_callback() as cb:
-            response = agent.invoke(input, {"configurable": {"thread_id": session_id}})
-            logger.info(
-                f"OpenAI API usage: {cb.total_tokens} tokens, cost: ${cb.total_cost}",
-            )
+        response = agent.invoke(input, {"configurable": {"thread_id": session_id}})
 
         # Get the last AI message
         ai_answer = response["messages"][-1].content

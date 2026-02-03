@@ -412,7 +412,9 @@ def empty_trash(doc_ids=None):
     try:
         deleted_document_ids = list(documents.values_list("id", flat=True))
         deleted_documents_embedding_ids = list(
-            chain.from_iterable(documents.values_list("embedding_index_ids", flat=True)),
+            chain.from_iterable(
+                documents.values_list("embedding_index_ids", flat=True),
+            ),
         )
         # Temporarily connect the cleanup handler
         models.signals.post_delete.connect(cleanup_document_deletion, sender=Document)
@@ -420,7 +422,8 @@ def empty_trash(doc_ids=None):
         logger.info(f"Deleted {len(deleted_document_ids)} documents from trash")
 
         document_ids_deleted.send(
-            sender=Document, embedding_index_ids=deleted_documents_embedding_ids,
+            sender=Document,
+            embedding_index_ids=deleted_documents_embedding_ids,
         )
 
         if settings.AUDIT_LOG_ENABLED:

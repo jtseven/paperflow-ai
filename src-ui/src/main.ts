@@ -142,7 +142,7 @@ import {
 } from 'ngx-bootstrap-icons'
 import { ColorSliderModule } from 'ngx-color/slider'
 import { CookieService } from 'ngx-cookie-service'
-import { MarkdownModule, MARKED_OPTIONS } from 'ngx-markdown'
+import { MARKED_OPTIONS, MarkdownModule } from 'ngx-markdown'
 import { TourNgBootstrapModule } from 'ngx-ui-tour-ng-bootstrap'
 import { AppRoutingModule } from './app/app-routing.module'
 import { AppComponent } from './app/app.component'
@@ -380,9 +380,10 @@ bootstrapApplication(AppComponent, {
       MarkdownModule.forRoot({
         markedOptions: {
           provide: MARKED_OPTIONS,
-          useFactory: (markdownConfigService: MarkdownConfigService) => markdownConfigService.createMarkedOptions(),
-          deps: [MarkdownConfigService]
-        }
+          useFactory: (markdownConfigService: MarkdownConfigService) =>
+            markdownConfigService.createMarkedOptions(),
+          deps: [MarkdownConfigService],
+        },
       })
     ),
     {

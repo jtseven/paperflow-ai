@@ -59,7 +59,6 @@ services:
       PAPERLESS_DEBUG: true
     # Overrides default command so things don't shut down after the process ends.
     command: /bin/sh -c "chown -R paperless:paperless /usr/src/paperless/paperless-ngx/src/documents/static/frontend && chown -R paperless:paperless /usr/src/paperless/paperless-ngx/.ruff_cache && while sleep 1000; do :; done"
-
   docjarvis:
     build:
       context: /Users/joschka/Library/CloudStorage/OneDrive-Personal/Code/projects/chatgpt-retrieval-plugin/
@@ -71,11 +70,10 @@ services:
     env_file: /Users/joschka/Library/CloudStorage/OneDrive-Personal/Code/projects/chatgpt-retrieval-plugin/.env
     depends_on:
       - docjarvis_redis
-
   docjarvis_redis:
     image: redis/redis-stack-server:latest
     volumes:
-        - redisdata_embeddings:/data
+      - redisdata_embeddings:/data
     command: redis-stack-server --port 6378 --protected-mode no
     ports:
       - "6378:6378"
@@ -85,7 +83,6 @@ services:
       timeout: 1m30s
       retries: 5
       start_period: 5s
-
   gotenberg:
     image: docker.io/gotenberg/gotenberg:8.17
     restart: unless-stopped

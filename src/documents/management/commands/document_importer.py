@@ -440,7 +440,8 @@ class Command(CryptMixin, BaseCommand):
                 for i, ocr_image_path in enumerate(ocr_image_paths):
                     if i < len(document.ocr_image_paths):
                         copy_file_with_basic_stats(
-                            ocr_image_path, document.ocr_image_paths[i],
+                            ocr_image_path,
+                            document.ocr_image_paths[i],
                         )
 
             document.save()
@@ -456,7 +457,8 @@ class Command(CryptMixin, BaseCommand):
             try:
                 embeddings = DocumentEmbeddings()
                 for record in tqdm.tqdm(
-                    manifest_documents, disable=self.no_progress_bar,
+                    manifest_documents,
+                    disable=self.no_progress_bar,
                 ):
                     document = Document.objects.get(pk=record["pk"])
                     try:

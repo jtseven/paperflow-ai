@@ -10,11 +10,7 @@ import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
   templateUrl: './markdown-modal.component.html',
   styleUrls: ['./markdown-modal.component.scss'],
   standalone: true,
-  imports: [
-    CommonModule,
-    NgxBootstrapIconsModule,
-    MarkdownModule
-  ],
+  imports: [CommonModule, NgxBootstrapIconsModule, MarkdownModule],
 })
 export class MarkdownModalComponent implements OnInit {
   @Input() content: string
@@ -25,7 +21,7 @@ export class MarkdownModalComponent implements OnInit {
   constructor(
     public activeModal: NgbActiveModal,
     private markdownConfigService: MarkdownConfigService
-  ) { }
+  ) {}
 
   ngOnInit() {
     if (this.documentId) {
