@@ -1,6 +1,8 @@
 documents/
 scans/
 
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -116,3 +118,4 @@ celerybeat-schedule*
 
 # ignore pnpm package store folder created when setting up the devcontainer
 .pnpm-store/
+.env
