@@ -14,7 +14,6 @@ from compression_middleware.middleware import CompressionMiddleware
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 from dotenv import load_dotenv
-from pydantic import SecretStr
 
 from paperless.settings.custom import parse_beat_schedule
 from paperless.settings.custom import parse_dateparser_languages

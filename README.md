@@ -18,8 +18,15 @@ Paperflow AI is **not** a drop-in replacement for paperless-ngx, but a focused f
 
 Compared to upstream paperless-ngx, Paperflow AI:
 
-- Integrates **AI chat** over your documents (see `src/documents/ai_chat.py`).
-- Adds first-class support for **Mistral-based OCR / LLM features** (see the Mistral-related env vars in `docker-compose.yml`).
+- Ships an **agentic dashboard chat** that searches across *all* your documents
+  with tool-driven retrieval and dynamic citations. It is built on upstream's
+  llama-index AI stack (`src/paperless_ai/agent_chat.py`) and reuses the same
+  streaming protocol as the built-in per-document chat.
+- Adds **Mistral** as a first-class backend in upstream's pluggable AI
+  configuration: a Mistral **embedding** backend for the semantic index, a
+  Mistral **chat** backend for the LLM, and a **Mistral OCR** parser that takes
+  priority over Tesseract when configured (and silently falls back to Tesseract
+  when it is not).
 - Uses **`uv` as the Python dependency manager** for local development and CI.
 - Simplifies the **CI pipeline** to focus on static checks and documentation instead of multi-target releases and Docker image publishing.
 
@@ -46,6 +53,20 @@ docker compose up -d
 ```
 
 The provided `docker-compose.yml` expects environment variables for API keys and secrets (e.g. Mistral, database password). Check the `webserver` service section and configure the relevant variables (preferably via a `.env` file) before running in production.
+
+The AI features are configured through these variables (sensible Mistral
+defaults are baked into `docker-compose.yml`):
+
+| Variable | Purpose |
+| --- | --- |
+| `PAPERLESS_AI_ENABLED` | Master switch for the AI suite (chat + index). |
+| `PAPERLESS_AI_LLM_API_KEY` | API key for the embedding/chat backend (your Mistral key). |
+| `PAPERLESS_AI_LLM_EMBEDDING_BACKEND` | Embedding backend: `mistral`, `openai-like`, `huggingface` or `ollama`. |
+| `PAPERLESS_AI_LLM_EMBEDDING_MODEL` | Embedding model name (e.g. `mistral-embed`). |
+| `PAPERLESS_AI_LLM_BACKEND` | Chat LLM backend: `mistral`, `openai-like` or `ollama`. |
+| `PAPERLESS_AI_LLM_MODEL` | Chat model name (e.g. `mistral-large-latest`). |
+| `PAPERLESS_MISTRAL_API_KEY` | Enables the Mistral OCR parser; unset → Tesseract. |
+| `PAPERLESS_MISTRAL_MODEL` | Mistral OCR model (default `mistral-ocr-latest`). |
 
 > Note: This fork assumes you are comfortable managing your own Docker deployment. There is no one-line install script or hosted demo like the upstream project.
 

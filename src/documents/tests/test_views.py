@@ -453,13 +453,14 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn(b"AI is required for this feature", response.content)
 
-    @patch("documents.views.stream_chat_with_documents")
+    @patch("documents.views.stream_agentic_chat")
     @patch("documents.views.get_objects_for_user_owner_aware")
     @override_settings(AI_ENABLED=True)
-    def test_post_no_document_id(self, mock_get_objects, mock_stream_chat) -> None:
+    def test_post_no_document_id(self, mock_get_objects, mock_stream_agentic) -> None:
+        """Without a document_id the view routes to the agentic all-docs chat."""
         self.grant_view_document_permission()
         mock_get_objects.return_value = [self.document]
-        mock_stream_chat.return_value = iter([b"data"])
+        mock_stream_agentic.return_value = iter([b"data"])
         response = self.client.post(
             self.ENDPOINT,
             data='{"q": "question"}',
@@ -467,6 +468,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "text/event-stream")
+        mock_stream_agentic.assert_called_once()
 
     @patch("documents.views.stream_chat_with_documents")
     @override_settings(AI_ENABLED=True)
