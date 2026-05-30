@@ -5,6 +5,7 @@ from paperless.models import LLMBackend
 
 if TYPE_CHECKING:
     from llama_index.core.llms import ChatMessage
+    from llama_index.llms.mistralai import MistralAI
     from llama_index.llms.ollama import Ollama
     from llama_index.llms.openai_like import OpenAILike
 
@@ -28,7 +29,7 @@ class AIClient:
         self.settings = AIConfig()
         self.llm = self.get_llm()
 
-    def get_llm(self) -> "Ollama | OpenAILike":
+    def get_llm(self) -> "Ollama | OpenAILike | MistralAI":
         if self.settings.llm_backend == LLMBackend.OLLAMA:
             from llama_index.llms.ollama import Ollama
             from ollama import AsyncClient
@@ -83,6 +84,24 @@ class AIClient:
                 is_function_calling_model=True,
                 http_client=http_client,
                 async_http_client=async_http_client,
+            )
+        elif self.settings.llm_backend == LLMBackend.MISTRAL:
+            from llama_index.llms.mistralai import MistralAI
+
+            # Mistral's hosted API is the default; an explicit endpoint (e.g. a
+            # proxy or self-hosted gateway) is validated against the SSRF guard.
+            extra_kwargs = {}
+            endpoint = self.settings.llm_endpoint or None
+            if endpoint:
+                validate_outbound_http_url(
+                    endpoint,
+                    allow_internal=self.settings.llm_allow_internal_endpoints,
+                )
+                extra_kwargs["endpoint"] = endpoint
+            return MistralAI(
+                model=self.settings.llm_model or "mistral-large-latest",
+                api_key=self.settings.llm_api_key,
+                **extra_kwargs,
             )
         else:
             raise ValueError(f"Unsupported LLM backend: {self.settings.llm_backend}")

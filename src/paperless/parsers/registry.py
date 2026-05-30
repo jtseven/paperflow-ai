@@ -202,12 +202,16 @@ class ParserRegistry:
         from paperless.parsers.tesseract import RasterisedDocumentParser
         from paperless.parsers.text import TextDocumentParser
         from paperless.parsers.tika import TikaDocumentParser
+        from paperless_mistralocr.parsers import MistralOcrDocumentParser
 
         self.register_builtin(TextDocumentParser)
         self.register_builtin(RemoteDocumentParser)
         self.register_builtin(TikaDocumentParser)
         self.register_builtin(MailDocumentParser)
         self.register_builtin(RasterisedDocumentParser)
+        # Paperflow fork: Mistral OCR ships as a built-in. Like the remote OCR
+        # parser it scores itself out (score() -> None) unless configured.
+        self.register_builtin(MistralOcrDocumentParser)
 
     # ------------------------------------------------------------------
     # Discovery

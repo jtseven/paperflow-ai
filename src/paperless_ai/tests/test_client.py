@@ -30,6 +30,12 @@ def mock_openai_llm():
         yield MockOpenAILike
 
 
+@pytest.fixture
+def mock_mistral_llm():
+    with patch("llama_index.llms.mistralai.MistralAI") as MockMistralAI:
+        yield MockMistralAI
+
+
 def test_get_llm_ollama(mock_ai_config, mock_ollama_llm):
     mock_ai_config.llm_backend = "ollama"
     mock_ai_config.llm_model = "test_model"
@@ -65,6 +71,35 @@ def test_get_llm_openai(mock_ai_config, mock_openai_llm):
         async_http_client=ANY,
     )
     assert client.llm == mock_openai_llm.return_value
+
+
+def test_get_llm_mistral(mock_ai_config, mock_mistral_llm):
+    mock_ai_config.llm_backend = "mistral"
+    mock_ai_config.llm_model = "test_model"
+    mock_ai_config.llm_api_key = "test_api_key"
+    mock_ai_config.llm_endpoint = None
+
+    client = AIClient()
+
+    mock_mistral_llm.assert_called_once_with(
+        model="test_model",
+        api_key="test_api_key",
+    )
+    assert client.llm == mock_mistral_llm.return_value
+
+
+def test_get_llm_mistral_uses_default_model(mock_ai_config, mock_mistral_llm):
+    mock_ai_config.llm_backend = "mistral"
+    mock_ai_config.llm_model = None
+    mock_ai_config.llm_api_key = "test_api_key"
+    mock_ai_config.llm_endpoint = None
+
+    AIClient()
+
+    mock_mistral_llm.assert_called_once_with(
+        model="mistral-large-latest",
+        api_key="test_api_key",
+    )
 
 
 def test_get_llm_openai_blocks_internal_endpoint_when_disallowed(mock_ai_config):

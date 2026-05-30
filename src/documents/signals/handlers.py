@@ -372,7 +372,6 @@ def cleanup_document_deletion(sender, instance, **kwargs) -> None:
         files = (
             instance.archive_path,
             instance.thumbnail_path,
-            *instance.ocr_image_paths,
         )
         if not settings.EMPTY_TRASH_DIR:
             # Only delete the original file if we are not moving it to trash dir
@@ -799,60 +798,6 @@ def add_to_index(sender, document, **kwargs) -> None:
         document,
         effective_content=document.get_effective_content(),
     )
-
-
-def compute_and_store_embeddings(sender, document, **kwargs):
-    from documents.embeddings import DocumentEmbeddings
-
-    if not settings.EMBEDDING_ENABLED:
-        logger.info(
-            f"Embedding is disabled. Skipping document '{document.title}'. Enable by setting PAPERLESS_EMBEDDING_ENABLED=true",
-        )
-        return
-    else:
-        logger.info(
-            f"Embedding is enabled. Computing and storing embeddings for document '{document.title}'",
-        )
-
-    embeddings = DocumentEmbeddings()
-    embeddings.embedd_document(document)
-
-
-def update_embeddings(sender, document: Document, **kwargs):
-    """
-    Update embeddings for specific documents. This should be called when document content changes.
-
-    Args:
-        document_ids: List of document IDs to update embeddings for
-    """
-    from documents.embeddings import DocumentEmbeddings
-
-    if not settings.EMBEDDING_ENABLED:
-        logger.info("Embedding is disabled. Skipping embedding updates.")
-        return
-
-    logger.info(f"Updating embeddings for document {document.title}...")
-
-    embeddings = DocumentEmbeddings()
-
-    try:
-        # Create new embeddings
-        success = embeddings.embedd_document(document)
-        if success:
-            logger.info(
-                f"Successfully updated embeddings for document {document.title}",
-            )
-        else:
-            logger.error(f"Error updating embeddings for document {document.pk}")
-    except Exception as e:
-        logger.error(f"Error updating embeddings for document {document.pk}: {e}")
-
-
-def delete_embeddings(sender, embedding_index_ids: list[str], **kwargs):
-    from documents.embeddings import DocumentEmbeddings
-
-    embeddings = DocumentEmbeddings()
-    embeddings.delete_embeddings(embedding_index_ids)
 
 
 def run_workflows_added(

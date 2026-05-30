@@ -88,6 +88,13 @@ def get_embedding_model() -> "BaseEmbedding":
                 ),
             )
             return embedding
+        case LLMEmbeddingBackend.MISTRAL:
+            from llama_index.embeddings.mistralai import MistralAIEmbedding
+
+            return MistralAIEmbedding(
+                model_name=config.llm_embedding_model or "mistral-embed",
+                api_key=config.llm_api_key,
+            )
         case _:
             raise ValueError(
                 f"Unsupported embedding backend: {config.llm_embedding_backend}",
@@ -104,6 +111,7 @@ def get_embedding_dim() -> int:
         LLMEmbeddingBackend.OPENAI_LIKE: "text-embedding-3-small",
         LLMEmbeddingBackend.HUGGINGFACE: "sentence-transformers/all-MiniLM-L6-v2",
         LLMEmbeddingBackend.OLLAMA: "embeddinggemma",
+        LLMEmbeddingBackend.MISTRAL: "mistral-embed",
     }.get(
         config.llm_embedding_backend,
         "sentence-transformers/all-MiniLM-L6-v2",

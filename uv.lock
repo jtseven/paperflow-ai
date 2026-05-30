@@ -2285,6 +2285,19 @@ wheels = [
 ]
 
 [[package]]
+name = "llama-index-llms-mistralai"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "llama-index-core", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "mistralai", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/df/80/5aa8a1f4b20374915d6f4ee20a109de4947496bd33339470de25f0979a3b/llama_index_llms_mistralai-0.10.2.tar.gz", hash = "sha256:6bcf466aab18d6aa04d7def38d670f8517d4aa0ff393aff27e65fe578007945a", size = 10041, upload-time = "2026-05-04T15:54:05.208Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/24/8c9b4813ae6c70a8c0dc2dea4fed8b2c3c817f8aec5deb2d5bd583f366b1/llama_index_llms_mistralai-0.10.2-py3-none-any.whl", hash = "sha256:122922a7e9d6f3c4cf4bdfcdfd816f2ab2b9a2af1581d3658ea00dcde716ec49", size = 10133, upload-time = "2026-05-04T15:54:04.43Z" },
+]
+
+[[package]]
 name = "llama-index-llms-ollama"
 version = "0.10.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3014,6 +3027,7 @@ dependencies = [
     { name = "llama-index-embeddings-mistralai", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "llama-index-embeddings-ollama", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "llama-index-embeddings-openai-like", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
+    { name = "llama-index-llms-mistralai", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "llama-index-llms-ollama", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "llama-index-llms-openai-like", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
     { name = "llama-index-vector-stores-faiss", marker = "sys_platform == 'darwin' or sys_platform == 'linux'" },
@@ -3167,10 +3181,11 @@ requires-dist = [
     { name = "llama-index-embeddings-mistralai", specifier = ">=0.5.1" },
     { name = "llama-index-embeddings-ollama", specifier = ">=0.9" },
     { name = "llama-index-embeddings-openai-like", specifier = ">=0.2.2" },
+    { name = "llama-index-llms-mistralai", specifier = ">=0.8" },
     { name = "llama-index-llms-ollama", specifier = ">=0.9.1" },
     { name = "llama-index-llms-openai-like", specifier = ">=0.7.1" },
     { name = "llama-index-vector-stores-faiss", specifier = ">=0.5.2" },
-    { name = "mistralai", specifier = ">=1.6" },
+    { name = "mistralai", specifier = ">=2.4" },
     { name = "mysqlclient", marker = "extra == 'mariadb'", specifier = "~=2.2.7" },
     { name = "nltk", specifier = "~=3.9.1" },
     { name = "ocrmypdf", specifier = "~=17.4.2" },

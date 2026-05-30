@@ -236,10 +236,6 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     return url.toString()
   }
 
-  getOcrImageUrl(documentId: number, imageIndex: number): string {
-    return this.getResourceUrl(documentId, `ocr_image/${imageIndex}`)
-  }
-
   getDownloadUrl(
     id: number,
     original: boolean = false,

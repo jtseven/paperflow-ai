@@ -1,363 +1,324 @@
-import base64
-import re
-from pathlib import Path
+"""
+Mistral OCR document parser.
 
-import magic
+Sends documents to Mistral AI's OCR API and stores the extracted markdown as
+the document's text content. PDFs are kept as-is (the original is the archive
+copy); images are converted to a PDF archive so they remain viewable.
+
+When no ``PAPERLESS_MISTRAL_API_KEY`` is configured, ``score()`` returns
+``None`` so the parser is invisible to the registry and the built-in Tesseract
+parser handles the file instead.
+
+The parser ships with the fork and is registered as a built-in in
+``paperless.parsers.registry.ParserRegistry.register_defaults``.
+"""
+
+from __future__ import annotations
+
+import base64
+import logging
+import os
+import re
+import shutil
+import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING
+from typing import Self
+
 from django.conf import settings
 
-try:
-    from mistralai import Mistral
-    from mistralai.models import DocumentURLChunk
-    from mistralai.models import ImageURLChunk
-    from mistralai.models import OCRResponse
-    from mistralai.models import SDKError
-
-    HAS_MISTRAL = True
-except ImportError:
-    HAS_MISTRAL = False
-
-
-from documents.parsers import DocumentParser
 from documents.parsers import ParseError
 from documents.parsers import make_thumbnail_from_pdf
 from documents.utils import run_subprocess
-from paperless_mistralocr.config import MistralOcrConfig
+
+if TYPE_CHECKING:
+    import datetime
+    from types import TracebackType
+
+    from mistralai.client.models import OCRResponse
+
+    from paperless.parsers import MetadataEntry
+    from paperless.parsers import ParserContext
+
+logger = logging.getLogger("paperless.parsing.mistral_ocr")
+
+_IMAGE_MIME_TYPES: dict[str, str] = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/tiff": ".tif",
+    "image/gif": ".gif",
+    "image/bmp": ".bmp",
+    "image/webp": ".webp",
+}
+
+_SUPPORTED_MIME_TYPES: dict[str, str] = {
+    "application/pdf": ".pdf",
+    **_IMAGE_MIME_TYPES,
+}
+
+# Markdown image references emitted by the OCR API, e.g. ``![img-0.png](img-0.png)``.
+_OCR_IMAGE_REF_REGEX = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+
+_MAX_FILE_SIZE = 50 * 1024 * 1024  # Mistral API hard limit
 
 
-class MistralOcrDocumentParser(DocumentParser):
+class MistralOcrDocumentParser:
+    """Parse documents via Mistral AI's OCR API.
+
+    Class attributes
+    ----------------
+    name, version, author, url : str
+        Attribution metadata read by the parser registry without
+        instantiating the parser.
     """
-    This parser uses Mistral AI's OCR API to extract text and understand documents
-    """
 
-    logging_name = "paperless.parsing.mistral_ocr"
-    settings: MistralOcrConfig
-    ocr_images: list[str]  # base64 encoded images
+    name: str = "Paperflow Mistral OCR Parser"
+    version: str = "2.0.0"
+    author: str = "Paperflow AI"
+    url: str = "https://github.com/jztheissen/paperflow-ai"
 
-    if not HAS_MISTRAL:
-        raise ParseError(
-            "mistralai package is not installed. Please install it with: pip install mistralai",
+    # ------------------------------------------------------------------
+    # Class methods
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def supported_mime_types(cls) -> dict[str, str]:
+        """Return the MIME types this parser handles.
+
+        The full set is always returned; ``score()`` handles the
+        "am I active?" logic by returning ``None`` when no API key is set.
+        """
+        return _SUPPORTED_MIME_TYPES
+
+    @classmethod
+    def score(
+        cls,
+        mime_type: str,
+        filename: str,
+        path: Path | None = None,
+    ) -> int | None:
+        """Return the priority score for handling this file, or ``None``.
+
+        Returns ``None`` when no API key is configured (parser invisible to
+        the registry) or the ``mistralai`` package is unavailable. When
+        configured, returns 30 — higher than Tesseract (10) and the remote
+        OCR parser (20) — so Mistral OCR takes priority.
+        """
+        if mime_type not in _SUPPORTED_MIME_TYPES:
+            return None
+        if not os.getenv("PAPERLESS_MISTRAL_API_KEY"):
+            return None
+        try:
+            import mistralai  # noqa: F401
+        except ImportError:
+            logger.warning(
+                "PAPERLESS_MISTRAL_API_KEY is set but the 'mistralai' package "
+                "is not installed; Mistral OCR is disabled.",
+            )
+            return None
+        return 30
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def can_produce_archive(self) -> bool:
+        """Image inputs are converted to a PDF archive; PDFs keep the original."""
+        return True
+
+    @property
+    def requires_pdf_rendition(self) -> bool:
+        """All supported originals are displayable (PDF) or archived (images)."""
+        return False
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def __init__(self, logging_group: object = None) -> None:
+        from paperless_mistralocr.config import MistralOcrConfig
+
+        settings.SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+        self._tempdir = Path(
+            tempfile.mkdtemp(prefix="paperless-", dir=settings.SCRATCH_DIR),
         )
+        self._logging_group = logging_group
+        self._config = MistralOcrConfig()
+        self._text: str | None = None
+        self._date: datetime.datetime | None = None
+        self._archive_path: Path | None = None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.ocr_image_paths = []
+    def __enter__(self) -> Self:
+        return self
 
-    def get_settings(self) -> MistralOcrConfig:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        logger.debug("Cleaning up temporary directory %s", self._tempdir)
+        shutil.rmtree(self._tempdir, ignore_errors=True)
+
+    # ------------------------------------------------------------------
+    # Core parsing interface
+    # ------------------------------------------------------------------
+
+    def configure(self, context: ParserContext) -> None:
+        pass
+
+    def parse(
+        self,
+        document_path: Path,
+        mime_type: str,
+        *,
+        produce_archive: bool = True,
+    ) -> None:
+        """Send the document to Mistral OCR and store the extracted markdown.
+
+        For non-PDF inputs an archive PDF is generated so the original remains
+        viewable in the frontend.
         """
-        This parser uses the Mistral OCR configuration settings
-        """
-        return MistralOcrConfig()
+        logger.info("Parsing %s with the Mistral OCR API", document_path)
 
-    def get_page_count(self, document_path, mime_type):
-        page_count = None
-        if mime_type == "application/pdf":
-            try:
-                import pikepdf
+        ocr_response = self._call_mistral_api(document_path, mime_type)
+        self._text = self._combine_markdown(ocr_response)
 
-                with pikepdf.Pdf.open(document_path) as pdf:
-                    page_count = len(pdf.pages)
-            except Exception as e:
-                self.log.warning(
-                    f"Unable to determine PDF page count {document_path}: {e}",
-                )
-        return page_count
+        # Date extraction is handled by the consumer's date-parser plugin when
+        # get_date() returns None, mirroring upstream's built-in parsers.
 
-    def extract_metadata(self, document_path, mime_type):
-        result = []
-        if mime_type == "application/pdf":
-            import pikepdf
+        if mime_type != "application/pdf" and produce_archive:
+            self._archive_path = self._convert_image_to_pdf(document_path)
 
-            namespace_pattern = re.compile(r"\{(.*)\}(.*)")
+    # ------------------------------------------------------------------
+    # Result accessors
+    # ------------------------------------------------------------------
 
-            pdf = pikepdf.open(document_path)
-            meta = pdf.open_metadata()
-            for key, value in meta.items():
-                if isinstance(value, list):
-                    value = " ".join([str(e) for e in value])
-                value = str(value)
-                try:
-                    m = namespace_pattern.match(key)
-                    if m is None:  # pragma: no cover
-                        continue
-                    namespace = m.group(1)
-                    key_value = m.group(2)
-                    try:
-                        namespace.encode("utf-8")
-                        key_value.encode("utf-8")
-                    except UnicodeEncodeError as e:  # pragma: no cover
-                        self.log.debug(f"Skipping metadata key {key}: {e}")
-                        continue
-                    result.append(
-                        {
-                            "namespace": namespace,
-                            "prefix": meta.REVERSE_NS[namespace],
-                            "key": key_value,
-                            "value": value,
-                        },
-                    )
-                except Exception as e:
-                    self.log.warning(
-                        f"Error while reading metadata {key}: {value}. Error: {e}",
-                    )
-        return result
+    def get_text(self) -> str:
+        return self._text or ""
 
-    def get_thumbnail(self, document_path, mime_type, file_name=None):
-        """
-        Generate a thumbnail for the document.
-        For PDFs, use the existing PDF thumbnail creation method.
-        For images, create a thumbnail directly.
-        """
+    def get_date(self) -> datetime.datetime | None:
+        return self._date
+
+    def get_archive_path(self) -> Path | None:
+        return self._archive_path
+
+    # ------------------------------------------------------------------
+    # Thumbnail, page count and metadata
+    # ------------------------------------------------------------------
+
+    def get_thumbnail(self, document_path: Path, mime_type: str) -> Path:
+        """Render a WebP thumbnail from the PDF (original or generated archive)."""
         if mime_type == "application/pdf":
             return make_thumbnail_from_pdf(
                 document_path,
-                self.tempdir,
-                self.logging_group,
+                self._tempdir,
+                self._logging_group,
             )
-        elif self.is_image(mime_type):
-            return self._make_thumbnail_from_image(document_path)
-        else:
-            # Fall back to PDF conversion for other types
-            if not self.archive_path:
-                # Convert to PDF and then create thumbnail
-                self.archive_path = self._convert_to_pdf(document_path)
+        if self._archive_path is None:
+            self._archive_path = self._convert_image_to_pdf(document_path)
+        return make_thumbnail_from_pdf(
+            self._archive_path,
+            self._tempdir,
+            self._logging_group,
+        )
 
-            return make_thumbnail_from_pdf(
-                self.archive_path,
-                self.tempdir,
-                self.logging_group,
+    def get_page_count(
+        self,
+        document_path: Path,
+        mime_type: str,
+    ) -> int | None:
+        if mime_type != "application/pdf":
+            return None
+        from paperless.parsers.utils import get_page_count_for_pdf
+
+        return get_page_count_for_pdf(document_path, log=logger)
+
+    def extract_metadata(
+        self,
+        document_path: Path,
+        mime_type: str,
+    ) -> list[MetadataEntry]:
+        if mime_type != "application/pdf":
+            return []
+        from paperless.parsers.utils import extract_pdf_metadata
+
+        return extract_pdf_metadata(document_path, log=logger)
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _call_mistral_api(self, document_path: Path, mime_type: str) -> OCRResponse:
+        """Call the Mistral OCR API and return the raw response."""
+        from mistralai.client import Mistral
+        from mistralai.client.models import DocumentURLChunk
+        from mistralai.client.models import ImageURLChunk
+
+        api_key = self._config.api_key
+        if not api_key:
+            raise ParseError(
+                "Mistral API key not configured. Set PAPERLESS_MISTRAL_API_KEY.",
             )
 
-    def get_ocr_images(self) -> list[str] | None:
-        return self.ocr_images
+        file_size = document_path.stat().st_size
+        if file_size > _MAX_FILE_SIZE:
+            raise ParseError(
+                f"File too large for the Mistral API: "
+                f"{file_size / (1024 * 1024):.2f}MB (max 50MB)",
+            )
 
-    def is_image(self, mime_type) -> bool:
+        is_image = mime_type in _IMAGE_MIME_TYPES
+        file_base64 = base64.b64encode(document_path.read_bytes()).decode("utf-8")
+        data_uri = (
+            f"data:{mime_type};base64,{file_base64}"
+            if is_image
+            else f"data:application/pdf;base64,{file_base64}"
+        )
+        document = (
+            ImageURLChunk(image_url=data_uri)
+            if is_image
+            else DocumentURLChunk(document_url=data_uri)
+        )
+
+        try:
+            with Mistral(api_key=api_key) as client:
+                return client.ocr.process(
+                    model=self._config.model,
+                    document=document,
+                    include_image_base64=False,
+                )
+        except ParseError:
+            raise
+        except Exception as e:
+            raise ParseError(f"Error calling the Mistral OCR API: {e!s}") from e
+
+    def _combine_markdown(self, ocr_response: OCRResponse) -> str:
+        """Join per-page markdown, stripping inline image references.
+
+        Image references are removed rather than persisted: the document
+        content feeds the search index and the LLM index, where embedded
+        image data would be noise.
         """
-        Check if the mime type is an image
-        """
-        return mime_type in [
-            "image/png",
-            "image/jpeg",
-            "image/tiff",
-            "image/bmp",
-            "image/gif",
-            "image/webp",
+        pages = [
+            _OCR_IMAGE_REF_REGEX.sub("", page.markdown).strip()
+            for page in ocr_response.pages
         ]
+        return "\n\n".join(p for p in pages if p)
 
-    def _make_thumbnail_from_image(self, image_path):
-        """
-        Create a thumbnail from an image file
-        """
-        out_path = self.tempdir / "thumb.webp"
-
+    def _convert_image_to_pdf(self, document_path: Path) -> Path:
+        """Convert an image to a single-page PDF archive via ImageMagick."""
+        pdf_path = self._tempdir / "archive.pdf"
         try:
             run_subprocess(
                 [
                     settings.CONVERT_BINARY,
-                    "-density",
-                    "300",
-                    "-scale",
-                    "500x5000>",
-                    "-alpha",
-                    "remove",
-                    "-strip",
-                    "-auto-orient",
-                    str(image_path),
-                    str(out_path),
+                    str(document_path),
+                    str(pdf_path),
                 ],
-                logger=self.log,
+                logger=logger,
             )
-            return out_path
         except Exception as e:
-            self.log.warning(f"Error creating thumbnail from image: {e}")
-            return Path(self.tempdir) / "default.webp"
-
-    def parse(self, document_path: Path, mime_type: str, file_name=None):
-        """
-        Parse the document using Mistral OCR API
-        """
-        self.log.info(f"Parsing {document_path} with Mistral OCR API")
-
-        # Initialize empty ocr_image_paths list
-        self.ocr_image_paths = []
-
-        ocr_response = self._call_mistral_api(document_path, mime_type)
-
-        # Extract text content from the OCR response
-        self.text, self.ocr_images = self.get_combined_markdown(ocr_response)
-
-        # If date wasn't found in metadata, try to extract it from text
-        if self.text:
-            from documents.parsers import parse_date
-
-            self.date = parse_date(str(document_path), self.text)
-
-        # If document is not a PDF, convert it to PDF for archiving
-        if mime_type != "application/pdf":
-            self.archive_path = self._convert_to_pdf(document_path)
-
-    def _call_mistral_api(self, document_path: Path, mime_type: str) -> OCRResponse:
-        """
-        Call the Mistral OCR API to extract text and metadata from the document
-        """
-
-        api_key = self.settings.api_key
-        if not api_key:
-            raise ParseError(
-                "Mistral API key not configured. Please set PAPERLESS_MISTRAL_API_KEY in environment.",
-            )
-
-        model = self.settings.model
-
-        # Check file size before uploading
-        file_size = Path(document_path).stat().st_size
-        if file_size > 50 * 1024 * 1024:  # 50MB limit
-            raise ParseError(
-                f"File size too large for Mistral API: {file_size / (1024 * 1024):.2f}MB (max 50MB)",
-            )
-
-        try:
-            # Create Mistral client
-            self.log.debug("Initializing Mistral client for OCR processing")
-            client = Mistral(api_key=api_key)
-
-            # Determine if the file is an image or PDF
-            is_image = self.is_image(mime_type)
-
-            # Process the document
-            self.log.debug(f"Calling Mistral OCR API for {document_path}")
-
-            # Read file and encode it as base64
-            with Path(document_path).open("rb") as f:
-                file_content = f.read()
-                file_base64 = base64.b64encode(file_content).decode("utf-8")
-
-            mime_prefix = (
-                "data:image/jpeg;base64,"
-                if is_image
-                else "data:application/pdf;base64,"
-            )
-
-            # Call the appropriate OCR method based on the file type
-            document = (
-                ImageURLChunk(image_url=f"{mime_prefix}{file_base64}")
-                if is_image
-                else DocumentURLChunk(document_url=f"{mime_prefix}{file_base64}")
-            )
-
-            # Call OCR API with base64 encoded content
-            ocr_response = client.ocr.process(
-                model=model,
-                document=document,
-                include_image_base64=True,
-            )
-
-            return ocr_response
-
-        except Exception as e:
-            if isinstance(e, SDKError):
-                raise ParseError(f"Mistral API error: {e!s}")
-            raise ParseError(f"Error calling Mistral OCR API: {e!s}")
-
-    def get_combined_markdown(self, ocr_response: OCRResponse) -> tuple[str, list[str]]:
-        """
-        Combine OCR text and images into a single markdown document.
-        Save images as files instead of embedding them.
-
-        Args:
-            ocr_response: Response from OCR processing containing text and images
-
-        Returns:
-            Tuple of (combined markdown string, list of images in base64 format)
-        """
-        markdowns = []
-        img_index = 0
-
-        ocr_images = []
-
-        # Extract images from each page
-        for page in ocr_response.pages:
-            markdown_str = page.markdown
-
-            # Extract images from the page
-            for img in page.images:
-                if img.image_base64:
-                    ocr_images.append(img.image_base64)
-                    markdown_str = markdown_str.replace(
-                        f"![{img.id}]({img.id})",
-                        f"![{img.id}]([OCR_IMAGE:{img_index}])",
-                    )
-                    img_index += 1
-
-            markdowns.append(markdown_str)
-
-        return "\n\n".join(markdowns), ocr_images
-
-    def _convert_to_pdf(self, document_path: Path) -> Path:
-        """
-        Convert the document to PDF format for archiving
-        """
-        from django.conf import settings
-
-        pdf_path = Path(self.tempdir) / "convert.pdf"
-
-        # If it's an image, use convert/ImageMagick
-        if self.is_image(magic.from_file(document_path, mime=True)):
-            self.log.info(f"Converting image {document_path} to PDF")
-            try:
-                run_subprocess(
-                    [
-                        settings.CONVERT_BINARY,
-                        str(document_path),
-                        str(pdf_path),
-                    ],
-                    logger=self.log,
-                )
-                return pdf_path
-            except Exception as e:
-                raise ParseError(f"Error converting image to PDF: {e}")
-
-        # For other document types, try to use Gotenberg if available
-        try:
-            from django.conf import settings
-            from gotenberg_client import GotenbergClient
-            from gotenberg_client.options import PdfAFormat
-
-            self.log.info(f"Converting {document_path} to PDF using Gotenberg")
-
-            with (
-                GotenbergClient(
-                    host=settings.TIKA_GOTENBERG_ENDPOINT,
-                    timeout=settings.CELERY_TASK_TIME_LIMIT,
-                ) as client,
-                client.libre_office.to_pdf() as route,
-            ):
-                # Set the output format of the resulting PDF
-                if settings.OCR_OUTPUT_TYPE in {"pdfa", "pdfa-2"}:
-                    route.pdf_format(PdfAFormat.A2b)
-                elif settings.OCR_OUTPUT_TYPE == "pdfa-1":
-                    route.pdf_format(PdfAFormat.A2b)  # Fallback
-                elif settings.OCR_OUTPUT_TYPE == "pdfa-3":
-                    route.pdf_format(PdfAFormat.A3b)
-
-                route.convert(document_path)
-
-                try:
-                    response = route.run()
-                    pdf_path.write_bytes(response.content)
-                    return pdf_path
-                except Exception as err:
-                    raise ParseError(f"Error while converting document to PDF: {err}")
-
-        except ImportError:
-            self.log.warning("Gotenberg client not available for PDF conversion")
-        except Exception as e:
-            self.log.warning(f"Error using Gotenberg for conversion: {e}")
-
-        # If we get here, we couldn't convert the document to PDF
-        raise ParseError(f"Could not convert {document_path} to PDF format")
-
-    def get_ocr_image_paths(self) -> list[str]:
-        """
-        Return the list of saved OCR image paths
-        """
-        return self.ocr_image_paths
+            raise ParseError(f"Error converting image to PDF: {e!s}") from e
+        return pdf_path

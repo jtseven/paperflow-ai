@@ -1,18 +1,11 @@
 from django.apps import AppConfig
-from django.conf import settings
-
-from paperless_mistralocr.signals import mistral_ocr_consumer_declaration
+from django.utils.translation import gettext_lazy as _
 
 
 class PaperlessMistralOcrConfig(AppConfig):
     name = "paperless_mistralocr"
+    verbose_name = _("Paperflow Mistral OCR")
 
-    def ready(self):
-        from documents.signals import document_consumer_declaration
-
-        document_consumer_declaration.connect(mistral_ocr_consumer_declaration)
-
-        # Ensure OCR images directory exists
-        settings.OCR_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-
-        AppConfig.ready(self)
+    # The parser ships with the fork and is registered as a built-in in
+    # paperless.parsers.registry.ParserRegistry.register_defaults, so no
+    # signal wiring or app-level registration is required here.

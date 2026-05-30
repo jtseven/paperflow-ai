@@ -78,6 +78,7 @@ class LLMEmbeddingBackend(models.TextChoices):
     OPENAI_LIKE = ("openai-like", _("OpenAI-compatible"))
     HUGGINGFACE = ("huggingface", _("Huggingface"))
     OLLAMA = ("ollama", _("Ollama"))
+    MISTRAL = ("mistral", _("Mistral AI"))
 
 
 class LLMBackend(models.TextChoices):
@@ -87,6 +88,7 @@ class LLMBackend(models.TextChoices):
 
     OPENAI_LIKE = ("openai-like", _("OpenAI-compatible"))
     OLLAMA = ("ollama", _("Ollama"))
+    MISTRAL = ("mistral", _("Mistral AI"))
 
 
 class ApplicationConfiguration(AbstractSingletonModel):

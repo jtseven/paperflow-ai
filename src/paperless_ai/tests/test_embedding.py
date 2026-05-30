@@ -128,6 +128,22 @@ def test_get_embedding_model_huggingface(mock_ai_config):
         assert model == MockHuggingFaceEmbedding.return_value
 
 
+def test_get_embedding_model_mistral(mock_ai_config):
+    mock_ai_config.return_value.llm_embedding_backend = LLMEmbeddingBackend.MISTRAL
+    mock_ai_config.return_value.llm_embedding_model = None
+    mock_ai_config.return_value.llm_api_key = "test-key"
+
+    with patch(
+        "llama_index.embeddings.mistralai.MistralAIEmbedding",
+    ) as MockMistralAIEmbedding:
+        model = get_embedding_model()
+        MockMistralAIEmbedding.assert_called_once_with(
+            model_name="mistral-embed",
+            api_key="test-key",
+        )
+        assert model == MockMistralAIEmbedding.return_value
+
+
 def test_get_embedding_model_ollama(mock_ai_config):
     mock_ai_config.return_value.llm_embedding_backend = LLMEmbeddingBackend.OLLAMA
     mock_ai_config.return_value.llm_embedding_model = "embeddinggemma"

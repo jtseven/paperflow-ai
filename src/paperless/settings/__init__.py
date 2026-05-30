@@ -72,7 +72,6 @@ ORIGINALS_DIR = MEDIA_ROOT / "documents" / "originals"
 ARCHIVE_DIR = MEDIA_ROOT / "documents" / "archive"
 THUMBNAIL_DIR = MEDIA_ROOT / "documents" / "thumbnails"
 SHARE_LINK_BUNDLE_DIR = MEDIA_ROOT / "documents" / "share_link_bundles"
-OCR_IMAGES_DIR = MEDIA_ROOT / "documents" / "ocr_images"
 
 DATA_DIR = get_path_from_env("PAPERLESS_DATA_DIR", BASE_DIR.parent / "data")
 
@@ -189,7 +188,7 @@ MIDDLEWARE = [
 ]
 
 # Insert whitenoise middleware if not disabled via environment variable
-if not __get_boolean("PAPERLESS_DISABLE_WHITENOISE", "NO"):
+if not get_bool_from_env("PAPERLESS_DISABLE_WHITENOISE", "NO"):
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 else:
     # Remove whitenoise from INSTALLED_APPS if disabled

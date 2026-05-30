@@ -1,129 +1,119 @@
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from django.test import TestCase
 
-# Mock the HAS_MISTRAL flag for testing
-with mock.patch("paperless_mistralocr.parsers.HAS_MISTRAL", new=True):
-    from paperless_mistralocr.parsers import MistralOcrDocumentParser
+from paperless_mistralocr.parsers import MistralOcrDocumentParser
+
+
+def _ocr_response(*markdowns: str) -> SimpleNamespace:
+    """Build a minimal stand-in for ``mistralai.models.OCRResponse``."""
+    return SimpleNamespace(
+        pages=[SimpleNamespace(markdown=md) for md in markdowns],
+    )
+
+
+class TestMistralOcrParserScore(TestCase):
+    """``score`` drives whether the parser is visible to the registry."""
+
+    def test_score_none_without_api_key(self):
+        with mock.patch.dict("os.environ", {}, clear=False):
+            import os
+
+            os.environ.pop("PAPERLESS_MISTRAL_API_KEY", None)
+            self.assertIsNone(
+                MistralOcrDocumentParser.score("application/pdf", "a.pdf"),
+            )
+
+    def test_score_none_for_unsupported_mime(self):
+        with mock.patch.dict(
+            "os.environ",
+            {"PAPERLESS_MISTRAL_API_KEY": "key"},
+        ):
+            self.assertIsNone(
+                MistralOcrDocumentParser.score("text/plain", "a.txt"),
+            )
+
+    def test_score_value_when_configured(self):
+        with mock.patch.dict(
+            "os.environ",
+            {"PAPERLESS_MISTRAL_API_KEY": "key"},
+        ):
+            self.assertEqual(
+                MistralOcrDocumentParser.score("application/pdf", "a.pdf"),
+                30,
+            )
+
+    def test_supported_mime_types(self):
+        types = MistralOcrDocumentParser.supported_mime_types()
+        self.assertIn("application/pdf", types)
+        self.assertIn("image/png", types)
 
 
 class TestMistralOcrParser(TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
         self.parser = MistralOcrDocumentParser(None)
-        self.parser.tempdir = Path(self.tempdir.name)
+        self.addCleanup(self.parser.__exit__, None, None, None)
 
-    def tearDown(self):
-        self.tempdir.cleanup()
-
-    @mock.patch(
-        "paperless_mistralocr.parsers.MistralOcrDocumentParser._call_mistral_api",
-    )
-    def test_parse_basic(self, mock_call_api):
-        # Mock the API response
-        mock_call_api.return_value = {
-            "pages": [
-                {
-                    "index": 1,
-                    "markdown": "# Sample Document\n\nThis is a test document.",
-                    "images": [],
-                    "dimensions": {"width": 595, "height": 842, "dpi": 72},
-                },
-            ],
-            "metadata": {"title": "Test Document", "date": "2023-04-15"},
-        }
-
-        # Create a simple test file
-        sample_file = Path(self.tempdir.name) / "sample.txt"
-        with sample_file.open("w") as f:
-            f.write("Sample text")
-
-        # Test parsing with mocked API
-        self.parser.parse(sample_file, "text/plain")
-
-        # Verify results
+    def test_combine_markdown_joins_pages(self):
+        response = _ocr_response("Page 1", "Page 2", "Page 3")
         self.assertEqual(
-            self.parser.text,
+            self.parser._combine_markdown(response),
+            "Page 1\n\nPage 2\n\nPage 3",
+        )
+
+    def test_combine_markdown_empty(self):
+        self.assertEqual(self.parser._combine_markdown(_ocr_response()), "")
+
+    def test_combine_markdown_strips_image_refs(self):
+        response = _ocr_response("Text before ![img-0.png](img-0.png) text after")
+        self.assertEqual(
+            self.parser._combine_markdown(response),
+            "Text before  text after",
+        )
+
+    @mock.patch.object(MistralOcrDocumentParser, "_call_mistral_api")
+    def test_parse_pdf_stores_text(self, mock_call_api):
+        mock_call_api.return_value = _ocr_response(
             "# Sample Document\n\nThis is a test document.",
         )
+
+        sample_file = Path(self.tempdir.name) / "sample.pdf"
+        sample_file.write_bytes(b"%PDF-1.4 fake")
+
+        self.parser.parse(sample_file, "application/pdf")
+
+        self.assertEqual(
+            self.parser.get_text(),
+            "# Sample Document\n\nThis is a test document.",
+        )
+        # PDFs are their own archive copy.
+        self.assertIsNone(self.parser.get_archive_path())
         mock_call_api.assert_called_once()
 
-    @mock.patch("paperless_mistralocr.parsers.Mistral")
-    def test_api_call(self, mock_mistral):
-        # Setup mock response
-        mock_client = mock.MagicMock()
-        mock_mistral.return_value = mock_client
+    def test_call_mistral_api_invokes_client(self):
+        sample_file = Path(self.tempdir.name) / "sample.pdf"
+        sample_file.write_bytes(b"%PDF-1.4 fake")
+        self.parser._config.api_key = "test_api_key"
+        self.parser._config.model = "mistral-ocr-latest"
 
-        mock_ocr = mock.MagicMock()
-        mock_client.ocr = mock_ocr
+        expected = _ocr_response("# Test Document")
 
-        # Setup mock OCR process response
-        mock_process = mock.MagicMock()
-        mock_ocr.process = mock_process
+        with mock.patch("mistralai.client.Mistral") as mock_mistral:
+            client = mock_mistral.return_value.__enter__.return_value
+            client.ocr.process.return_value = expected
 
-        # Define the API response
-        mock_process.return_value = {
-            "pages": [
-                {
-                    "index": 1,
-                    "markdown": "# Test Document\n\nThis is a sample document content.",
-                    "images": [],
-                    "dimensions": {"width": 595, "height": 842, "dpi": 72},
-                },
-            ],
-        }
+            result = self.parser._call_mistral_api(
+                sample_file,
+                "application/pdf",
+            )
 
-        # Setup test environment
-        sample_file = Path(self.tempdir.name) / "sample.txt"
-        with sample_file.open("w") as f:
-            f.write("Sample text")
-
-        # Mock settings
-        with mock.patch(
-            "paperless_mistralocr.parsers.MistralOcrDocumentParser.get_settings",
-        ) as mock_settings:
-            mock_settings.return_value.api_key = "test_api_key"
-            mock_settings.return_value.model = "mistral-ocr-latest"
-
-            # Call the API
-            result = self.parser._call_mistral_api(sample_file, "text/plain")
-
-            # Verify results
-            self.assertIn("pages", result)
-            self.assertEqual(len(result.pages), 1)
-            mock_text = "# Test Document\n\nThis is a sample document content."
-
-            # Use get_combined_markdown instead of direct access
-            extracted_text = self.parser.get_combined_markdown(result)
-            self.assertEqual(extracted_text, mock_text)
-
-            # Verify the Mistral client was called with correct parameters
-            mock_mistral.assert_called_once_with(api_key="test_api_key")
-            mock_process.assert_called_once()
-
-    def test_extract_text_from_ocr_response(self):
-        """Test extracting text from OCR response with multiple pages"""
-        ocr_response = {
-            "pages": [
-                {"markdown": "Page 1 content", "images": []},
-                {"markdown": "Page 2 content", "images": []},
-                {"markdown": "Page 3 content", "images": []},
-            ],
-        }
-
-        result = self.parser.get_combined_markdown(ocr_response)
-        self.assertEqual(result, "Page 1 content\n\nPage 2 content\n\nPage 3 content")
-
-    def test_extract_text_from_ocr_response_empty(self):
-        """Test extracting text from empty OCR response"""
-        empty_response = {"pages": []}
-        self.assertEqual(self.parser.get_combined_markdown(empty_response), "")
-
-        # For None, we'll need to mock to avoid errors
-        with mock.patch(
-            "paperless_mistralocr.parsers.MistralOcrDocumentParser.get_combined_markdown",
-        ) as mock_method:
-            mock_method.return_value = ""
-            self.assertEqual(mock_method(None), "")
+        self.assertIs(result, expected)
+        mock_mistral.assert_called_once_with(api_key="test_api_key")
+        client.ocr.process.assert_called_once()
+        _, kwargs = client.ocr.process.call_args
+        self.assertEqual(kwargs["model"], "mistral-ocr-latest")
