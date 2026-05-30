@@ -73,6 +73,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
 }
 
 @mixin dark-mode {
+  color-scheme: dark;
   --pngx-body-color-accent: #{$text-color-dark-bg-accent};
   --pngx-bg-alt: #242529;
   --pngx-bg-alt2: #232323;
@@ -147,6 +148,15 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
 
   .btn .progress {
     background-color: var(--pngx-body-color-accent);
+  }
+
+  .list-group-item-action:not(.active):active {
+    --bs-list-group-action-active-color: var(--bs-body-color);
+    --bs-list-group-action-active-bg: var(--pngx-bg-darker);
+  }
+
+  .form-control:hover::file-selector-button {
+    background-color:var(--pngx-bg-dark) !important
   }
 
   .search-container {

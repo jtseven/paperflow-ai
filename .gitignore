@@ -1,5 +1,5 @@
-documents/
-scans/
+/documents/
+/scans/
 
 .env
 
@@ -49,6 +49,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.uv-cache
 nosetests.xml
 coverage.xml
 *,cover
@@ -62,7 +63,7 @@ junit.xml
 # Django stuff:
 *.log
 
-# MkDocs documentation
+# Zensical documentation
 site/
 
 # PyBuilder
@@ -86,6 +87,7 @@ virtualenv
 .venv/
 /docker-compose.env
 .ruff_cache/
+.mypy_cache/
 
 # Used for development
 scripts/import-for-development
@@ -119,3 +121,6 @@ celerybeat-schedule*
 # ignore pnpm package store folder created when setting up the devcontainer
 .pnpm-store/
 .env
+
+# Git worktree local folder
+.worktrees

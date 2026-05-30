@@ -18,21 +18,26 @@ from rest_framework.routers import DefaultRouter
 from documents.views import BulkDownloadView
 from documents.views import BulkEditObjectsView
 from documents.views import BulkEditView
-from documents.views import ChatHistoryView
-from documents.views import ClearChatHistoryView
+from documents.views import ChatStreamingView
 from documents.views import CorrespondentViewSet
 from documents.views import CustomFieldViewSet
+from documents.views import DeleteDocumentsView
 from documents.views import DocumentTypeViewSet
+from documents.views import EditPdfDocumentsView
 from documents.views import GlobalSearchView
 from documents.views import IndexView
 from documents.views import LogViewSet
+from documents.views import MergeDocumentsView
 from documents.views import PostDocumentView
-from documents.views import QuestionView
 from documents.views import RemoteVersionView
+from documents.views import RemovePasswordDocumentsView
+from documents.views import ReprocessDocumentsView
+from documents.views import RotateDocumentsView
 from documents.views import SavedViewViewSet
 from documents.views import SearchAutoCompleteView
 from documents.views import SelectionDataView
 from documents.views import SharedLinkView
+from documents.views import ShareLinkBundleViewSet
 from documents.views import ShareLinkViewSet
 from documents.views import StatisticsView
 from documents.views import StoragePathViewSet
@@ -75,6 +80,7 @@ api_router.register(r"users", UserViewSet, basename="users")
 api_router.register(r"groups", GroupViewSet, basename="groups")
 api_router.register(r"mail_accounts", MailAccountViewSet)
 api_router.register(r"mail_rules", MailRuleViewSet)
+api_router.register(r"share_link_bundles", ShareLinkBundleViewSet)
 api_router.register(r"share_links", ShareLinkViewSet)
 api_router.register(r"workflow_triggers", WorkflowTriggerViewSet)
 api_router.register(r"workflow_actions", WorkflowActionViewSet)
@@ -92,7 +98,21 @@ urlpatterns = [
                 re_path(
                     "^auth/",
                     include(
-                        ("rest_framework.urls", "rest_framework"),
+                        (
+                            [
+                                path(
+                                    "login/",
+                                    allauth_account_views.login,
+                                    name="login",
+                                ),
+                                path(
+                                    "logout/",
+                                    allauth_account_views.logout,
+                                    name="logout",
+                                ),
+                            ],
+                            "rest_framework",
+                        ),
                         namespace="rest_framework",
                     ),
                 ),
@@ -133,6 +153,36 @@ urlpatterns = [
                                 name="bulk_edit",
                             ),
                             re_path(
+                                "^delete/",
+                                DeleteDocumentsView.as_view(),
+                                name="delete_documents",
+                            ),
+                            re_path(
+                                "^reprocess/",
+                                ReprocessDocumentsView.as_view(),
+                                name="reprocess_documents",
+                            ),
+                            re_path(
+                                "^rotate/",
+                                RotateDocumentsView.as_view(),
+                                name="rotate_documents",
+                            ),
+                            re_path(
+                                "^merge/",
+                                MergeDocumentsView.as_view(),
+                                name="merge_documents",
+                            ),
+                            re_path(
+                                "^edit_pdf/",
+                                EditPdfDocumentsView.as_view(),
+                                name="edit_pdf_documents",
+                            ),
+                            re_path(
+                                "^remove_password/",
+                                RemovePasswordDocumentsView.as_view(),
+                                name="remove_password_documents",
+                            ),
+                            re_path(
                                 "^bulk_download/",
                                 BulkDownloadView.as_view(),
                                 name="bulk_download",
@@ -142,23 +192,13 @@ urlpatterns = [
                                 SelectionDataView.as_view(),
                                 name="selection_data",
                             ),
+                            re_path(
+                                "^chat/",
+                                ChatStreamingView.as_view(),
+                                name="chat_streaming_view",
+                            ),
                         ],
                     ),
-                ),
-                re_path(
-                    "^question/",
-                    QuestionView.as_view(),
-                    name="question",
-                ),
-                re_path(
-                    "^clear_chat_history/",
-                    ClearChatHistoryView.as_view(),
-                    name="clear_chat_history",
-                ),
-                re_path(
-                    "^chat_history/",
-                    ChatHistoryView.as_view(),
-                    name="chat_history",
                 ),
                 re_path(
                     "^bulk_edit_objects/",
@@ -240,6 +280,7 @@ urlpatterns = [
                         ],
                     ),
                 ),
+                re_path("^auth/headless/", include("allauth.headless.urls")),
                 re_path(
                     "^$",  # Redirect to the API swagger view
                     RedirectView.as_view(url="schema/view/"),
@@ -265,13 +306,6 @@ urlpatterns = [
                     r"^thumb/(?P<pk>\d+)$",
                     RedirectView.as_view(
                         url=settings.BASE_URL + "api/documents/%(pk)s/thumb/",
-                    ),
-                ),
-                re_path(
-                    r"^ocr_image/(?P<pk>\d+)_(?P<img_index>\d+)$",
-                    RedirectView.as_view(
-                        url=settings.BASE_URL
-                        + "api/documents/%(pk)s/ocr_image/%(img_index)s/",
                     ),
                 ),
                 re_path(

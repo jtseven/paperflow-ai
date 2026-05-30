@@ -1,3 +1,7 @@
+import {
+  CdkVirtualScrollViewport,
+  ScrollingModule,
+} from '@angular/cdk/scrolling'
 import { NgClass } from '@angular/common'
 import {
   Component,
@@ -16,9 +20,9 @@ import { Subject, filter, takeUntil } from 'rxjs'
 import { NEGATIVE_NULL_FILTER_VALUE } from 'src/app/data/filter-rule-type'
 import { MatchingModel } from 'src/app/data/matching-model'
 import { ObjectWithPermissions } from 'src/app/data/object-with-permissions'
+import { SelectionDataItem } from 'src/app/data/results'
 import { FilterPipe } from 'src/app/pipes/filter.pipe'
 import { HotKeyService } from 'src/app/services/hot-key.service'
-import { SelectionDataItem } from 'src/app/services/rest/document.service'
 import { pngxPopperOptions } from 'src/app/utils/popper-options'
 import { LoadingComponentWithPermissions } from '../../loading-component/loading.component'
 import { ClearableBadgeComponent } from '../clearable-badge/clearable-badge.component'
@@ -231,6 +235,7 @@ export class FilterableDropdownSelectionModel {
       state == ToggleableItemState.Excluded
     ) {
       this.temporarySelectionStates.delete(id)
+      this.clearDescendantSelections(id)
     }
 
     if (!id) {
@@ -257,6 +262,7 @@ export class FilterableDropdownSelectionModel {
 
       if (this.manyToOne || this.singleSelect) {
         this.temporarySelectionStates.set(id, ToggleableItemState.Excluded)
+        this.clearDescendantSelections(id)
 
         if (this.singleSelect) {
           for (let key of this.temporarySelectionStates.keys()) {
@@ -277,9 +283,15 @@ export class FilterableDropdownSelectionModel {
           newState = ToggleableItemState.NotSelected
         }
         this.temporarySelectionStates.set(id, newState)
+        if (newState == ToggleableItemState.Excluded) {
+          this.clearDescendantSelections(id)
+        }
       }
     } else if (!id || state == ToggleableItemState.Excluded) {
       this.temporarySelectionStates.delete(id)
+      if (id) {
+        this.clearDescendantSelections(id)
+      }
     }
 
     if (fireEvent) {
@@ -289,6 +301,33 @@ export class FilterableDropdownSelectionModel {
 
   private getNonTemporary(id: number) {
     return this.selectionStates.get(id) || ToggleableItemState.NotSelected
+  }
+
+  private clearDescendantSelections(id: number) {
+    for (const descendantID of this.getDescendantIDs(id)) {
+      this.temporarySelectionStates.delete(descendantID)
+    }
+  }
+
+  private getDescendantIDs(id: number): number[] {
+    const descendants: number[] = []
+    const queue: number[] = [id]
+
+    while (queue.length) {
+      const parentID = queue.shift()
+      for (const item of this._items) {
+        if (
+          typeof item?.id === 'number' &&
+          typeof (item as any)['parent'] === 'number' &&
+          (item as any)['parent'] === parentID
+        ) {
+          descendants.push(item.id)
+          queue.push(item.id)
+        }
+      }
+    }
+
+    return descendants
   }
 
   get logicalOperator(): LogicalOperator {
@@ -627,18 +666,27 @@ export class FilterableDropdownSelectionModel {
     NgxBootstrapIconsModule,
     NgbDropdownModule,
     NgClass,
+    ScrollingModule,
   ],
 })
 export class FilterableDropdownComponent
   extends LoadingComponentWithPermissions
   implements OnInit
 {
+  public readonly FILTERABLE_BUTTON_HEIGHT_PX = 42
+
   private filterPipe = inject(FilterPipe)
   private hotkeyService = inject(HotKeyService)
 
   @ViewChild('listFilterTextInput') listFilterTextInput: ElementRef
   @ViewChild('dropdown') dropdown: NgbDropdown
-  @ViewChild('buttonItems') buttonItems: ElementRef
+  @ViewChild('buttonsViewport') buttonsViewport: CdkVirtualScrollViewport
+
+  private get renderedButtons(): Array<HTMLButtonElement> {
+    return Array.from(
+      this.buttonsViewport.elementRef.nativeElement.querySelectorAll('button')
+    )
+  }
 
   public popperOptions = pngxPopperOptions
 
@@ -752,6 +800,14 @@ export class FilterableDropdownComponent
 
   private keyboardIndex: number
 
+  public get scrollViewportHeight(): number {
+    const filteredLength = this.filterPipe.transform(
+      this.items,
+      this.filterText
+    ).length
+    return Math.min(filteredLength * this.FILTERABLE_BUTTON_HEIGHT_PX, 400)
+  }
+
   constructor() {
     super()
     this.selectionModelChange.subscribe((updatedModel) => {
@@ -776,6 +832,10 @@ export class FilterableDropdownComponent
     }
   }
 
+  public trackByItem(index: number, item: MatchingModel) {
+    return item?.id ?? index
+  }
+
   applyClicked() {
     if (this.selectionModel.isDirty()) {
       this.dropdown.close()
@@ -794,6 +854,7 @@ export class FilterableDropdownComponent
     if (open) {
       setTimeout(() => {
         this.listFilterTextInput?.nativeElement.focus()
+        this.buttonsViewport?.checkViewportSize()
       }, 0)
       if (this.editing) {
         this.selectionModel.reset()
@@ -861,12 +922,14 @@ export class FilterableDropdownComponent
             event.preventDefault()
           }
         } else if (event.target instanceof HTMLButtonElement) {
+          this.syncKeyboardIndexFromButton(event.target)
           this.focusNextButtonItem()
           event.preventDefault()
         }
         break
       case 'ArrowUp':
         if (event.target instanceof HTMLButtonElement) {
+          this.syncKeyboardIndexFromButton(event.target)
           if (this.keyboardIndex === 0) {
             this.listFilterTextInput.nativeElement.focus()
           } else {
@@ -903,15 +966,18 @@ export class FilterableDropdownComponent
     if (setFocus) this.setButtonItemFocus()
   }
 
-  setButtonItemFocus() {
-    this.buttonItems.nativeElement.children[
-      this.keyboardIndex
-    ]?.children[0].focus()
+  private syncKeyboardIndexFromButton(button: HTMLButtonElement) {
+    // because of virtual scrolling, re-calculate the index
+    const idx = this.renderedButtons.indexOf(button)
+    if (idx >= 0) {
+      this.keyboardIndex = this.buttonsViewport.getRenderedRange().start + idx
+    }
   }
 
-  setButtonItemIndex(index: number) {
-    // just track the index in case user uses arrows
-    this.keyboardIndex = index
+  setButtonItemFocus() {
+    const offset =
+      this.keyboardIndex - this.buttonsViewport.getRenderedRange().start
+    this.renderedButtons[offset]?.focus()
   }
 
   hideCount(item: ObjectWithPermissions) {
