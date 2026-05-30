@@ -59,21 +59,20 @@ export function parseChatResponse(response: string): ParsedChatResponse {
 export class ChatService {
   private http: HttpClient = inject(HttpClient)
 
-  streamChat(documentId: number, prompt: string): Observable<string> {
+  streamChat(documentId: number | null, prompt: string): Observable<string> {
+    // When no documentId is given the backend runs an agentic chat across all
+    // documents the user may view; with one it answers about that document.
+    const body: { q: string; document_id?: number } = { q: prompt }
+    if (documentId != null) {
+      body.document_id = documentId
+    }
     return this.http
-      .post(
-        `${environment.apiBaseUrl}documents/chat/`,
-        {
-          document_id: documentId,
-          q: prompt,
-        },
-        {
-          observe: 'events',
-          reportProgress: true,
-          responseType: 'text',
-          withCredentials: true,
-        }
-      )
+      .post(`${environment.apiBaseUrl}documents/chat/`, body, {
+        observe: 'events',
+        reportProgress: true,
+        responseType: 'text',
+        withCredentials: true,
+      })
       .pipe(
         map((event) => {
           if (event.type === HttpEventType.DownloadProgress) {

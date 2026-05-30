@@ -1,38 +1,60 @@
 <pngx-widget-frame title="Paperflow AI" i18n-title>
   <ng-container content>
     <div class="chat-container" #chatContainer>
-      <div *ngIf="isLoadingHistory" class="loading-history text-center my-3">
-        <div class="spinner-border spinner-border-sm text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <span class="ms-2">Loading chat history...</span>
-      </div>
-      <div *ngFor="let message of messages" class="chat-message"
-        [ngClass]="{'user-message': message.fromUser, 'bot-message': !message.fromUser}">
+      <div
+        *ngFor="let message of messages"
+        class="chat-message"
+        [ngClass]="{
+          'user-message': message.role === 'user',
+          'bot-message': message.role === 'assistant',
+        }"
+      >
         <div class="message-bubble">
-          <markdown [data]="message.text"></markdown>
+          <markdown [data]="message.content"></markdown>
+          <span *ngIf="message.isStreaming" class="blinking-cursor">|</span>
+          <div
+            *ngIf="message.role === 'assistant' && message.references?.length"
+            class="chat-references list-group mt-2"
+          >
+            <a
+              *ngFor="let reference of message.references"
+              class="list-group-item list-group-item-action text-primary"
+              [routerLink]="['/documents', reference.id]"
+            >
+              <i-bs
+                width="0.9em"
+                height="0.9em"
+                name="file-text"
+                class="me-1"
+              ></i-bs
+              ><span>{{ reference.title }}</span>
+            </a>
+          </div>
         </div>
-      </div>
-      <div *ngIf="showTypingAnimation" class="typing-animation">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
       </div>
     </div>
     <div class="chat-controls">
       <form class="chat-form" (submit)="sendMessage()">
         <div class="input-group">
-          <input type="text" class="form-control" placeholder="Ask me anything" [(ngModel)]="currentMessage"
-            name="message" />
-          <button type="submit" class="btn btn-primary">Send</button>
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Ask me anything"
+            i18n-placeholder
+            [(ngModel)]="input"
+            name="message"
+            [disabled]="loading"
+          />
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="loading"
+            i18n
+          >
+            Send
+          </button>
         </div>
       </form>
-      <div class="chat-actions">
-        <button class="btn btn-sm btn-outline-danger" *ngIf="sessionId" (click)="clearChatHistory()"
-          title="Clear chat history" i18n-title>
-          <i-bs name="trash"></i-bs> Clear History
-        </button>
-      </div>
     </div>
   </ng-container>
 </pngx-widget-frame>

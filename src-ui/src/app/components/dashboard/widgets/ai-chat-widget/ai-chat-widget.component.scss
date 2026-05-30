@@ -79,8 +79,26 @@
   margin-top: 10px;
 }
 
-.typing-animation {
+.blinking-cursor {
+  font-weight: 600;
+  animation: blink 1s step-start infinite;
+}
 
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.chat-references {
+  font-size: 0.85em;
+
+  .list-group-item {
+    padding: 0.35rem 0.5rem;
+  }
+}
+
+.typing-animation {
   margin-bottom: 10px;
   display: flex;
 

@@ -30,7 +30,9 @@
       </div>
       }
 
-      <app-ai-chat-widget></app-ai-chat-widget>
+      <div class="col">
+        <pngx-ai-chat-widget></pngx-ai-chat-widget>
+      </div>
 
       <ng-container *pngxIfPermissions="{ action: PermissionAction.View, type: PermissionType.SavedView }">
         @if (!settingsService.offerTour() && savedViewService.allViews.length === 0) {
