@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
 from typing import NamedTuple
-from typing import cast
 from unicodedata import normalize
 from urllib.parse import quote
 from urllib.parse import urlparse
@@ -100,7 +99,6 @@ from rest_framework.mixins import UpdateModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -240,6 +238,7 @@ from paperless.parsers.registry import get_parser_registry
 from paperless.serialisers import GroupSerializer
 from paperless.serialisers import UserSerializer
 from paperless.views import StandardPagination
+from paperless_ai.agent_chat import stream_agentic_chat
 from paperless_ai.ai_classifier import get_ai_document_classification
 from paperless_ai.chat import stream_chat_with_documents
 from paperless_ai.matching import extract_unmatched_names
@@ -2178,15 +2177,27 @@ class ChatStreamingView(GenericAPIView[Any]):
                 return HttpResponseForbidden("Insufficient permissions")
 
             documents = [document]
+
+            stream = stream_chat_with_documents(
+                query_str=question,
+                documents=documents,
+            )
         else:
+            # Dashboard / all-documents chat: agentic retrieval over everything
+            # the user is allowed to see.
             documents = get_objects_for_user_owner_aware(
                 request.user,
                 "view_document",
                 Document,
             )
 
+            stream = stream_agentic_chat(
+                query_str=question,
+                documents=list(documents),
+            )
+
         response = StreamingHttpResponse(
-            stream_chat_with_documents(query_str=question, documents=documents),
+            stream,
             content_type="text/event-stream",
         )
         return response
@@ -5150,170 +5161,3 @@ def serve_logo(request: HttpRequest, filename: str | None = None) -> FileRespons
         filename=app_logo.name,
         as_attachment=True,
     )
-
-
-class QuestionSerializer(serializers.Serializer):
-    question = serializers.CharField(
-        required=True,
-        help_text="The question to ask the AI assistant",
-    )
-    session_id = serializers.CharField(
-        required=False,
-        help_text="Session ID for tracking conversation history",
-    )
-
-
-class ClearHistorySerializer(serializers.Serializer):
-    session_id = serializers.CharField(
-        required=True,
-        help_text="Session ID for tracking conversation history",
-    )
-
-
-class AnswerResponseSerializer(serializers.Serializer):
-    reply = serializers.CharField(help_text="The answer of the AI assistant")
-    document_ids = serializers.ListField(
-        help_text="The document ids of the documents that are relevant to the question",
-    )
-    session_id = serializers.CharField(
-        help_text="Session ID for tracking conversation history",
-    )
-
-
-@extend_schema(
-    description="Ask a question to the AI assistant",
-    request=QuestionSerializer,
-    responses={200: AnswerResponseSerializer},
-)
-class QuestionView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request, format=None) -> Response:
-        serializer = QuestionSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-
-        # Get validated data
-        validated_data = cast("dict[str, Any]", serializer.validated_data)
-        question = validated_data["question"]
-        session_id = validated_data.get("session_id")
-
-        try:
-            # Process the question using the chat component
-            from documents.ai_chat import process_question
-
-            reply, session_id = process_question(
-                question=question,
-                user_id=request.user.id,
-                session_id=session_id,
-            )
-
-            return Response(
-                {
-                    "reply": reply,
-                    "session_id": session_id,
-                },
-            )
-
-        except Exception as e:
-            logger.error(f"Error in chat view: {e!s}")
-            return Response(
-                {
-                    "reply": "An error occurred while generating the answer",
-                    "document_ids": [],
-                    "session_id": session_id or f"chat_{request.user.id}_error",
-                },
-                status=500,
-            )
-
-
-@extend_schema(
-    description="Clear the chat history for a session",
-    request=ClearHistorySerializer,
-    responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}},
-)
-class ClearChatHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request, format=None) -> Response:
-        serializer = ClearHistorySerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-
-        validated_data = cast("dict[str, Any]", serializer.validated_data)
-        session_id = validated_data["session_id"]
-
-        try:
-            # Use the chat component to clear history
-            from documents.ai_chat import clear_chat_history
-
-            success = clear_chat_history(session_id)
-
-            if success:
-                return Response({"status": "success"})
-            else:
-                return Response(
-                    {"status": "error", "message": "Failed to clear chat history"},
-                    status=500,
-                )
-
-        except Exception as e:
-            logger.error(f"Error in clear chat history view: {e!s}")
-            return Response(
-                {"status": "error", "message": "Failed to clear chat history"},
-                status=500,
-            )
-
-
-class ChatHistorySerializer(serializers.Serializer):
-    session_id = serializers.CharField(
-        required=True,
-        help_text="The session ID to get the chat history for",
-    )
-
-
-@extend_schema(
-    description="Get the chat history for a session",
-    request=ChatHistorySerializer,
-    responses={
-        200: {
-            "type": "object",
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "text": {"type": "string"},
-                            "fromUser": {"type": "boolean"},
-                        },
-                    },
-                },
-            },
-        },
-    },
-)
-class ChatHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request, format=None) -> Response:
-        serializer = ChatHistorySerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
-
-        validated_data = cast("dict[str, Any]", serializer.validated_data)
-        session_id = validated_data["session_id"]
-
-        try:
-            # Use the chat component to get messages
-            from documents.ai_chat import get_chat_messages
-
-            messages = get_chat_messages(session_id)
-            return Response({"messages": messages})
-
-        except Exception as e:
-            logger.error(f"Error in chat history view: {e!s}")
-            return Response(
-                {"status": "error", "message": "Failed to get chat history"},
-                status=500,
-            )
