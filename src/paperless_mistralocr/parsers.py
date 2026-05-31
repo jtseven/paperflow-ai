@@ -75,7 +75,7 @@ class MistralOcrDocumentParser:
     name: str = "Paperflow Mistral OCR Parser"
     version: str = "2.0.0"
     author: str = "Paperflow AI"
-    url: str = "https://github.com/jztheissen/paperflow-ai"
+    url: str = "https://github.com/jtseven/paperflow-ai"
 
     # ------------------------------------------------------------------
     # Class methods
