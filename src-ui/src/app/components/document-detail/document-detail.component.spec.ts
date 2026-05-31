@@ -30,6 +30,7 @@ import {
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { DeviceDetectorService } from 'ngx-device-detector'
+import { provideMarkdown } from 'ngx-markdown'
 import { of, throwError } from 'rxjs'
 import { routes } from 'src/app/app-routing.module'
 import { Correspondent } from 'src/app/data/correspondent'
@@ -275,6 +276,7 @@ describe('DocumentDetailComponent', () => {
         DatePipe,
         provideHttpClient(withInterceptorsFromDi()),
         provideHttpClientTesting(),
+        provideMarkdown(),
       ],
     }).compileComponents()
 
@@ -1185,13 +1187,22 @@ describe('DocumentDetailComponent', () => {
     ])
   })
 
-  it('should detect RTL languages and add css class to content textarea', () => {
+  it('should detect RTL languages and add css class to rendered content', () => {
     initNormally()
     component.metadata = { lang: 'he' }
     component.nav.select(2) // content
     fixture.detectChanges()
     expect(component.isRTL).toBeTruthy()
-    expect(fixture.debugElement.queryAll(By.css('textarea.rtl'))).not.toBeNull()
+    // Default (preview) mode renders the content as markdown with the rtl class
+    expect(
+      fixture.debugElement.queryAll(By.css('markdown.rtl')).length
+    ).toBeGreaterThan(0)
+    // Switching to edit mode shows the raw textarea, also flagged rtl
+    component.contentEditMode = true
+    fixture.detectChanges()
+    expect(
+      fixture.debugElement.queryAll(By.css('textarea.rtl')).length
+    ).toBeGreaterThan(0)
   })
 
   it('should display built-in pdf viewer if not disabled', () => {

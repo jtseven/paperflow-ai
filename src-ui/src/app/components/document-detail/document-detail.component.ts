@@ -21,6 +21,7 @@ import {
 import { dirtyCheck, DirtyComponent } from '@ngneat/dirty-check-forms'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { DeviceDetectorService } from 'ngx-device-detector'
+import { MarkdownModule } from 'ngx-markdown'
 import { BehaviorSubject, Observable, of, Subject, timer } from 'rxjs'
 import {
   catchError,
@@ -189,6 +190,7 @@ interface IncomingDocumentUpdate {
     RouterModule,
     PngxPdfViewerComponent,
     DocumentVersionDropdownComponent,
+    MarkdownModule,
   ],
 })
 export class DocumentDetailComponent
@@ -315,6 +317,10 @@ export class DocumentDetailComponent
 
   DocumentDetailNavIDs = DocumentDetailNavIDs
   activeNavID: number
+
+  // Content tab: show the extracted content rendered as markdown by default,
+  // switch to the raw editable textarea when the user toggles Edit.
+  contentEditMode: boolean = false
 
   titleKeyUp(event) {
     this.titleSubject.next(event.target?.value)

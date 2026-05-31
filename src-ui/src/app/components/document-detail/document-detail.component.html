@@ -286,7 +286,23 @@
           <a ngbNavLink i18n>Content</a>
           <ng-template ngbNavContent>
             <div>
-              <textarea class="form-control" id="content" rows="20" formControlName='content' [class.rtl]="isRTL"></textarea>
+              @if (userCanEdit) {
+                <div class="mb-3 d-flex justify-content-end">
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn" [class.btn-primary]="!contentEditMode" [class.btn-outline-primary]="contentEditMode" (click)="contentEditMode = false">
+                      <i-bs name="eye"></i-bs>&nbsp;<span i18n>Preview</span>
+                    </button>
+                    <button type="button" class="btn" [class.btn-primary]="contentEditMode" [class.btn-outline-primary]="!contentEditMode" (click)="contentEditMode = true">
+                      <i-bs name="pencil"></i-bs>&nbsp;<span i18n>Edit</span>
+                    </button>
+                  </div>
+                </div>
+              }
+              @if (!contentEditMode) {
+                <markdown [data]="documentForm.get('content').value" class="form-control overflow-auto" id="content" [class.rtl]="isRTL"></markdown>
+              } @else if (userCanEdit) {
+                <textarea class="form-control" rows="20" formControlName='content' [class.rtl]="isRTL"></textarea>
+              }
             </div>
           </ng-template>
         </li>
