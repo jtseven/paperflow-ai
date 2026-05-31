@@ -66,6 +66,21 @@ services:
       PAPERLESS_AI_LLM_API_KEY: ${PAPERLESS_AI_LLM_API_KEY:-${PAPERLESS_MISTRAL_API_KEY:-}}
       USERMAP_UID: ${USERMAP_UID:-1000}
       USERMAP_GID: ${USERMAP_GID:-1000}
+  webdav:
+    # WebDAV drop-box mapped onto the consume folder: files uploaded here are
+    # picked up by the Paperless consumer. Reachable on host port 8080.
+    build:
+      context: ./docker/webdav
+    image: paperflow-webdav
+    container_name: paperflow-webdav
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./consume:/dav
+    environment:
+      WEBDAV_USER: ${WEBDAV_USER}
+      WEBDAV_PASSWORD: ${WEBDAV_PASSWORD}
 volumes:
   data:
   media:
