@@ -1,0 +1,221 @@
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.25rem;
+}
+
+.chat-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+  background-color: rgba(109, 109, 109, 0.2);
+  border-radius: var(--bs-border-radius);
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(109, 109, 109, 0.4);
+}
+
+.chat-message {
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-end;
+
+  &.user-message {
+    justify-content: flex-end;
+
+    .message-bubble {
+      background-color: var(--bs-primary);
+      color: #fff;
+      border-top-right-radius: 0;
+    }
+  }
+
+  &.bot-message {
+    justify-content: flex-start;
+    align-items: flex-start;
+
+    .message-bubble {
+      background-color: var(--pngx-bg-alt);
+      color: var(--pngx-text);
+      border-top-left-radius: 0;
+      border: var(--bs-border-width) solid var(--bs-border-color);
+
+      &.error {
+        border-color: var(--bs-danger);
+      }
+    }
+  }
+
+  .message-bubble {
+    max-width: 85%;
+    padding: 10px;
+    position: relative;
+    font-size: 14px;
+    line-height: 1.4;
+    border-radius: 15px;
+
+    .answer :last-child {
+      margin-bottom: 0;
+    }
+
+    // Inline citation links produced from [n] markers.
+    .answer a[href^='/documents/'] {
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+  }
+}
+
+.chat-steps {
+  font-size: 0.8rem;
+  color: var(--bs-secondary);
+  margin-bottom: 0.4rem;
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0;
+  }
+
+  .query {
+    font-style: italic;
+    color: var(--pngx-text);
+  }
+
+  .steps-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--bs-secondary);
+    cursor: pointer;
+  }
+
+  .steps-list {
+    list-style: none;
+    padding-left: 1rem;
+    margin: 0.25rem 0 0;
+
+    li {
+      padding: 0.1rem 0;
+    }
+  }
+}
+
+.typing-animation {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: currentColor;
+    opacity: 0.5;
+    animation: typing 1s infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+@keyframes typing {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.chat-references {
+  font-size: 0.85em;
+
+  .list-group-item {
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .ref-marker {
+    flex: 0 0 auto;
+    min-width: 1.2rem;
+    height: 1.2rem;
+    line-height: 1.2rem;
+    text-align: center;
+    border-radius: 50%;
+    background-color: var(--bs-primary);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+
+  .ref-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.citation-popover {
+  position: absolute;
+  z-index: 1080;
+  max-width: 320px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  background-color: var(--pngx-bg-alt);
+  color: var(--pngx-text);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  box-shadow: var(--bs-box-shadow);
+  pointer-events: none;
+
+  .citation-popover-title {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+  }
+
+  .citation-popover-snippet {
+    color: var(--bs-secondary);
+    font-style: italic;
+  }
+}
+
+.chat-form {
+  margin-top: 10px;
+}

@@ -1,0 +1,156 @@
+<div class="chat-panel">
+  @if (canClear) {
+    <div class="chat-toolbar">
+      <button
+        type="button"
+        class="btn btn-sm btn-link text-muted p-0"
+        (click)="clear()"
+        [disabled]="loading"
+        title="Clear conversation"
+        i18n-title
+      >
+        <i-bs name="trash"></i-bs>&nbsp;<span i18n>Clear</span>
+      </button>
+    </div>
+  }
+  <div class="chat-container" #chatContainer>
+    @for (message of messages; track $index) {
+      <div
+        class="chat-message"
+        [class.user-message]="message.role === 'user'"
+        [class.bot-message]="message.role === 'assistant'"
+      >
+        <div class="message-bubble" [class.error]="message.error">
+          @if (message.role === 'assistant') {
+            <!-- Agent search activity -->
+            @if (message.steps?.length) {
+              @if (showLiveSteps(message)) {
+                <div class="chat-steps live">
+                  @for (step of message.steps; track step.id) {
+                    <div class="step">
+                      @if (step.status === 'running') {
+                        <span
+                          class="spinner-border spinner-border-sm"
+                          role="status"
+                        ></span>
+                        <span i18n>Searching:</span>
+                        <span class="query">{{ step.query }}</span>
+                      } @else {
+                        <i-bs name="search"></i-bs>
+                        <span class="query">{{ step.query }}</span>
+                        <span class="count" i18n
+                          >— {{ step.count }} results</span
+                        >
+                      }
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="chat-steps summary">
+                  <button
+                    type="button"
+                    class="steps-toggle"
+                    (click)="message.stepsExpanded = !message.stepsExpanded"
+                  >
+                    <i-bs
+                      [name]="
+                        message.stepsExpanded ? 'chevron-down' : 'chevron-right'
+                      "
+                    ></i-bs>
+                    <span i18n
+                      >Searched {{ message.steps.length }} time(s)</span
+                    >
+                  </button>
+                  @if (message.stepsExpanded) {
+                    <ul class="steps-list">
+                      @for (step of message.steps; track step.id) {
+                        <li>
+                          <span class="query">{{ step.query }}</span>
+                          <span class="count" i18n>— {{ step.count }} results</span>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+            }
+
+            <!-- Typing indicator before the first token / step -->
+            @if (showTyping(message)) {
+              <div class="typing-animation">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            }
+
+            <!-- Streamed answer with inline citations -->
+            @if (message.content) {
+              <markdown
+                class="answer"
+                [data]="renderAnswer(message)"
+                (click)="onAnswerClick($event)"
+                (mouseover)="onAnswerHover($event, message)"
+                (mouseout)="onAnswerLeave()"
+              ></markdown>
+            }
+
+            <!-- Sources actually cited -->
+            @if (citedReferences(message).length) {
+              <div class="chat-references list-group mt-2">
+                @for (reference of citedReferences(message); track
+                reference.documentId) {
+                  <a
+                    class="list-group-item list-group-item-action"
+                    [routerLink]="['/documents', reference.documentId]"
+                  >
+                    <span class="ref-marker">{{ reference.marker }}</span>
+                    <i-bs name="file-text" class="mx-1"></i-bs>
+                    <span class="ref-title">{{ reference.title }}</span>
+                  </a>
+                }
+              </div>
+            }
+          } @else {
+            {{ message.content }}
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Hover preview card for inline citations -->
+    @if (hoveredCitation) {
+      <div
+        class="citation-popover"
+        [style.top.px]="popoverTop"
+        [style.left.px]="popoverLeft"
+      >
+        <div class="citation-popover-title">
+          <i-bs name="file-text" class="me-1"></i-bs>{{ hoveredCitation.title }}
+        </div>
+        @if (hoveredCitation.snippet) {
+          <div class="citation-popover-snippet">
+            {{ hoveredCitation.snippet }}
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <form class="chat-form" (submit)="$event.preventDefault(); sendMessage()">
+    <div class="input-group">
+      <input
+        type="text"
+        class="form-control"
+        [placeholder]="placeholder"
+        [(ngModel)]="input"
+        name="message"
+        [disabled]="loading"
+        autocomplete="off"
+      />
+      <button type="submit" class="btn btn-primary" [disabled]="loading" i18n>
+        Send
+      </button>
+    </div>
+  </form>
+</div>
