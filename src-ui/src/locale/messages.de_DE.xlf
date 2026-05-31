@@ -12832,6 +12832,38 @@
         </context-group>
         <target state="final">Ende</target>
       </trans-unit>
+      <trans-unit id="6222773067483628526" datatype="html" approved="yes">
+        <source>Clear conversation</source>
+        <target state="final">Unterhaltung löschen</target>
+      </trans-unit>
+      <trans-unit id="8638374809211008328" datatype="html" approved="yes">
+        <source>Searching:</source>
+        <target state="final">Suche:</target>
+      </trans-unit>
+      <trans-unit id="7463082334065325927" datatype="html" approved="yes">
+        <source>— <x id="INTERPOLATION" equiv-text="{{ step.count }}"/> results</source>
+        <target state="final">— <x id="INTERPOLATION" equiv-text="{{ step.count }}"/> Ergebnisse</target>
+      </trans-unit>
+      <trans-unit id="5879789051251740010" datatype="html" approved="yes">
+        <source>Searched <x id="INTERPOLATION" equiv-text="{{ message.steps.length }}"/> time(s)</source>
+        <target state="final"><x id="INTERPOLATION" equiv-text="{{ message.steps.length }}"/>× gesucht</target>
+      </trans-unit>
+      <trans-unit id="7563035552061651664" datatype="html" approved="yes">
+        <source> Send </source>
+        <target state="final"> Senden </target>
+      </trans-unit>
+      <trans-unit id="8665848989206457239" datatype="html" approved="yes">
+        <source>Ask me anything</source>
+        <target state="final">Frag mich etwas</target>
+      </trans-unit>
+      <trans-unit id="7037030863642824214" datatype="html" approved="yes">
+        <source>⚠️ Sorry, there was an error processing your message. Please try again.</source>
+        <target state="final">⚠️ Entschuldigung, bei der Verarbeitung deiner Nachricht ist ein Fehler aufgetreten. Bitte versuche es erneut.</target>
+      </trans-unit>
+      <trans-unit id="6882101471780344768" datatype="html" approved="yes">
+        <source>Hello, I am Paperflow AI and I have access to all of your documents. How can I help you today?</source>
+        <target state="final">Hallo, ich bin Paperflow AI und habe Zugriff auf alle deine Dokumente. Wie kann ich dir heute helfen?</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
