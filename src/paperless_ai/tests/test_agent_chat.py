@@ -6,6 +6,7 @@ from unittest.mock import patch
 from llama_index.core.agent.workflow import AgentStream
 
 from paperless_ai.agent_chat import AGENT_MAX_REFERENCES
+from paperless_ai.agent_chat import CHAT_INDEX_NOT_READY_MESSAGE
 from paperless_ai.agent_chat import _ReferenceRegistry
 from paperless_ai.agent_chat import stream_agentic_chat
 from paperless_ai.chat import CHAT_METADATA_DELIMITER
@@ -110,6 +111,19 @@ class TestStreamAgenticChat:
         trailer = next(c for c in chunks if c.startswith(CHAT_METADATA_DELIMITER))
         payload = json.loads(trailer[len(CHAT_METADATA_DELIMITER) :])
         assert payload == {"references": [{"id": 2, "title": "Receipt"}]}
+
+    def test_missing_index_yields_index_not_ready(self):
+        documents = [_doc(1)]
+        with (
+            patch("paperless_ai.client.AIClient"),
+            patch(
+                "paperless_ai.indexing.load_or_build_index",
+                side_effect=ValueError("No index in storage context"),
+            ),
+        ):
+            chunks = list(stream_agentic_chat("question", documents))
+
+        assert chunks == [CHAT_INDEX_NOT_READY_MESSAGE]
 
     def test_no_text_produced_yields_no_content(self):
         documents = [_doc(1)]

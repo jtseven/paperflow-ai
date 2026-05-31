@@ -37,6 +37,11 @@ logger = logging.getLogger("paperless_ai.agent_chat")
 AGENT_RETRIEVER_TOP_K = 5
 AGENT_MAX_REFERENCES = 10
 
+CHAT_INDEX_NOT_READY_MESSAGE = (
+    "The document index isn't ready yet. It is being built in the background — "
+    "please try again in a few minutes."
+)
+
 AGENT_SYSTEM_PROMPT = """You are a helpful assistant for a document management system.
 Answer the user's question using only information found in the user's documents.
 Always use the `search_documents` tool to look for relevant information before
@@ -131,22 +136,64 @@ def stream_agentic_chat(
 
     Yields text chunks followed by the standard chat-metadata trailer carrying
     the documents the agent actually cited.
+
+    All Django ORM access (``AIClient`` reads the configuration from the
+    database, building the index may query documents) happens **here**, in the
+    synchronous generator, which the streaming view iterates on a worker thread
+    where the ORM is available. Only the agent's event streaming — which talks
+    to the LLM and the in-memory FAISS index, never the ORM — runs inside the
+    private event loop in :func:`_drive_async_stream`. Doing the ORM work inside
+    that loop would trip Django's ``SynchronousOnlyOperation`` guard.
     """
     try:
-        yield from _drive_async_stream(query_str, documents)
+        from llama_index.core.agent.workflow import FunctionAgent
+
+        from paperless_ai.client import AIClient
+        from paperless_ai.indexing import load_or_build_index
+
+        if not documents:
+            yield CHAT_NO_CONTENT_MESSAGE
+            return
+
+        client = AIClient()
+        try:
+            index = load_or_build_index()
+        except ValueError:
+            # No index has been built yet (load_or_build_index queues a build
+            # when storage is empty). Tell the user instead of failing hard.
+            logger.info("Agentic chat requested before the LLM index was built.")
+            yield CHAT_INDEX_NOT_READY_MESSAGE
+            return
+        registry = _ReferenceRegistry(documents)
+        search_tool = _build_search_tool(index, registry)
+
+        agent = FunctionAgent(
+            tools=[search_tool],
+            llm=client.llm,
+            system_prompt=AGENT_SYSTEM_PROMPT,
+        )
+
+        logger.debug("Agentic chat query: %s", query_str)
+
+        yield from _drive_async_stream(agent, query_str, registry)
     except Exception as e:  # pragma: no cover - defensive
         logger.exception("Failed to stream agentic chat response: %s", e)
         yield CHAT_ERROR_MESSAGE
 
 
 def _drive_async_stream(
+    agent,
     query_str: str,
-    documents: list[Document],
+    registry: _ReferenceRegistry,
 ) -> Generator[str, None, None]:
-    """Pump the async streaming generator from a synchronous context."""
+    """Pump the async agent-event stream from a synchronous context.
+
+    Receives an already-constructed ``agent`` so that no Django ORM access
+    happens inside the event loop (see :func:`stream_agentic_chat`).
+    """
     loop = asyncio.new_event_loop()
     try:
-        agen = _astream_agentic_chat(query_str, documents)
+        agen = _astream_agent_events(agent, query_str, registry)
         while True:
             try:
                 chunk = loop.run_until_complete(agen.__anext__())
@@ -158,29 +205,8 @@ def _drive_async_stream(
         loop.close()
 
 
-async def _astream_agentic_chat(query_str: str, documents: list[Document]):
+async def _astream_agent_events(agent, query_str: str, registry: _ReferenceRegistry):
     from llama_index.core.agent.workflow import AgentStream
-    from llama_index.core.agent.workflow import FunctionAgent
-
-    from paperless_ai.client import AIClient
-    from paperless_ai.indexing import load_or_build_index
-
-    if not documents:
-        yield CHAT_NO_CONTENT_MESSAGE
-        return
-
-    client = AIClient()
-    index = load_or_build_index()
-    registry = _ReferenceRegistry(documents)
-    search_tool = _build_search_tool(index, registry)
-
-    agent = FunctionAgent(
-        tools=[search_tool],
-        llm=client.llm,
-        system_prompt=AGENT_SYSTEM_PROMPT,
-    )
-
-    logger.debug("Agentic chat query: %s", query_str)
 
     handler = agent.run(query_str)
     produced_text = False
