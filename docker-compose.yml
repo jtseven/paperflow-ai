@@ -1,3 +1,9 @@
+# Pin the Compose project name so the stack keeps using the existing
+# paperless_* named volumes (data/media/pgdata/redisdata) that hold the live
+# documents and database. Without this, Compose derives the project name from
+# the directory ("paperflow") and would create empty paperflow_* volumes.
+name: paperless
+
 services:
   broker:
     image: docker.io/library/redis:8
@@ -36,6 +42,14 @@ services:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db
       PAPERLESS_URL: ${PAPERLESS_URL:-http://localhost:8010}
+      # Extra origins trusted for CSRF/login beyond PAPERLESS_URL (e.g. a
+      # subdomain wildcard). Comma-separated, scheme included.
+      PAPERLESS_CSRF_TRUSTED_ORIGINS: ${PAPERLESS_CSRF_TRUSTED_ORIGINS:-}
+      # Build absolute URLs from the reverse proxy's forwarded host/scheme so
+      # the app follows whatever hostname the request arrived on.
+      PAPERLESS_USE_X_FORWARD_HOST: ${PAPERLESS_USE_X_FORWARD_HOST:-}
+      PAPERLESS_USE_X_FORWARD_PORT: ${PAPERLESS_USE_X_FORWARD_PORT:-}
+      PAPERLESS_PROXY_SSL_HEADER: ${PAPERLESS_PROXY_SSL_HEADER:-}
       PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
       PAPERLESS_TIME_ZONE: ${PAPERLESS_TIME_ZONE:-UTC}
       PAPERLESS_OCR_LANGUAGE: ${PAPERLESS_OCR_LANGUAGE:-eng}
