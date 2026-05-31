@@ -10,8 +10,15 @@
         }"
       >
         <div class="message-bubble">
-          <markdown [data]="message.content"></markdown>
-          <span *ngIf="message.isStreaming" class="blinking-cursor">|</span>
+          <div
+            *ngIf="message.isStreaming && !message.content"
+            class="typing-animation"
+          >
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <markdown *ngIf="message.content" [data]="message.content"></markdown>
           <div
             *ngIf="message.role === 'assistant' && message.references?.length"
             class="chat-references list-group mt-2"
