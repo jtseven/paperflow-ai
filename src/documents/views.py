@@ -2156,7 +2156,12 @@ class ChatStreamingView(GenericAPIView[Any]):
     serializer_class = ChatStreamingSerializer
 
     def post(self, request, *args, **kwargs):
+        # Exempt the streamed response from the compression middleware: brotli
+        # buffers the whole body (and chokes on our async iterator). The
+        # middleware sees the underlying Django request, not DRF's wrapper, so
+        # set the flag there.
         request.compress_exempt = True
+        getattr(request, "_request", request).compress_exempt = True
         ai_config = AIConfig()
         if not ai_config.ai_enabled:
             return HttpResponseBadRequest("AI is required for this feature")
@@ -2203,7 +2208,7 @@ class ChatStreamingView(GenericAPIView[Any]):
         # Django on its incremental send path so chunks flush as produced.
         response = StreamingHttpResponse(
             aiterate_sync_stream(stream),
-            content_type="text/event-stream",
+            content_type="application/x-ndjson",
         )
         # Keep the response unbuffered end-to-end so chunks reach the browser as
         # they are produced instead of arriving all at once. X-Accel-Buffering

@@ -6,7 +6,6 @@ import pytest
 from llama_index.core.schema import TextNode
 
 from paperless_ai.chat import CHAT_ERROR_MESSAGE
-from paperless_ai.chat import CHAT_METADATA_DELIMITER
 from paperless_ai.chat import _get_document_filtered_retriever
 from paperless_ai.chat import aiterate_sync_stream
 from paperless_ai.chat import stream_chat_with_documents
@@ -50,13 +49,24 @@ def assert_chat_output(
     expected_chunks: list[str],
     expected_references: list[dict[str, int | str]],
 ) -> None:
-    assert output[:-1] == expected_chunks
+    events = [json.loads(line) for line in output]
 
-    trailer = output[-1]
-    assert trailer.startswith(CHAT_METADATA_DELIMITER)
-    assert json.loads(trailer.removeprefix(CHAT_METADATA_DELIMITER)) == {
-        "references": expected_references,
-    }
+    # The stream always terminates with an explicit done event.
+    assert events[-1] == {"type": "done"}
+
+    tokens = [event["text"] for event in events if event["type"] == "token"]
+    assert tokens == expected_chunks
+
+    citations = [event for event in events if event["type"] == "citation"]
+    # Citations are numbered 1..n and carry a non-empty preview snippet.
+    assert [
+        {"marker": c["marker"], "document_id": c["document_id"], "title": c["title"]}
+        for c in citations
+    ] == [
+        {"marker": i + 1, "document_id": ref["id"], "title": ref["title"]}
+        for i, ref in enumerate(expected_references)
+    ]
+    assert all(isinstance(c["snippet"], str) and c["snippet"] for c in citations)
 
 
 def add_vector_query_results(mock_index, nodes: list[TextNode]) -> None:
@@ -273,7 +283,13 @@ def test_stream_chat_no_matching_nodes() -> None:
 
         output = list(stream_chat_with_documents("Any info?", [MagicMock(pk=1)]))
 
-        assert output == ["Sorry, I couldn't find any content to answer your question."]
+        assert [json.loads(line) for line in output] == [
+            {
+                "type": "token",
+                "text": "Sorry, I couldn't find any content to answer your question.",
+            },
+            {"type": "done"},
+        ]
 
 
 def test_stream_chat_unexpected_failure_returns_generic_error(caplog) -> None:
@@ -302,7 +318,9 @@ def test_stream_chat_unexpected_failure_returns_generic_error(caplog) -> None:
 
         output = list(stream_chat_with_documents("Any info?", [MagicMock(pk=1)]))
 
-        assert output == [CHAT_ERROR_MESSAGE]
+        assert [json.loads(line) for line in output] == [
+            {"type": "error", "message": CHAT_ERROR_MESSAGE},
+        ]
         assert "Failed to stream document chat response" in caplog.text
         assert "private provider detail" in caplog.text
 
