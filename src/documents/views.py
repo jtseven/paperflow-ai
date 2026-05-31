@@ -240,6 +240,7 @@ from paperless.serialisers import UserSerializer
 from paperless.views import StandardPagination
 from paperless_ai.agent_chat import stream_agentic_chat
 from paperless_ai.ai_classifier import get_ai_document_classification
+from paperless_ai.chat import aiterate_sync_stream
 from paperless_ai.chat import stream_chat_with_documents
 from paperless_ai.matching import extract_unmatched_names
 from paperless_ai.matching import match_correspondents_by_name
@@ -2196,10 +2197,20 @@ class ChatStreamingView(GenericAPIView[Any]):
                 documents=list(documents),
             )
 
+        # Wrap the synchronous chat generator in an async iterator. Under ASGI,
+        # StreamingHttpResponse buffers a *sync* iterator entirely (it list()s
+        # it before sending), which defeats streaming; an async iterator keeps
+        # Django on its incremental send path so chunks flush as produced.
         response = StreamingHttpResponse(
-            stream,
+            aiterate_sync_stream(stream),
             content_type="text/event-stream",
         )
+        # Keep the response unbuffered end-to-end so chunks reach the browser as
+        # they are produced instead of arriving all at once. X-Accel-Buffering
+        # disables buffering in nginx-style reverse proxies; no-cache stops any
+        # intermediary from holding the body back.
+        response["X-Accel-Buffering"] = "no"
+        response["Cache-Control"] = "no-cache"
         return response
 
 

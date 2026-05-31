@@ -8,6 +8,7 @@ from llama_index.core.schema import TextNode
 from paperless_ai.chat import CHAT_ERROR_MESSAGE
 from paperless_ai.chat import CHAT_METADATA_DELIMITER
 from paperless_ai.chat import _get_document_filtered_retriever
+from paperless_ai.chat import aiterate_sync_stream
 from paperless_ai.chat import stream_chat_with_documents
 
 
@@ -304,3 +305,33 @@ def test_stream_chat_unexpected_failure_returns_generic_error(caplog) -> None:
         assert output == [CHAT_ERROR_MESSAGE]
         assert "Failed to stream document chat response" in caplog.text
         assert "private provider detail" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_aiterate_sync_stream_preserves_order_and_drains():
+    """The async adapter yields every item of a sync generator, in order.
+
+    This is what keeps streaming working under ASGI: handing
+    StreamingHttpResponse an async iterator avoids Django's sync-iterator
+    fallback, which list()s the whole generator before sending anything.
+    """
+
+    def sync_gen():
+        yield "a"
+        yield "b"
+        yield "c"
+
+    collected = [chunk async for chunk in aiterate_sync_stream(sync_gen())]
+
+    assert collected == ["a", "b", "c"]
+
+
+@pytest.mark.asyncio
+async def test_aiterate_sync_stream_handles_empty_generator():
+    def empty_gen():
+        return
+        yield  # pragma: no cover - makes this a generator
+
+    collected = [chunk async for chunk in aiterate_sync_stream(empty_gen())]
+
+    assert collected == []

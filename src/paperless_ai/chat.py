@@ -2,12 +2,37 @@ import json
 import logging
 import sys
 
+from asgiref.sync import sync_to_async
+
 from documents.models import Document
 from paperless_ai.client import AIClient
 from paperless_ai.indexing import get_rag_prompt_helper
 from paperless_ai.indexing import load_or_build_index
 
 logger = logging.getLogger("paperless_ai.chat")
+
+
+async def aiterate_sync_stream(sync_iterable):
+    """Adapt a synchronous generator into an async iterator.
+
+    Under ASGI, ``StreamingHttpResponse.__aiter__`` falls back to ``list()``-ing
+    a *synchronous* ``streaming_content`` before sending anything, which buffers
+    the entire response and defeats token-by-token streaming. Handing the
+    response an *async* iterator keeps Django on its incremental ``async for``
+    path so each chunk is flushed as soon as it is produced.
+
+    Each ``next()`` runs via ``sync_to_async`` (thread-sensitive, so the whole
+    generator runs on a single worker thread throughout), where Django ORM
+    access remains legal — the same reason the underlying chat generators are
+    written synchronously.
+    """
+    sentinel = object()
+    iterator = iter(sync_iterable)
+    while True:
+        item = await sync_to_async(next)(iterator, sentinel)
+        if item is sentinel:
+            break
+        yield item
 
 CHAT_METADATA_DELIMITER = "\n\n__PAPERLESS_CHAT_METADATA__"
 CHAT_ERROR_MESSAGE = "Sorry, something went wrong while generating a response."
