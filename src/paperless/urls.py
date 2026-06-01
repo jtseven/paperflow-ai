@@ -416,6 +416,17 @@ urlpatterns = [
     ),
 ]
 
+# Serve collected static files without auth in debug mode (whitenoise handles
+# this in production; without it the catch-all above blocks /static/ requests
+# before the browser can load login-page CSS).
+if settings.DEBUG:
+    from django.conf.urls.static import static
+
+    urlpatterns = (
+        static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+        + urlpatterns
+    )
+
 
 websocket_urlpatterns = [
     path("ws/status/", StatusConsumer.as_asgi()),

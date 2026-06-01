@@ -1,65 +1,43 @@
 # Development Setup
 
-This guide explains how to set up the application for development with live reloading for frontend changes.
-
-## Frontend Development with Hot Reloading
-
-The Docker Compose configuration has been set up to support frontend development with hot reloading. This allows you to make changes to the frontend code and see them immediately without having to rebuild the Docker image.
-
-### Getting Started
-
-1. Start the full stack with the development configuration:
+## Quick start
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-2. The frontend development server will be available at http://localhost:4200
+This automatically applies `docker-compose.override.yml`, which adds:
 
-3. The main application will be available at http://localhost:8000, but will load the frontend from the development server.
+| Service | URL | Notes |
+|---|---|---|
+| Angular dev server (HMR) | http://localhost:4200 | Frontend with live reload |
+| Django / granian (API + WS) | http://localhost:8000 | Backend in debug mode |
 
-### Making Changes
+The first start takes a few extra minutes while pnpm installs frontend dependencies into an isolated Docker volume (`frontend_nm`).
 
-Any changes you make to files in the `src-ui` directory will be automatically detected by the Angular development server, and the browser will reload to reflect your changes.
+## Live reload behaviour
 
-### Technical Implementation
+**Frontend** — Angular HMR is on by default. Any change to `src-ui/` is reflected in the browser within seconds.
 
-The development setup includes:
-
-- A dedicated Node.js container running the Angular development server
-- Volume mounts for the `src` and `src-ui` directories
-- An environment variable to configure Django to use the external development server
-- Disabling the whitenoise middleware to prevent static file errors
-- Enabling Django's debug mode to allow CORS requests from the development server
-
-### Troubleshooting
-
-If you encounter errors related to static files like:
-
-```
-FileNotFoundError: [Errno 2] No such file or directory: '/usr/src/paperless/static/frontend/ko-KR/favicon.ico'
-```
-
-Make sure the `PAPERLESS_DISABLE_WHITENOISE` environment variable is set to `1` in your docker-compose.override.yml file.
-
-If you encounter CORS errors in the browser console like:
-
-```
-Access to XMLHttpRequest at 'http://localhost:8000/api/...' from origin 'http://localhost:4200' has been blocked by CORS policy
-```
-
-Make sure the `PAPERLESS_DEBUG` environment variable is set to `yes` in your docker-compose.override.yml file. This enables Django's debug mode, which allows CORS requests from the frontend development server.
-
-### Notes
-
-- The `docker-compose.override.yml` file contains the development-specific configuration. If you want to run in production mode, you can use:
+**Backend** — `src/` is mounted into the container and granian runs with `--reload` (via `GRANIAN_RELOAD=true`). Python changes trigger an automatic server restart. For changes that require a migration, run:
 
 ```bash
-docker-compose -f docker-compose.yml up -d
+docker compose exec webserver python manage.py migrate
 ```
 
-- For backend changes, you may need to restart the webserver service:
+## Resetting the frontend node_modules volume
+
+If you hit strange pnpm/node errors after a lockfile update:
 
 ```bash
-docker-compose restart webserver
+docker volume rm paperless_frontend_nm
+docker compose up -d
+```
+
+## Running production mode locally
+
+Pass only the base file to skip the override:
+
+```bash
+docker compose -f docker-compose.yml up -d
 ```
