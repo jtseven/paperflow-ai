@@ -161,7 +161,8 @@ def get_bool_from_env(key: str, default: str = "NO") -> bool:
     Return a boolean value based on whatever the user has supplied in the
     environment based on whether the value "looks like" it's True or not.
     """
-    return str_to_bool(os.getenv(key, default))
+    # os.getenv returns "" when the var is set but empty; fall back to default
+    return str_to_bool(os.getenv(key, default) or default)
 
 
 @overload
