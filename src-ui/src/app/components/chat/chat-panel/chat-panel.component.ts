@@ -54,6 +54,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
   @Input() placeholder: string = $localize`Ask me anything`
 
   @ViewChild('chatContainer') chatContainer!: ElementRef<HTMLDivElement>
+  @ViewChild('chatInput') chatInput!: ElementRef<HTMLInputElement>
 
   public messages: ChatMessage[] = []
   public input = ''
@@ -125,6 +126,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
 
     this.messages.push({ role: 'user', content: prompt })
     this.input = ''
+    this.focusInput()
 
     const assistantMessage: ChatMessage = {
       role: 'assistant',
@@ -155,6 +157,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
           this.persist()
           this.render()
           this.scrollToBottom()
+          this.focusInput()
         },
         complete: () => {
           assistantMessage.isStreaming = false
@@ -162,6 +165,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
           this.persist()
           this.render()
           this.scrollToBottom()
+          this.focusInput()
         },
       })
   }
@@ -319,6 +323,15 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   private scrollOffset(): number {
     return this.chatContainer?.nativeElement.scrollTop ?? 0
+  }
+
+  /**
+   * Keep the cursor in the input so the user can keep replying without having
+   * to click back into the box after each answer. Deferred a tick so it runs
+   * after the view (re-)renders.
+   */
+  private focusInput(): void {
+    setTimeout(() => this.chatInput?.nativeElement.focus())
   }
 
   private scrollToBottom(): void {
