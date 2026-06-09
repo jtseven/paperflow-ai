@@ -41,6 +41,7 @@ services:
     environment:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db
+      PAPERLESS_DBPASS: ${PAPERLESS_DB_PASSWORD}
       PAPERLESS_URL: ${PAPERLESS_URL:-http://localhost:8010}
       # Extra origins trusted for CSRF/login beyond PAPERLESS_URL (e.g. a
       # subdomain wildcard). Comma-separated, scheme included.
