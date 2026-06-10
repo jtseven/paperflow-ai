@@ -10,7 +10,8 @@ import {
 } from '@angular/core'
 import { Meta } from '@angular/platform-browser'
 import { CookieService } from 'ngx-cookie-service'
-import { catchError, first, Observable, of, tap } from 'rxjs'
+import { HttpErrorResponse } from '@angular/common/http'
+import { catchError, EMPTY, first, Observable, of, tap } from 'rxjs'
 import {
   BRIGHTNESS,
   estimateBrightnessForColor,
@@ -342,6 +343,14 @@ export class SettingsService {
     return this.http.get<UiSettings>(this.baseUrl).pipe(
       first(),
       catchError((error) => {
+        if (
+          error instanceof HttpErrorResponse &&
+          (error.status === 401 || error.status === 403)
+        ) {
+          // Not authenticated — go to the login page
+          window.location.href = '/accounts/login/'
+          return EMPTY
+        }
         setTimeout(() => {
           this.toastService.showError('Error loading settings', error)
         }, 500)

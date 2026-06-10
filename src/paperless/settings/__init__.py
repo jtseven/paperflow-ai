@@ -180,8 +180,8 @@ MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "paperless.middleware.ApiVersionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "paperless.middleware.ApiVersionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -474,7 +474,7 @@ USE_X_FORWARDED_HOST = get_bool_from_env("PAPERLESS_USE_X_FORWARD_HOST", "false"
 USE_X_FORWARDED_PORT = get_bool_from_env("PAPERLESS_USE_X_FORWARD_PORT", "false")
 SECURE_PROXY_SSL_HEADER = (
     tuple(json.loads(os.environ["PAPERLESS_PROXY_SSL_HEADER"]))
-    if "PAPERLESS_PROXY_SSL_HEADER" in os.environ
+    if os.getenv("PAPERLESS_PROXY_SSL_HEADER")  # empty string treated as unset
     else None
 )
 
