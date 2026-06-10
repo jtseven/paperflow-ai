@@ -113,11 +113,15 @@ def _rewrite_request_to_pinned_ip(
     new_headers["Host"] = host_header
     new_url = request.url.copy_with(host=formatted_ip)
 
+    # Attach the original stream as-is rather than re-encoding it via
+    # ``content=``: httpx would wrap it in a sync-only IteratorByteStream,
+    # which breaks requests sent through the *async* transport (its
+    # ``handle_async_request`` asserts the stream is an AsyncByteStream).
     rewritten_request = httpx.Request(
         method=request.method,
         url=new_url,
         headers=new_headers,
-        content=request.stream,
+        stream=request.stream,
         extensions=request.extensions,
     )
     rewritten_request.extensions["sni_hostname"] = hostname

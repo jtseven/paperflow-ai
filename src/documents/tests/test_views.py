@@ -25,6 +25,7 @@ from documents.models import DocumentType
 from documents.models import ShareLink
 from documents.models import StoragePath
 from documents.models import Tag
+from documents.models import UiSettings
 from documents.signals.handlers import update_llm_suggestions_cache
 from documents.tests.utils import DirectoriesMixin
 from documents.tests.utils import read_streaming_response
@@ -319,6 +320,10 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), {"tags": ["tag1", "tag2"]})
+        mock_get_cache.assert_called_once_with(
+            self.document.pk,
+            backend="mock_backend",
+        )
         mock_refresh_cache.assert_called_once_with(self.document.pk)
 
     @patch("documents.views.get_ai_document_classification")
@@ -358,6 +363,88 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
                 "suggested_storage_paths": [],
                 "dates": ["2023-01-01"],
             },
+        )
+        mock_get_ai_classification.assert_called_once_with(
+            self.document,
+            self.user,
+            None,
+        )
+
+    @patch("documents.views.get_ai_document_classification")
+    @override_settings(
+        AI_ENABLED=True,
+        LLM_BACKEND="mock_backend",
+    )
+    def test_ai_suggestions_uses_user_display_language(
+        self,
+        mock_get_ai_classification,
+    ) -> None:
+        UiSettings.objects.create(user=self.user, settings={"language": "de-de"})
+        mock_get_ai_classification.return_value = {
+            "title": "KI Title",
+            "tags": [],
+            "correspondents": [],
+            "document_types": [],
+            "storage_paths": [],
+            "dates": [],
+        }
+
+        self.client.force_login(user=self.user)
+        response = self.client.get(
+            f"/api/documents/{self.document.pk}/ai_suggestions/",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_get_ai_classification.assert_called_once_with(
+            self.document,
+            self.user,
+            "de-de",
+        )
+        self.assertEqual(
+            get_llm_suggestion_cache(
+                self.document.pk,
+                backend="mock_backend:de-de",
+            ).suggestions["title"],
+            "KI Title",
+        )
+
+    @patch("documents.views.get_ai_document_classification")
+    @override_settings(
+        AI_ENABLED=True,
+        LLM_BACKEND="mock_backend",
+        LLM_OUTPUT_LANGUAGE="fr-fr",
+    )
+    def test_ai_suggestions_configured_language_takes_precedence(
+        self,
+        mock_get_ai_classification,
+    ) -> None:
+        UiSettings.objects.create(user=self.user, settings={"language": "de-de"})
+        mock_get_ai_classification.return_value = {
+            "title": "Titre IA",
+            "tags": [],
+            "correspondents": [],
+            "document_types": [],
+            "storage_paths": [],
+            "dates": [],
+        }
+
+        self.client.force_login(user=self.user)
+        response = self.client.get(
+            f"/api/documents/{self.document.pk}/ai_suggestions/",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_get_ai_classification.assert_called_once_with(
+            self.document,
+            self.user,
+            "fr-fr",
+        )
+        self.assertEqual(
+            get_llm_suggestion_cache(
+                self.document.pk,
+                backend="mock_backend:fr-fr",
+            ).suggestions["title"],
+            "Titre IA",
         )
 
     @patch("documents.views.get_ai_document_classification")
@@ -467,7 +554,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertEqual(response["Content-Type"], "application/x-ndjson")
         mock_stream_agentic.assert_called_once()
 
     @patch("documents.views.stream_chat_with_documents")
@@ -481,7 +568,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertEqual(response["Content-Type"], "application/x-ndjson")
 
     @override_settings(AI_ENABLED=True)
     def test_post_with_invalid_document_id(self) -> None:

@@ -78,7 +78,6 @@ class LLMEmbeddingBackend(models.TextChoices):
     OPENAI_LIKE = ("openai-like", _("OpenAI-compatible"))
     HUGGINGFACE = ("huggingface", _("Huggingface"))
     OLLAMA = ("ollama", _("Ollama"))
-    MISTRAL = ("mistral", _("Mistral AI"))
 
 
 class LLMBackend(models.TextChoices):
@@ -88,7 +87,6 @@ class LLMBackend(models.TextChoices):
 
     OPENAI_LIKE = ("openai-like", _("OpenAI-compatible"))
     OLLAMA = ("ollama", _("Ollama"))
-    MISTRAL = ("mistral", _("Mistral AI"))
 
 
 class ApplicationConfiguration(AbstractSingletonModel):
@@ -320,6 +318,18 @@ class ApplicationConfiguration(AbstractSingletonModel):
         max_length=256,
     )
 
+    llm_embedding_chunk_size = models.PositiveSmallIntegerField(
+        verbose_name=_("Sets the LLM embedding chunk size"),
+        null=True,
+        validators=[MinValueValidator(1)],
+    )
+
+    llm_context_size = models.PositiveIntegerField(
+        verbose_name=_("Sets the LLM context size"),
+        null=True,
+        validators=[MinValueValidator(1)],
+    )
+
     llm_backend = models.CharField(
         verbose_name=_("Sets the LLM backend"),
         blank=True,
@@ -347,6 +357,13 @@ class ApplicationConfiguration(AbstractSingletonModel):
         blank=True,
         null=True,
         max_length=256,
+    )
+
+    llm_output_language = models.CharField(
+        verbose_name=_("Sets the LLM output language"),
+        blank=True,
+        null=True,
+        max_length=32,
     )
 
     class Meta:

@@ -97,6 +97,7 @@ MODEL_FILE = get_path_from_env(
     DATA_DIR / "classification_model.pickle",
 )
 LLM_INDEX_DIR = DATA_DIR / "llm_index"
+LLM_INDEX_LOCK = LLM_INDEX_DIR / "index.lock"
 
 LOGGING_DIR = get_path_from_env("PAPERLESS_LOGGING_DIR", DATA_DIR / "log")
 
@@ -650,6 +651,7 @@ LOGGING = {
         "kombu": {"handlers": ["file_celery"], "level": "DEBUG"},
         "_granian": {"handlers": ["file_paperless"], "level": "DEBUG"},
         "granian.access": {"handlers": ["file_paperless"], "level": "DEBUG"},
+        "httpx": {"level": "WARNING"},
     },
 }
 
@@ -1190,17 +1192,29 @@ REMOTE_OCR_ENDPOINT = os.getenv("PAPERLESS_REMOTE_OCR_ENDPOINT")
 # AI Settings                                                                  #
 ################################################################################
 AI_ENABLED = get_bool_from_env("PAPERLESS_AI_ENABLED", "NO")
-LLM_EMBEDDING_BACKEND = os.getenv(
+LLM_EMBEDDING_BACKEND = get_choice_from_env(
     "PAPERLESS_AI_LLM_EMBEDDING_BACKEND",
-)  # "huggingface", "openai-like", "ollama", or "mistral"
+    {"huggingface", "openai-like", "ollama"},
+)
 LLM_EMBEDDING_MODEL = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_MODEL")
 LLM_EMBEDDING_ENDPOINT = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT")
-LLM_BACKEND = os.getenv(
+LLM_EMBEDDING_CHUNK_SIZE = get_int_from_env(
+    "PAPERLESS_AI_LLM_EMBEDDING_CHUNK_SIZE",
+    1024,
+)
+if LLM_EMBEDDING_CHUNK_SIZE < 1:
+    raise ImproperlyConfigured("PAPERLESS_AI_LLM_EMBEDDING_CHUNK_SIZE must be >= 1")
+LLM_CONTEXT_SIZE = get_int_from_env("PAPERLESS_AI_LLM_CONTEXT_SIZE", 8192)
+if LLM_CONTEXT_SIZE < 1:
+    raise ImproperlyConfigured("PAPERLESS_AI_LLM_CONTEXT_SIZE must be >= 1")
+LLM_BACKEND = get_choice_from_env(
     "PAPERLESS_AI_LLM_BACKEND",
-)  # "ollama", "openai-like", or "mistral"
+    {"ollama", "openai-like"},
+)
 LLM_MODEL = os.getenv("PAPERLESS_AI_LLM_MODEL")
 LLM_API_KEY = os.getenv("PAPERLESS_AI_LLM_API_KEY")
 LLM_ENDPOINT = os.getenv("PAPERLESS_AI_LLM_ENDPOINT")
+LLM_OUTPUT_LANGUAGE = os.getenv("PAPERLESS_AI_LLM_OUTPUT_LANGUAGE")
 LLM_ALLOW_INTERNAL_ENDPOINTS = get_bool_from_env(
     "PAPERLESS_AI_LLM_ALLOW_INTERNAL_ENDPOINTS",
     "true",

@@ -310,6 +310,20 @@ export const PaperlessConfigOptions: ConfigOption[] = [
     category: ConfigCategory.AI,
   },
   {
+    key: 'llm_embedding_chunk_size',
+    title: $localize`LLM Embedding Chunk Size`,
+    type: ConfigOptionType.Number,
+    config_key: 'PAPERLESS_AI_LLM_EMBEDDING_CHUNK_SIZE',
+    category: ConfigCategory.AI,
+  },
+  {
+    key: 'llm_context_size',
+    title: $localize`LLM Context Size`,
+    type: ConfigOptionType.Number,
+    config_key: 'PAPERLESS_AI_LLM_CONTEXT_SIZE',
+    category: ConfigCategory.AI,
+  },
+  {
     key: 'llm_backend',
     title: $localize`LLM Backend`,
     type: ConfigOptionType.Select,
@@ -337,6 +351,14 @@ export const PaperlessConfigOptions: ConfigOption[] = [
     type: ConfigOptionType.String,
     config_key: 'PAPERLESS_AI_LLM_ENDPOINT',
     category: ConfigCategory.AI,
+  },
+  {
+    key: 'llm_output_language',
+    title: $localize`LLM Output Language`,
+    type: ConfigOptionType.String,
+    config_key: 'PAPERLESS_AI_LLM_OUTPUT_LANGUAGE',
+    category: ConfigCategory.AI,
+    note: $localize`Language to use for generated AI suggestions. When unset, AI suggestions use the user's display language if explicitly set.`,
   },
 ]
 
@@ -372,8 +394,11 @@ export interface PaperlessConfig extends ObjectWithId {
   llm_embedding_backend: string
   llm_embedding_model: string
   llm_embedding_endpoint: string
+  llm_embedding_chunk_size: number
+  llm_context_size: number
   llm_backend: string
   llm_model: string
   llm_api_key: string
   llm_endpoint: string
+  llm_output_language: string
 }

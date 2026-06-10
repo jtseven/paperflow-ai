@@ -48,3 +48,46 @@ def test_pinned_host_transport_rewrites_to_vetted_ip():
         response = transport.handle_request(request)
 
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_pinned_async_transport_preserves_async_stream():
+    """The rewritten request must keep its original (async-capable) stream.
+
+    Re-encoding ``request.stream`` through ``content=`` wraps it in a sync-only
+    IteratorByteStream, and ``AsyncHTTPTransport.handle_async_request`` asserts
+    the stream is an AsyncByteStream — breaking every async client built on the
+    pinned transport (e.g. streamed LLM chat).
+    """
+    from httpx._types import AsyncByteStream
+
+    from paperless.network import PinnedHostAsyncHTTPTransport
+
+    transport = PinnedHostAsyncHTTPTransport(allow_internal=False)
+    request = httpx.AsyncClient().build_request(
+        "POST",
+        "https://example.com/v1/chat/completions",
+        json={"q": "hello"},
+    )
+
+    async def assert_rewritten_request(self, rewritten_request):
+        assert isinstance(rewritten_request.stream, AsyncByteStream)
+        body = b"".join([part async for part in rewritten_request.stream])
+        assert body == b'{"q":"hello"}'
+        return httpx.Response(200, request=rewritten_request)
+
+    with (
+        mock.patch(
+            "paperless.network.resolve_hostname_ips",
+            return_value=["93.184.216.34"],
+        ),
+        mock.patch.object(
+            httpx.AsyncHTTPTransport,
+            "handle_async_request",
+            autospec=True,
+            side_effect=assert_rewritten_request,
+        ),
+    ):
+        response = await transport.handle_async_request(request)
+
+    assert response.status_code == 200

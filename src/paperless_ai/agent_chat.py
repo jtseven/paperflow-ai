@@ -27,7 +27,6 @@ from paperless_ai.chat import EVENT_CITATION
 from paperless_ai.chat import EVENT_TOOL_CALL
 from paperless_ai.chat import EVENT_TOOL_RESULT
 from paperless_ai.chat import _build_document_reference
-from paperless_ai.chat import _get_document_filtered_retriever
 from paperless_ai.chat import chat_event
 from paperless_ai.chat import done_event
 from paperless_ai.chat import error_event
@@ -118,13 +117,15 @@ class _ReferenceRegistry:
 
 
 def _build_search_tool(index, registry: _ReferenceRegistry):
+    from llama_index.core.retrievers import VectorIndexRetriever
     from llama_index.core.tools import FunctionTool
 
-    doc_ids = set(registry._allowed.keys())
-    retriever = _get_document_filtered_retriever(
-        index,
-        doc_ids,
-        AGENT_RETRIEVER_TOP_K,
+    from paperless_ai.indexing import _document_id_filters
+
+    retriever = VectorIndexRetriever(
+        index=index,
+        similarity_top_k=AGENT_RETRIEVER_TOP_K,
+        filters=_document_id_filters(registry._allowed.keys()),
     )
 
     def search_documents(query: str) -> str:
@@ -190,15 +191,17 @@ def stream_agentic_chat(
     database, building the index may query documents) happens **here**, in the
     synchronous generator, which the streaming view iterates on a worker thread
     where the ORM is available. Only the agent's event streaming — which talks
-    to the LLM and the in-memory FAISS index, never the ORM — runs inside the
-    private event loop in :func:`_drive_async_stream`. Doing the ORM work inside
-    that loop would trip Django's ``SynchronousOnlyOperation`` guard.
+    to the LLM and the memory-mapped LanceDB table, never the ORM — runs inside
+    the private event loop in :func:`_drive_async_stream`. Doing the ORM work
+    inside that loop would trip Django's ``SynchronousOnlyOperation`` guard.
     """
     try:
         from llama_index.core.agent.workflow import FunctionAgent
 
         from paperless_ai.client import AIClient
+        from paperless_ai.indexing import llm_index_exists
         from paperless_ai.indexing import load_or_build_index
+        from paperless_ai.indexing import queue_llm_index_update_if_needed
 
         if not documents:
             yield token_event(CHAT_NO_CONTENT_MESSAGE)
@@ -206,15 +209,18 @@ def stream_agentic_chat(
             return
 
         client = AIClient()
-        try:
-            index = load_or_build_index()
-        except ValueError:
-            # No index has been built yet (load_or_build_index queues a build
-            # when storage is empty). Tell the user instead of failing hard.
+        if not llm_index_exists():
+            # No index has been built yet. Queue a build and tell the user
+            # instead of letting every search come back empty.
             logger.info("Agentic chat requested before the LLM index was built.")
+            queue_llm_index_update_if_needed(
+                rebuild=True,
+                reason="Agentic chat requested before the LLM index was built",
+            )
             yield token_event(CHAT_INDEX_NOT_READY_MESSAGE)
             yield done_event()
             return
+        index = load_or_build_index(client.settings)
         registry = _ReferenceRegistry(documents)
         search_tool = _build_search_tool(index, registry)
 

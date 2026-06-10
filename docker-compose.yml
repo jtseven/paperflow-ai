@@ -57,13 +57,16 @@ services:
       # Mistral OCR parser (falls back to Tesseract when no key is set)
       PAPERLESS_MISTRAL_API_KEY: ${PAPERLESS_MISTRAL_API_KEY:-}
       PAPERLESS_MISTRAL_MODEL: ${PAPERLESS_MISTRAL_MODEL:-mistral-ocr-latest}
-      # AI suite (llama-index): embeddings index + agentic chat.
+      # AI suite (llama-index): embeddings index + agentic chat. Talks to
+      # Mistral through its OpenAI-compatible API via the openai-like backend.
       # Set PAPERLESS_AI_LLM_API_KEY to your Mistral key to enable.
       PAPERLESS_AI_ENABLED: ${PAPERLESS_AI_ENABLED:-true}
-      PAPERLESS_AI_LLM_EMBEDDING_BACKEND: ${PAPERLESS_AI_LLM_EMBEDDING_BACKEND:-mistral}
+      PAPERLESS_AI_LLM_EMBEDDING_BACKEND: ${PAPERLESS_AI_LLM_EMBEDDING_BACKEND:-openai-like}
       PAPERLESS_AI_LLM_EMBEDDING_MODEL: ${PAPERLESS_AI_LLM_EMBEDDING_MODEL:-mistral-embed}
-      PAPERLESS_AI_LLM_BACKEND: ${PAPERLESS_AI_LLM_BACKEND:-mistral}
+      PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT: ${PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT:-https://api.mistral.ai/v1}
+      PAPERLESS_AI_LLM_BACKEND: ${PAPERLESS_AI_LLM_BACKEND:-openai-like}
       PAPERLESS_AI_LLM_MODEL: ${PAPERLESS_AI_LLM_MODEL:-mistral-large-latest}
+      PAPERLESS_AI_LLM_ENDPOINT: ${PAPERLESS_AI_LLM_ENDPOINT:-https://api.mistral.ai/v1}
       PAPERLESS_AI_LLM_API_KEY: ${PAPERLESS_AI_LLM_API_KEY:-${PAPERLESS_MISTRAL_API_KEY:-}}
       USERMAP_UID: ${USERMAP_UID:-1000}
       USERMAP_GID: ${USERMAP_GID:-1000}

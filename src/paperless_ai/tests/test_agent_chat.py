@@ -105,6 +105,7 @@ class TestStreamAgenticChat:
 
         with (
             patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
@@ -170,6 +171,7 @@ class TestStreamAgenticChat:
 
         with (
             patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
@@ -199,14 +201,14 @@ class TestStreamAgenticChat:
         assert events[1]["documents"] == [{"id": 5, "title": "Lease", "marker": 1}]
         assert events[2]["document_id"] == 5
 
-    def test_missing_index_yields_index_not_ready(self):
+    def test_missing_index_yields_index_not_ready_and_queues_build(self):
         documents = [_doc(1)]
         with (
             patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=False),
             patch(
-                "paperless_ai.indexing.load_or_build_index",
-                side_effect=ValueError("No index in storage context"),
-            ),
+                "paperless_ai.indexing.queue_llm_index_update_if_needed",
+            ) as mock_queue,
         ):
             events = _events(list(stream_agentic_chat("question", documents)))
 
@@ -214,6 +216,7 @@ class TestStreamAgenticChat:
             {"type": "token", "text": CHAT_INDEX_NOT_READY_MESSAGE},
             {"type": "done"},
         ]
+        mock_queue.assert_called_once()
 
     def test_no_text_produced_yields_no_content(self):
         documents = [_doc(1)]
@@ -222,6 +225,7 @@ class TestStreamAgenticChat:
 
         with (
             patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
             patch("paperless_ai.agent_chat._build_search_tool", return_value=MagicMock()),
             patch(
@@ -243,6 +247,7 @@ class TestStreamAgenticChat:
 
         with (
             patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
             patch("paperless_ai.agent_chat._build_search_tool", return_value=MagicMock()),
             patch(

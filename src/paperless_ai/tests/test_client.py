@@ -1,3 +1,4 @@
+import json
 from unittest.mock import ANY
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -6,6 +7,7 @@ import pytest
 from llama_index.core.llms import ChatMessage
 from llama_index.core.llms.llm import ToolSelection
 
+from paperless_ai.client import LLM_SYSTEM_PROMPT
 from paperless_ai.client import AIClient
 
 
@@ -14,6 +16,7 @@ def mock_ai_config():
     with patch("paperless_ai.client.AIConfig") as MockAIConfig:
         mock_config = MagicMock()
         mock_config.llm_allow_internal_endpoints = True
+        mock_config.llm_context_size = 8192
         MockAIConfig.return_value = mock_config
         yield mock_config
 
@@ -30,12 +33,6 @@ def mock_openai_llm():
         yield MockOpenAILike
 
 
-@pytest.fixture
-def mock_mistral_llm():
-    with patch("llama_index.llms.mistralai.MistralAI") as MockMistralAI:
-        yield MockMistralAI
-
-
 def test_get_llm_ollama(mock_ai_config, mock_ollama_llm):
     mock_ai_config.llm_backend = "ollama"
     mock_ai_config.llm_model = "test_model"
@@ -46,7 +43,9 @@ def test_get_llm_ollama(mock_ai_config, mock_ollama_llm):
     mock_ollama_llm.assert_called_once_with(
         model="test_model",
         base_url="http://test-url",
+        context_window=8192,
         request_timeout=120,
+        system_prompt=LLM_SYSTEM_PROMPT,
         client=ANY,
         async_client=ANY,
     )
@@ -67,39 +66,11 @@ def test_get_llm_openai(mock_ai_config, mock_openai_llm):
         api_key="test_api_key",
         is_chat_model=True,
         is_function_calling_model=True,
+        system_prompt=LLM_SYSTEM_PROMPT,
         http_client=ANY,
         async_http_client=ANY,
     )
     assert client.llm == mock_openai_llm.return_value
-
-
-def test_get_llm_mistral(mock_ai_config, mock_mistral_llm):
-    mock_ai_config.llm_backend = "mistral"
-    mock_ai_config.llm_model = "test_model"
-    mock_ai_config.llm_api_key = "test_api_key"
-    mock_ai_config.llm_endpoint = None
-
-    client = AIClient()
-
-    mock_mistral_llm.assert_called_once_with(
-        model="test_model",
-        api_key="test_api_key",
-    )
-    assert client.llm == mock_mistral_llm.return_value
-
-
-def test_get_llm_mistral_uses_default_model(mock_ai_config, mock_mistral_llm):
-    mock_ai_config.llm_backend = "mistral"
-    mock_ai_config.llm_model = None
-    mock_ai_config.llm_api_key = "test_api_key"
-    mock_ai_config.llm_endpoint = None
-
-    AIClient()
-
-    mock_mistral_llm.assert_called_once_with(
-        model="mistral-large-latest",
-        api_key="test_api_key",
-    )
 
 
 def test_get_llm_openai_blocks_internal_endpoint_when_disallowed(mock_ai_config):
@@ -120,12 +91,42 @@ def test_get_llm_unsupported_backend(mock_ai_config):
         AIClient()
 
 
-def test_run_llm_query(mock_ai_config, mock_ollama_llm):
+def test_run_llm_query_ollama_uses_structured_json(mock_ai_config, mock_ollama_llm):
     mock_ai_config.llm_backend = "ollama"
     mock_ai_config.llm_model = "test_model"
     mock_ai_config.llm_endpoint = "http://test-url"
 
     mock_llm_instance = mock_ollama_llm.return_value
+    mock_llm_instance.chat.return_value = MagicMock()
+    mock_llm_instance.chat.return_value.message.content = json.dumps(
+        {
+            "title": "Test Title",
+            "tags": ["test", "document"],
+            "correspondents": ["John Doe"],
+            "document_types": ["report"],
+            "storage_paths": ["Reports"],
+            "dates": ["2023-01-01"],
+        },
+    )
+
+    client = AIClient()
+    result = client.run_llm_query("test_prompt")
+
+    assert result["title"] == "Test Title"
+    mock_llm_instance.chat.assert_called_once_with(
+        [ANY],
+        format=ANY,
+        think=False,
+    )
+
+
+def test_run_llm_query_openai_uses_tools(mock_ai_config, mock_openai_llm):
+    mock_ai_config.llm_backend = "openai-like"
+    mock_ai_config.llm_model = "test_model"
+    mock_ai_config.llm_api_key = "test_api_key"
+    mock_ai_config.llm_endpoint = "http://test-url"
+
+    mock_llm_instance = mock_openai_llm.return_value
 
     tool_selection = ToolSelection(
         tool_id="call_test",
@@ -147,6 +148,7 @@ def test_run_llm_query(mock_ai_config, mock_ollama_llm):
     result = client.run_llm_query("test_prompt")
 
     assert result["title"] == "Test Title"
+    mock_llm_instance.chat_with_tools.assert_called_once()
 
 
 def test_run_chat(mock_ai_config, mock_ollama_llm):
