@@ -8,7 +8,10 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
-import { OutputTypeConfig } from 'src/app/data/paperless-config'
+import {
+  OutputTypeConfig,
+  PaperlessConfigOptions,
+} from 'src/app/data/paperless-config'
 import { ConfigService } from 'src/app/services/config.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
@@ -157,5 +160,31 @@ describe('ConfigComponent', () => {
     component.configForm.patchValue({ barcodes_enabled: true })
     component.resetOption('barcodes_enabled')
     expect(component.configForm.get('barcodes_enabled').value).toBeNull()
+  })
+
+  it('marks unset fields with a default as inherited and formats the value', () => {
+    const llmModel = PaperlessConfigOptions.find((o) => o.key === 'llm_model')
+    const aiEnabled = PaperlessConfigOptions.find((o) => o.key === 'ai_enabled')
+    component.defaults = { llm_model: 'env-model', ai_enabled: true }
+
+    component.configForm.get('llm_model').setValue(null)
+    expect(component.isInherited(llmModel)).toBeTruthy()
+    expect(component.inheritedDisplay(llmModel)).toBe('env-model')
+
+    // Boolean defaults render as a label.
+    component.configForm.get('ai_enabled').setValue(null)
+    expect(component.inheritedDisplay(aiEnabled)).toBe('Enabled')
+
+    // Once overridden in the UI, the field is no longer inherited.
+    component.configForm.get('llm_model').setValue('ui-model')
+    expect(component.isInherited(llmModel)).toBeFalsy()
+  })
+
+  it('does not mark fields without a default as inherited', () => {
+    const llmModel = PaperlessConfigOptions.find((o) => o.key === 'llm_model')
+    component.defaults = {}
+    component.configForm.get('llm_model').setValue(null)
+    expect(component.isInherited(llmModel)).toBeFalsy()
+    expect(component.inheritedDisplay(llmModel)).toBe('')
   })
 })

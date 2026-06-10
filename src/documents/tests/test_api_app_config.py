@@ -40,8 +40,15 @@ class TestApiAppConfig(DirectoriesMixin, APITestCase):
 
         self.maxDiff = None
 
+        # "defaults" is a read-only map of inherited (env/file/default) values
+        # that depends on the runtime settings; assert it separately below.
+        data = dict(response.data[0])
+        self.assertIn("defaults", data)
+        self.assertIsInstance(data["defaults"], dict)
+        data.pop("defaults")
+
         self.assertDictEqual(
-            response.data[0],
+            data,
             {
                 "id": 1,
                 "output_type": None,
@@ -71,7 +78,7 @@ class TestApiAppConfig(DirectoriesMixin, APITestCase):
                 "barcode_enable_tag": None,
                 "barcode_tag_mapping": None,
                 "barcode_tag_split": None,
-                "ai_enabled": False,
+                "ai_enabled": None,
                 "llm_embedding_backend": None,
                 "llm_embedding_model": None,
                 "llm_embedding_endpoint": None,
@@ -84,6 +91,53 @@ class TestApiAppConfig(DirectoriesMixin, APITestCase):
                 "llm_output_language": None,
             },
         )
+
+    @override_settings(
+        LLM_BACKEND="openai-like",
+        LLM_MODEL="gpt-test",
+        LLM_API_KEY="super-secret-key",
+        AI_ENABLED=True,
+    )
+    def test_api_get_config_exposes_inherited_defaults(self) -> None:
+        """
+        GIVEN:
+            - AI settings sourced from the environment, nothing stored in the DB
+        WHEN:
+            - The config API is queried
+        THEN:
+            - The inherited (environment) values are exposed under "defaults"
+            - The stored fields stay null and the API key is masked, not leaked
+        """
+        response = self.client.get(self.ENDPOINT, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        defaults = response.data[0]["defaults"]
+        self.assertEqual(defaults["llm_backend"], "openai-like")
+        self.assertEqual(defaults["llm_model"], "gpt-test")
+        self.assertTrue(defaults["ai_enabled"])
+        # The real key is never returned, only a masked presence indicator.
+        self.assertNotEqual(defaults["llm_api_key"], "super-secret-key")
+        self.assertEqual(defaults["llm_api_key"], "********")
+        # Stored override remains unset.
+        self.assertIsNone(response.data[0]["llm_backend"])
+
+    def test_api_update_config_blank_string_stored_as_null(self) -> None:
+        """
+        GIVEN:
+            - A blank string submitted for an AI string field
+        WHEN:
+            - The config API is updated
+        THEN:
+            - The value is stored as NULL (inherit), not an empty string
+        """
+        response = self.client.patch(
+            f"{self.ENDPOINT}1/",
+            json.dumps({"llm_model": ""}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        config = ApplicationConfiguration.objects.first()
+        self.assertIsNone(config.llm_model)
 
     def test_api_get_ui_settings_with_config(self) -> None:
         """

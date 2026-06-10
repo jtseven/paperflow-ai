@@ -1,5 +1,6 @@
 import dataclasses
 import json
+from typing import Any
 
 from django.conf import settings
 
@@ -9,6 +10,89 @@ from paperless.models import CleanChoices
 from paperless.models import ColorConvertChoices
 from paperless.models import ModeChoices
 from paperless.models import OutputTypeChoices
+
+# Single source of truth pairing each ApplicationConfiguration model field with
+# the Django settings attribute (env var / paperless.conf / built-in default)
+# it falls back to when the field has no UI override. Used both to resolve the
+# effective configuration and to expose the inherited fallbacks to the frontend
+# (see get_configuration_defaults), so admins can see values sourced from the
+# environment even when nothing is stored in the database.
+CONFIG_SETTINGS_MAP: dict[str, str] = {
+    # General / output
+    "output_type": "OCR_OUTPUT_TYPE",
+    # OCR
+    "pages": "OCR_PAGES",
+    "language": "OCR_LANGUAGE",
+    "mode": "OCR_MODE",
+    "archive_file_generation": "ARCHIVE_FILE_GENERATION",
+    "image_dpi": "OCR_IMAGE_DPI",
+    "unpaper_clean": "OCR_CLEAN",
+    "deskew": "OCR_DESKEW",
+    "rotate_pages": "OCR_ROTATE_PAGES",
+    "rotate_pages_threshold": "OCR_ROTATE_PAGES_THRESHOLD",
+    "max_image_pixels": "OCR_MAX_IMAGE_PIXELS",
+    "color_conversion_strategy": "OCR_COLOR_CONVERSION_STRATEGY",
+    "user_args": "OCR_USER_ARGS",
+    # Barcode
+    "barcodes_enabled": "CONSUMER_ENABLE_BARCODES",
+    "barcode_enable_tiff_support": "CONSUMER_BARCODE_TIFF_SUPPORT",
+    "barcode_string": "CONSUMER_BARCODE_STRING",
+    "barcode_retain_split_pages": "CONSUMER_BARCODE_RETAIN_SPLIT_PAGES",
+    "barcode_enable_asn": "CONSUMER_ENABLE_ASN_BARCODE",
+    "barcode_asn_prefix": "CONSUMER_ASN_BARCODE_PREFIX",
+    "barcode_upscale": "CONSUMER_BARCODE_UPSCALE",
+    "barcode_dpi": "CONSUMER_BARCODE_DPI",
+    "barcode_max_pages": "CONSUMER_BARCODE_MAX_PAGES",
+    "barcode_enable_tag": "CONSUMER_ENABLE_TAG_BARCODE",
+    "barcode_tag_mapping": "CONSUMER_TAG_BARCODE_MAPPING",
+    "barcode_tag_split": "CONSUMER_TAG_BARCODE_SPLIT",
+    # AI
+    "ai_enabled": "AI_ENABLED",
+    "llm_embedding_backend": "LLM_EMBEDDING_BACKEND",
+    "llm_embedding_model": "LLM_EMBEDDING_MODEL",
+    "llm_embedding_endpoint": "LLM_EMBEDDING_ENDPOINT",
+    "llm_embedding_chunk_size": "LLM_EMBEDDING_CHUNK_SIZE",
+    "llm_context_size": "LLM_CONTEXT_SIZE",
+    "llm_backend": "LLM_BACKEND",
+    "llm_model": "LLM_MODEL",
+    "llm_api_key": "LLM_API_KEY",
+    "llm_endpoint": "LLM_ENDPOINT",
+    "llm_output_language": "LLM_OUTPUT_LANGUAGE",
+}
+
+# Fields whose inherited value must never be exposed verbatim to the frontend.
+_SECRET_CONFIG_FIELDS = frozenset({"llm_api_key"})
+_SECRET_PLACEHOLDER = "********"
+
+
+def _coalesce(db_value: Any, settings_value: Any) -> Any:
+    """Resolve a config value: an explicit UI override wins, else the fallback.
+
+    ``None`` and ``""`` both mean "not set in the UI — inherit from the
+    environment". Unlike a plain ``or``, this preserves a deliberately falsy
+    override (e.g. a boolean toggled *off*), so a setting enabled by an
+    environment variable can still be disabled from the UI.
+    """
+    if db_value is None or db_value == "":
+        return settings_value
+    return db_value
+
+
+def get_configuration_defaults() -> dict[str, Any]:
+    """Return the inherited (env / config-file / built-in) value per field.
+
+    These are the values that apply when a field has no database override. The
+    frontend shows them as placeholders so the configuration panel reflects
+    values sourced from the environment. Secrets are masked, never returned.
+    """
+    defaults: dict[str, Any] = {
+        field: getattr(settings, settings_attr, None)
+        for field, settings_attr in CONFIG_SETTINGS_MAP.items()
+    }
+    for field in _SECRET_CONFIG_FIELDS:
+        if defaults.get(field):
+            defaults[field] = _SECRET_PLACEHOLDER
+    return defaults
 
 
 @dataclasses.dataclass
@@ -204,30 +288,36 @@ class AIConfig(BaseConfig):
     llm_output_language: str = dataclasses.field(init=False)
     llm_allow_internal_endpoints: bool = dataclasses.field(init=False)
 
+    # The AI fields all resolve the same way (DB override → settings fallback)
+    # and map 1:1 onto CONFIG_SETTINGS_MAP, so resolve them in a loop. Using
+    # _coalesce (rather than ``or``) means ai_enabled toggled off in the UI is
+    # honoured even when AI_ENABLED is set in the environment.
+    _FIELDS = (
+        "ai_enabled",
+        "llm_embedding_backend",
+        "llm_embedding_model",
+        "llm_embedding_endpoint",
+        "llm_embedding_chunk_size",
+        "llm_context_size",
+        "llm_backend",
+        "llm_model",
+        "llm_api_key",
+        "llm_endpoint",
+        "llm_output_language",
+    )
+
     def __post_init__(self) -> None:
         app_config = self._get_config_instance()
 
-        self.ai_enabled = app_config.ai_enabled or settings.AI_ENABLED
-        self.llm_embedding_backend = (
-            app_config.llm_embedding_backend or settings.LLM_EMBEDDING_BACKEND
-        )
-        self.llm_embedding_model = (
-            app_config.llm_embedding_model or settings.LLM_EMBEDDING_MODEL
-        )
-        self.llm_embedding_endpoint = (
-            app_config.llm_embedding_endpoint or settings.LLM_EMBEDDING_ENDPOINT
-        )
-        self.llm_embedding_chunk_size = (
-            app_config.llm_embedding_chunk_size or settings.LLM_EMBEDDING_CHUNK_SIZE
-        )
-        self.llm_context_size = app_config.llm_context_size or settings.LLM_CONTEXT_SIZE
-        self.llm_backend = app_config.llm_backend or settings.LLM_BACKEND
-        self.llm_model = app_config.llm_model or settings.LLM_MODEL
-        self.llm_api_key = app_config.llm_api_key or settings.LLM_API_KEY
-        self.llm_endpoint = app_config.llm_endpoint or settings.LLM_ENDPOINT
-        self.llm_output_language = (
-            app_config.llm_output_language or settings.LLM_OUTPUT_LANGUAGE
-        )
+        for field in self._FIELDS:
+            setattr(
+                self,
+                field,
+                _coalesce(
+                    getattr(app_config, field),
+                    getattr(settings, CONFIG_SETTINGS_MAP[field]),
+                ),
+            )
         self.llm_allow_internal_endpoints = settings.LLM_ALLOW_INTERNAL_ENDPOINTS
 
     @property

@@ -401,4 +401,8 @@ export interface PaperlessConfig extends ObjectWithId {
   llm_api_key: string
   llm_endpoint: string
   llm_output_language: string
+  // Read-only map of inherited values (environment / config file / built-in
+  // defaults) keyed by config option, shown as placeholders when a field has
+  // no stored override. Secrets are masked by the backend.
+  defaults?: { [key: string]: any }
 }

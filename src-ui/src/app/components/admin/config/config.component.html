@@ -43,6 +43,12 @@
                                                     @case (ConfigOptionType.Password) { <pngx-input-password [formControlName]="option.key" [error]="errors[option.key]"></pngx-input-password> }
                                                 }
                                             </div>
+                                            @if (isInherited(option)) {
+                                                <div class="form-text fst-italic text-muted">
+                                                    <ng-container i18n>Inherited from environment:</ng-container>
+                                                    <span class="fw-semibold ms-1">{{inheritedDisplay(option)}}</span>
+                                                </div>
+                                            }
                                             @if (option.note) {
                                                 <div class="form-text fst-italic">{{option.note}}</div>
                                             }

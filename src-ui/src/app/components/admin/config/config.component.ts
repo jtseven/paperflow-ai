@@ -83,6 +83,10 @@ export class ConfigComponent
   storeSub: Subscription
   isDirty$: Observable<boolean>
 
+  // Inherited values (environment / config file / defaults), shown as
+  // placeholders when a field has no stored override.
+  public defaults: { [key: string]: any } = {}
+
   constructor() {
     super()
     this.configForm.addControl('id', new FormControl())
@@ -140,8 +144,13 @@ export class ConfigComponent
   }
 
   private initialize(config: PaperlessConfig) {
+    // "defaults" is a read-only sibling of the editable fields; keep it out of
+    // the form/dirty-check store so it never registers as an unsaved change.
+    this.defaults = config.defaults ?? {}
+    const { defaults, ...formConfig } = config
+
     if (!this.store) {
-      this.store = new BehaviorSubject(config)
+      this.store = new BehaviorSubject(formConfig)
 
       this.store
         .asObservable()
@@ -152,9 +161,9 @@ export class ConfigComponent
 
       this.isDirty$ = dirtyCheck(this.configForm, this.store.asObservable())
     }
-    this.configForm.patchValue(config)
+    this.configForm.patchValue(formConfig)
 
-    this.initialConfig = config
+    this.initialConfig = formConfig as PaperlessConfig
   }
 
   getDocsUrl(key: string) {
@@ -170,7 +179,7 @@ export class ConfigComponent
         next: (config) => {
           this.loading = false
           this.initialize(config)
-          this.store.next(config)
+          this.store.next(this.initialConfig)
           this.settingsService.initializeSettings().subscribe()
           this.toastService.showInfo($localize`Configuration updated`)
         },
@@ -197,7 +206,7 @@ export class ConfigComponent
         next: (config) => {
           this.loading = false
           this.initialize(config)
-          this.store.next(config)
+          this.store.next(this.initialConfig)
           this.settingsService.initializeSettings().subscribe()
           this.toastService.showInfo($localize`File successfully updated`)
         },
@@ -213,6 +222,32 @@ export class ConfigComponent
 
   public isSet(key: string): boolean {
     return this.configForm.get(key).value != null
+  }
+
+  /** True when a field has no stored override but an inherited value exists. */
+  public isInherited(option: ConfigOption): boolean {
+    const value = this.defaults?.[option.key]
+    return !this.isSet(option.key) && value != null && value !== ''
+  }
+
+  /** The inherited value formatted for display (choice label, On/Off, etc.). */
+  public inheritedDisplay(option: ConfigOption): string {
+    const value = this.defaults?.[option.key]
+    if (value == null) {
+      return ''
+    }
+    switch (option.type) {
+      case ConfigOptionType.Boolean:
+        return value ? $localize`Enabled` : $localize`Disabled`
+      case ConfigOptionType.Select:
+        return (
+          option.choices?.find((c) => c.id === value)?.name ?? String(value)
+        )
+      case ConfigOptionType.JSON:
+        return typeof value === 'string' ? value : JSON.stringify(value)
+      default:
+        return String(value)
+    }
   }
 
   public resetOption(key: string) {

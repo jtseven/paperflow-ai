@@ -209,6 +209,21 @@ class ProfileSerializer(PasswordValidationMixin, serializers.ModelSerializer[Use
         )
 
 
+# String fields where an empty submission means "inherit from the environment"
+# and must be stored as NULL (not ""), so the resolver and the frontend's
+# is-set/placeholder logic treat them as unset.
+_BLANK_TO_NULL_FIELDS = (
+    "language",
+    "llm_output_language",
+    "llm_embedding_backend",
+    "llm_embedding_model",
+    "llm_embedding_endpoint",
+    "llm_backend",
+    "llm_model",
+    "llm_endpoint",
+)
+
+
 class ApplicationConfigurationSerializer(
     serializers.ModelSerializer[ApplicationConfiguration],
 ):
@@ -218,6 +233,14 @@ class ApplicationConfigurationSerializer(
         required=False,
         allow_null=True,
     )
+    # Read-only: the inherited (env / config-file / default) value per field, so
+    # the frontend can show values sourced from the environment as placeholders.
+    defaults = serializers.SerializerMethodField()
+
+    def get_defaults(self, obj) -> dict:
+        from paperless.config import get_configuration_defaults
+
+        return get_configuration_defaults()
 
     def run_validation(self, data):
         # Empty strings treated as None to avoid unexpected behavior
@@ -225,10 +248,9 @@ class ApplicationConfigurationSerializer(
             data["user_args"] = None
         if "barcode_tag_mapping" in data and data["barcode_tag_mapping"] == "":
             data["barcode_tag_mapping"] = None
-        if "language" in data and data["language"] == "":
-            data["language"] = None
-        if "llm_output_language" in data and data["llm_output_language"] == "":
-            data["llm_output_language"] = None
+        for field in _BLANK_TO_NULL_FIELDS:
+            if field in data and data[field] == "":
+                data[field] = None
         if "llm_api_key" in data and data["llm_api_key"] is not None:
             if data["llm_api_key"] == "":
                 data["llm_api_key"] = None
