@@ -60,6 +60,12 @@ export type ChatEvent =
   | ChatErrorEvent
   | ChatDoneEvent
 
+/** A prior conversation turn sent to the backend for short-term memory. */
+export interface ChatHistoryTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 /** A document the answer drew on, resolved from a `[n]` citation marker. */
 export interface Citation {
   marker: number
@@ -102,14 +108,25 @@ export class ChatService {
    * Fetch API + a ReadableStream reader so tokens arrive incrementally and the
    * stream terminates cleanly (explicit `done`/reader-end and `error` events),
    * which the previous HttpClient `partialText` approach could not guarantee.
+   *
+   * `history` carries prior turns (oldest→newest, excluding the new prompt) so
+   * the otherwise-stateless backend can answer follow-up questions in context.
    */
   streamChat(
     documentId: number | null,
-    prompt: string
+    prompt: string,
+    history: ChatHistoryTurn[] = []
   ): Observable<ChatEvent> {
-    const body: { q: string; document_id?: number } = { q: prompt }
+    const body: {
+      q: string
+      document_id?: number
+      history?: ChatHistoryTurn[]
+    } = { q: prompt }
     if (documentId != null) {
       body.document_id = documentId
+    }
+    if (history.length) {
+      body.history = history
     }
 
     const headers: Record<string, string> = {

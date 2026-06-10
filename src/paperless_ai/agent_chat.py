@@ -184,6 +184,7 @@ def _build_search_tool(index, registry: _ReferenceRegistry):
 def stream_agentic_chat(
     query_str: str,
     documents: list[Document],
+    chat_history: list | None = None,
 ) -> Generator[str, None, None]:
     """Stream an agentic answer over ``documents`` as NDJSON events.
 
@@ -194,6 +195,10 @@ def stream_agentic_chat(
     to the LLM and the memory-mapped LanceDB table, never the ORM — runs inside
     the private event loop in :func:`_drive_async_stream`. Doing the ORM work
     inside that loop would trip Django's ``SynchronousOnlyOperation`` guard.
+
+    ``chat_history`` carries prior conversation turns (llama-index
+    ``ChatMessage`` objects) so follow-up questions have context; the agent may
+    still issue fresh ``search_documents`` calls to gather evidence.
     """
     try:
         from llama_index.core.agent.workflow import FunctionAgent
@@ -232,7 +237,7 @@ def stream_agentic_chat(
 
         logger.debug("Agentic chat query: %s", query_str)
 
-        yield from _drive_async_stream(agent, query_str, registry)
+        yield from _drive_async_stream(agent, query_str, registry, chat_history or [])
     except Exception as e:  # pragma: no cover - defensive
         logger.exception("Failed to stream agentic chat response: %s", e)
         yield error_event()
@@ -244,6 +249,7 @@ def _drive_async_stream(
     agent,
     query_str: str,
     registry: _ReferenceRegistry,
+    chat_history: list,
 ) -> Generator[str, None, None]:
     """Pump the async agent-event stream from a synchronous context.
 
@@ -252,7 +258,7 @@ def _drive_async_stream(
     """
     loop = asyncio.new_event_loop()
     try:
-        agen = _astream_agent_events(agent, query_str, registry)
+        agen = _astream_agent_events(agent, query_str, registry, chat_history)
         while True:
             try:
                 chunk = loop.run_until_complete(agen.__anext__())
@@ -264,12 +270,19 @@ def _drive_async_stream(
         loop.close()
 
 
-async def _astream_agent_events(agent, query_str: str, registry: _ReferenceRegistry):
+async def _astream_agent_events(
+    agent,
+    query_str: str,
+    registry: _ReferenceRegistry,
+    chat_history: list,
+):
     from llama_index.core.agent.workflow import AgentStream
     from llama_index.core.agent.workflow import ToolCall
     from llama_index.core.agent.workflow import ToolCallResult
 
-    handler = agent.run(query_str)
+    # chat_history is falsy-normalized to None: AgentWorkflow.run treats an
+    # empty list as "no history" anyway, so this keeps the call explicit.
+    handler = agent.run(query_str, chat_history=chat_history or None)
     produced_text = False
     async for event in handler.stream_events():
         # ToolCallResult subclasses ToolCall in some llama-index versions, so

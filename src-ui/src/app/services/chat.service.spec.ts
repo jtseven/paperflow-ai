@@ -111,6 +111,36 @@ describe('ChatService', () => {
     })
   })
 
+  it('includes history when provided and omits it when empty', (done) => {
+    fetchMock.mockResolvedValue(fakeResponse(['{"type":"done"}\n']))
+
+    const history = [
+      { role: 'user' as const, content: 'first question' },
+      { role: 'assistant' as const, content: 'first answer' },
+    ]
+
+    service.streamChat(null, 'follow up', history).subscribe({
+      complete: () => {
+        const init = fetchMock.mock.calls[0][1] as RequestInit
+        expect(JSON.parse(init.body as string)).toEqual({
+          q: 'follow up',
+          history,
+        })
+
+        // A second call with no history must not include the key at all.
+        service.streamChat(null, 'no history here').subscribe({
+          complete: () => {
+            const init2 = fetchMock.mock.calls[1][1] as RequestInit
+            expect(JSON.parse(init2.body as string)).toEqual({
+              q: 'no history here',
+            })
+            done()
+          },
+        })
+      },
+    })
+  })
+
   it('errors when the response is not ok', (done) => {
     fetchMock.mockResolvedValue(fakeResponse([], false, 403))
 

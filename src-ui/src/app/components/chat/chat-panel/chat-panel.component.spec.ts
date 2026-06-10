@@ -44,6 +44,50 @@ describe('ChatPanelComponent', () => {
     })
   })
 
+  it('sends prior turns as history on the next message', () => {
+    send('first question', [
+      { type: 'token', text: 'first answer' },
+      { type: 'done' },
+    ])
+    expect(chatService.streamChat).toHaveBeenNthCalledWith(
+      1,
+      null,
+      'first question',
+      []
+    )
+
+    send('second question', [{ type: 'done' }])
+    expect(chatService.streamChat).toHaveBeenNthCalledWith(
+      2,
+      null,
+      'second question',
+      [
+        { role: 'user', content: 'first question' },
+        { role: 'assistant', content: 'first answer' },
+      ]
+    )
+  })
+
+  it('excludes the welcome greeting from history', () => {
+    component.welcome = 'Hi there'
+    component.ngOnInit()
+    send('a question', [
+      { type: 'token', text: 'an answer' },
+      { type: 'done' },
+    ])
+    expect(chatService.streamChat).toHaveBeenCalledWith(null, 'a question', [])
+  })
+
+  it('trims history to the six most recent turns', () => {
+    for (let i = 0; i < 7; i++) {
+      send(`q${i}`, [{ type: 'token', text: `a${i}` }, { type: 'done' }])
+    }
+    const sentHistory = chatService.streamChat.mock.calls.at(-1)![2]
+    expect(sentHistory).toHaveLength(6)
+    expect(sentHistory[0]).toEqual({ role: 'user', content: 'q3' })
+    expect(sentHistory.at(-1)).toEqual({ role: 'assistant', content: 'a5' })
+  })
+
   it('reduces a full event stream into a finished assistant message', () => {
     send('How much rent?', [
       { type: 'tool_call', id: 't1', name: 'search_documents', query: 'rent' },
@@ -65,7 +109,7 @@ describe('ChatPanelComponent', () => {
       { type: 'done' },
     ])
 
-    expect(chatService.streamChat).toHaveBeenCalledWith(null, 'How much rent?')
+    expect(chatService.streamChat).toHaveBeenCalledWith(null, 'How much rent?', [])
     const assistant = component.messages[component.messages.length - 1]
     expect(assistant.content).toBe('Your rent is 1200 [1]')
     expect(assistant.isStreaming).toBe(false)
@@ -160,7 +204,7 @@ describe('ChatPanelComponent', () => {
     expect(component.citedReferences(message).map((c) => c.documentId)).toEqual([
       7,
     ])
-    expect(chatService.streamChat).toHaveBeenCalledWith(7, 'q')
+    expect(chatService.streamChat).toHaveBeenCalledWith(7, 'q', [])
   })
 
   it('shows the typing animation only before steps or content', () => {

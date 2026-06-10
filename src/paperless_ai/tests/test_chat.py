@@ -8,7 +8,9 @@ from llama_index.core.schema import TextNode
 
 from paperless_ai import chat
 from paperless_ai.chat import CHAT_ERROR_MESSAGE
+from paperless_ai.chat import MAX_HISTORY_MESSAGES
 from paperless_ai.chat import aiterate_sync_stream
+from paperless_ai.chat import build_chat_history
 from paperless_ai.chat import stream_chat_with_documents
 
 
@@ -79,8 +81,8 @@ def test_stream_chat_with_one_document_retrieval(
         patch("paperless_ai.chat.AIClient") as mock_client_cls,
         patch("paperless_ai.chat.load_or_build_index") as mock_load_index,
         patch(
-            "llama_index.core.query_engine.RetrieverQueryEngine.from_args",
-        ) as mock_query_engine_cls,
+            "llama_index.core.response_synthesizers.get_response_synthesizer",
+        ) as mock_get_synth,
     ):
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
@@ -102,9 +104,9 @@ def test_stream_chat_with_one_document_retrieval(
 
         mock_response_stream = MagicMock()
         mock_response_stream.response_gen = iter(["chunk1", "chunk2"])
-        mock_query_engine = MagicMock()
-        mock_query_engine_cls.return_value = mock_query_engine
-        mock_query_engine.query.return_value = mock_response_stream
+        mock_synth = MagicMock()
+        mock_get_synth.return_value = mock_synth
+        mock_synth.synthesize.return_value = mock_response_stream
 
         with patch(
             "llama_index.core.retrievers.VectorIndexRetriever",
@@ -112,7 +114,11 @@ def test_stream_chat_with_one_document_retrieval(
         ):
             output = list(stream_chat_with_documents("What is this?", [mock_document]))
 
-        mock_query_engine.query.assert_called_once_with("What is this?")
+        # Synthesis runs over the already-retrieved nodes (no second retrieval).
+        mock_synth.synthesize.assert_called_once()
+        _, synth_kwargs = mock_synth.synthesize.call_args
+        assert synth_kwargs["query"] == "What is this?"
+        assert len(synth_kwargs["nodes"]) == 1
         patch_embed_nodes.assert_not_called()
         assert_chat_output(
             output,
@@ -129,8 +135,8 @@ def test_stream_chat_with_multiple_documents_retrieval(patch_embed_nodes) -> Non
         patch("paperless_ai.chat.AIClient") as mock_client_cls,
         patch("paperless_ai.chat.load_or_build_index") as mock_load_index,
         patch(
-            "llama_index.core.query_engine.RetrieverQueryEngine.from_args",
-        ) as mock_query_engine_cls,
+            "llama_index.core.response_synthesizers.get_response_synthesizer",
+        ) as mock_get_synth,
     ):
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
@@ -158,9 +164,9 @@ def test_stream_chat_with_multiple_documents_retrieval(patch_embed_nodes) -> Non
         mock_response_stream = MagicMock()
         mock_response_stream.response_gen = iter(["chunk1", "chunk2"])
 
-        mock_query_engine = MagicMock()
-        mock_query_engine_cls.return_value = mock_query_engine
-        mock_query_engine.query.return_value = mock_response_stream
+        mock_synth = MagicMock()
+        mock_get_synth.return_value = mock_synth
+        mock_synth.synthesize.return_value = mock_response_stream
 
         doc1 = MagicMock(pk=1, title="Document 1", filename="doc1.pdf")
         doc2 = MagicMock(pk=2, title="Document 2", filename="doc2.pdf")
@@ -171,7 +177,10 @@ def test_stream_chat_with_multiple_documents_retrieval(patch_embed_nodes) -> Non
         ):
             output = list(stream_chat_with_documents("What's up?", [doc1, doc2]))
 
-        mock_query_engine.query.assert_called_once_with("What's up?")
+        mock_synth.synthesize.assert_called_once()
+        _, synth_kwargs = mock_synth.synthesize.call_args
+        assert synth_kwargs["query"] == "What's up?"
+        assert len(synth_kwargs["nodes"]) == 2
         patch_embed_nodes.assert_not_called()
         assert_chat_output(
             output,
@@ -253,6 +262,98 @@ def test_stream_chat_unexpected_failure_returns_generic_error(caplog) -> None:
         ]
         assert "Failed to stream document chat response" in caplog.text
         assert "private provider detail" in caplog.text
+
+
+def test_build_chat_history_maps_roles_and_skips_invalid() -> None:
+    out = build_chat_history(
+        [
+            {"role": "user", "content": "a"},
+            {"role": "assistant", "content": "b"},
+            {"role": "bogus", "content": "c"},
+            {"role": "user", "content": "   "},
+            {"role": "assistant"},
+        ],
+    )
+    assert [(m.role.value, m.content) for m in out] == [
+        ("user", "a"),
+        ("assistant", "b"),
+    ]
+
+
+def test_build_chat_history_trims_to_window() -> None:
+    out = build_chat_history(
+        [{"role": "user", "content": str(i)} for i in range(MAX_HISTORY_MESSAGES + 4)],
+    )
+    assert len(out) == MAX_HISTORY_MESSAGES
+    # The most recent turns are kept.
+    assert out[-1].content == str(MAX_HISTORY_MESSAGES + 3)
+
+
+def test_build_chat_history_empty() -> None:
+    assert build_chat_history(None) == []
+    assert build_chat_history([]) == []
+
+
+@pytest.mark.django_db
+def test_stream_chat_threads_history_into_prompt(
+    mock_document,
+    patch_embed_nodes,
+) -> None:
+    """Prior turns must reach the synthesis prompt so follow-ups have context."""
+    captured: dict = {}
+
+    def capture_synth(*args, **kwargs):
+        captured["text_qa_template"] = kwargs.get("text_qa_template")
+        synth = MagicMock()
+        synth.synthesize.return_value = MagicMock(response_gen=iter(["ok"]))
+        return synth
+
+    with (
+        patch("paperless_ai.chat.AIClient") as mock_client_cls,
+        patch("paperless_ai.chat.load_or_build_index") as mock_load_index,
+        patch(
+            "llama_index.core.response_synthesizers.get_response_synthesizer",
+            side_effect=capture_synth,
+        ),
+    ):
+        mock_client_cls.return_value = MagicMock(llm=MagicMock())
+
+        mock_node = TextNode(
+            text="node content",
+            metadata={"document_id": str(mock_document.pk), "title": "Test Document"},
+        )
+        mock_index = MagicMock()
+        mock_index.vector_store.get_nodes.return_value = [mock_node]
+        mock_load_index.return_value = mock_index
+
+        mock_retriever_instance = MagicMock()
+        mock_retriever_instance.retrieve.return_value = [
+            NodeWithScore(node=mock_node, score=0.9),
+        ]
+
+        history = build_chat_history(
+            [
+                {"role": "user", "content": "What is the rent?"},
+                {"role": "assistant", "content": "1200 EUR per month."},
+            ],
+        )
+
+        with patch(
+            "llama_index.core.retrievers.VectorIndexRetriever",
+            return_value=mock_retriever_instance,
+        ):
+            list(
+                stream_chat_with_documents(
+                    "And the deposit?",
+                    [mock_document],
+                    chat_history=history,
+                ),
+            )
+
+    template = captured["text_qa_template"]
+    rendered = template.format(context_str="CTX", query_str="And the deposit?")
+    assert "What is the rent?" in rendered
+    assert "1200 EUR per month." in rendered
 
 
 @pytest.mark.asyncio

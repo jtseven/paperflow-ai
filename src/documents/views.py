@@ -241,6 +241,7 @@ from paperless.views import StandardPagination
 from paperless_ai.agent_chat import stream_agentic_chat
 from paperless_ai.ai_classifier import get_ai_document_classification
 from paperless_ai.chat import aiterate_sync_stream
+from paperless_ai.chat import build_chat_history
 from paperless_ai.chat import stream_chat_with_documents
 from paperless_ai.matching import extract_unmatched_names
 from paperless_ai.matching import match_correspondents_by_name
@@ -2159,9 +2160,33 @@ class DocumentViewSet(
         )
 
 
+# Upper bound on conversation turns accepted from the (untrusted) client. The
+# LLM call keeps only the last paperless_ai.chat.MAX_HISTORY_MESSAGES; this is a
+# generous payload-abuse guard, not the semantic window.
+MAX_CHAT_HISTORY_ITEMS = 20
+
+
+class ChatHistoryItemSerializer(serializers.Serializer[dict[str, Any]]):
+    role = serializers.ChoiceField(choices=["user", "assistant"])
+    content = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        max_length=4000,
+        trim_whitespace=True,
+    )
+
+
 class ChatStreamingSerializer(serializers.Serializer[dict[str, Any]]):
     q = serializers.CharField(required=True, max_length=4000)
     document_id = serializers.IntegerField(required=False, allow_null=True)
+    history = ChatHistoryItemSerializer(many=True, required=False)
+
+    def validate_history(self, value):
+        if len(value) > MAX_CHAT_HISTORY_ITEMS:
+            raise serializers.ValidationError(
+                f"At most {MAX_CHAT_HISTORY_ITEMS} history items are allowed.",
+            )
+        return value
 
 
 @method_decorator(
@@ -2192,6 +2217,11 @@ class ChatStreamingView(GenericAPIView[Any]):
 
         doc_id = serializer.validated_data.get("document_id")
 
+        # Conversation memory is client-supplied: prior turns ride along with the
+        # request so the backend stays stateless. build_chat_history trims and
+        # converts them into llama-index ChatMessages.
+        chat_history = build_chat_history(serializer.validated_data.get("history"))
+
         if doc_id:
             try:
                 document = Document.objects.get(id=doc_id)
@@ -2206,6 +2236,7 @@ class ChatStreamingView(GenericAPIView[Any]):
             stream = stream_chat_with_documents(
                 query_str=question,
                 documents=documents,
+                chat_history=chat_history,
             )
         else:
             # Dashboard / all-documents chat: agentic retrieval over everything
@@ -2219,6 +2250,7 @@ class ChatStreamingView(GenericAPIView[Any]):
             stream = stream_agentic_chat(
                 query_str=question,
                 documents=list(documents),
+                chat_history=chat_history,
             )
 
         # Wrap the synchronous chat generator in an async iterator. Under ASGI,

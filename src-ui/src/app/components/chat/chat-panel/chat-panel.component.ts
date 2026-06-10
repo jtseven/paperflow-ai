@@ -19,12 +19,19 @@ import { Subscription } from 'rxjs'
 import { ChatHistoryService } from 'src/app/services/chat-history.service'
 import {
   ChatEvent,
+  ChatHistoryTurn,
   ChatMessage,
   ChatService,
   Citation,
 } from 'src/app/services/chat.service'
 
 const CITATION_MARKER_RE = /\[(\d+)\]/g
+
+/**
+ * How many recent turns to send as short-term memory. Mirrors the backend's
+ * MAX_HISTORY_MESSAGES (paperless_ai/chat.py); the backend re-trims defensively.
+ */
+const CHAT_HISTORY_TURNS = 6
 
 /**
  * Shared chat surface used by both the dashboard agentic widget (no
@@ -104,6 +111,26 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.history.save(this.history.key(this.documentId), this.messages)
   }
 
+  /**
+   * Build the short-term-memory window sent to the backend: the most recent
+   * completed turns reduced to `{role, content}`. Skips in-flight/errored/empty
+   * turns and drops the leading assistant greeting so history starts at a user
+   * turn, then keeps only the last `CHAT_HISTORY_TURNS`.
+   */
+  private buildHistory(): ChatHistoryTurn[] {
+    const usable = this.messages.filter(
+      (m) => !m.isStreaming && !m.error && !!m.content
+    )
+    let start = 0
+    while (start < usable.length && usable[start].role === 'assistant') {
+      start++
+    }
+    return usable
+      .slice(start)
+      .slice(-CHAT_HISTORY_TURNS)
+      .map((m) => ({ role: m.role, content: m.content }))
+  }
+
   public get canClear(): boolean {
     return this.messages.some((m) => m.role === 'user')
   }
@@ -124,6 +151,10 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       return
     }
 
+    // Snapshot prior turns before pushing the new prompt so the history window
+    // excludes the question we're about to ask.
+    const history = this.buildHistory()
+
     this.messages.push({ role: 'user', content: prompt })
     this.input = ''
     this.focusInput()
@@ -140,7 +171,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.scrollToBottom()
 
     this.streamSub = this.chatService
-      .streamChat(this.documentId ?? null, prompt)
+      .streamChat(this.documentId ?? null, prompt, history)
       .subscribe({
         next: (event) => {
           this.handleEvent(event, assistantMessage)

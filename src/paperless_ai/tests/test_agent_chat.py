@@ -14,6 +14,7 @@ from paperless_ai.agent_chat import _ReferenceRegistry
 from paperless_ai.agent_chat import stream_agentic_chat
 from paperless_ai.chat import CHAT_ERROR_MESSAGE
 from paperless_ai.chat import CHAT_NO_CONTENT_MESSAGE
+from paperless_ai.chat import build_chat_history
 
 
 def _doc(pk: int, title: str = "") -> SimpleNamespace:
@@ -132,6 +133,64 @@ class TestStreamAgenticChat:
             },
         ]
         assert events[-1] == {"type": "done"}
+
+    def test_forwards_chat_history_to_agent(self):
+        documents = [_doc(1, "Invoice")]
+        fake_agent = MagicMock()
+        fake_agent.run.return_value = _FakeHandler([_agent_stream("hi")])
+        history = build_chat_history(
+            [
+                {"role": "user", "content": "previous question"},
+                {"role": "assistant", "content": "previous answer"},
+            ],
+        )
+
+        with (
+            patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=True),
+            patch("paperless_ai.indexing.load_or_build_index"),
+            patch(
+                "paperless_ai.agent_chat._build_search_tool",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "llama_index.core.agent.workflow.FunctionAgent",
+                return_value=fake_agent,
+            ),
+        ):
+            list(
+                stream_agentic_chat(
+                    "question",
+                    documents,
+                    chat_history=history,
+                ),
+            )
+
+        fake_agent.run.assert_called_once()
+        assert fake_agent.run.call_args.args[0] == "question"
+        assert fake_agent.run.call_args.kwargs["chat_history"] == history
+
+    def test_empty_history_passes_none_to_agent(self):
+        documents = [_doc(1, "Invoice")]
+        fake_agent = MagicMock()
+        fake_agent.run.return_value = _FakeHandler([_agent_stream("hi")])
+
+        with (
+            patch("paperless_ai.client.AIClient"),
+            patch("paperless_ai.indexing.llm_index_exists", return_value=True),
+            patch("paperless_ai.indexing.load_or_build_index"),
+            patch(
+                "paperless_ai.agent_chat._build_search_tool",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "llama_index.core.agent.workflow.FunctionAgent",
+                return_value=fake_agent,
+            ),
+        ):
+            list(stream_agentic_chat("question", documents))
+
+        assert fake_agent.run.call_args.kwargs["chat_history"] is None
 
     def test_emits_tool_call_and_result_events(self):
         documents = [_doc(5, "Lease")]
