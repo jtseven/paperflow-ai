@@ -140,12 +140,12 @@
   <form class="chat-form" (submit)="$event.preventDefault(); sendMessage()">
     <div class="input-group">
       <input
+        #chatInput
         type="text"
         class="form-control"
         [placeholder]="placeholder"
         [(ngModel)]="input"
         name="message"
-        [disabled]="loading"
         autocomplete="off"
       />
       <button type="submit" class="btn btn-primary" [disabled]="loading" i18n>
