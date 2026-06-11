@@ -162,6 +162,22 @@
   @if (list.error ) {
     <div class="alert alert-danger" role="alert"><ng-container i18n>Error while loading documents</ng-container>: {{list.error}}</div>
   } @else {
+    @if (!list.isReloading && list.documents?.length === 0) {
+      <div class="text-center text-muted py-5 my-4">
+        @if (isFiltered) {
+          <i-bs name="search" width="2.5em" height="2.5em" class="opacity-50 mb-3"></i-bs>
+          <h5 i18n>No documents match your filters</h5>
+          <p class="mb-3" i18n>Try adjusting or clearing the filters to see more results.</p>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="resetFilters()">
+            <i-bs name="x" class="me-1"></i-bs><ng-container i18n>Reset filters</ng-container>
+          </button>
+        } @else {
+          <i-bs name="file-earmark" width="2.5em" height="2.5em" class="opacity-50 mb-3"></i-bs>
+          <h5 i18n>No documents yet</h5>
+          <p class="mb-0" i18n>Upload a document or drop files anywhere to get started.</p>
+        }
+      </div>
+    }
     @if (list.displayMode === DisplayMode.LARGE_CARDS) {
       <div>
         @for (d of list.documents; track d.id) {

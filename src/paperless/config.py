@@ -212,44 +212,39 @@ class BarcodeConfig(BaseConfig):
     barcode_tag_mapping: dict[str, str] = dataclasses.field(init=False)
     barcode_tag_split: bool = dataclasses.field(init=False)
 
+    # Resolved via _coalesce (not `or`) so a barcode toggle switched off in the
+    # UI is honoured even when the matching CONSUMER_* env var enables it — the
+    # same falsy-override bug that affected ai_enabled. All map 1:1 onto
+    # CONFIG_SETTINGS_MAP. barcode_tag_mapping is handled separately so an empty
+    # mapping keeps "inherit from env" semantics.
+    _FIELDS = (
+        "barcodes_enabled",
+        "barcode_enable_tiff_support",
+        "barcode_string",
+        "barcode_retain_split_pages",
+        "barcode_enable_asn",
+        "barcode_asn_prefix",
+        "barcode_upscale",
+        "barcode_dpi",
+        "barcode_max_pages",
+        "barcode_enable_tag",
+        "barcode_tag_split",
+    )
+
     def __post_init__(self) -> None:
         app_config = self._get_config_instance()
 
-        self.barcodes_enabled = (
-            app_config.barcodes_enabled or settings.CONSUMER_ENABLE_BARCODES
-        )
-        self.barcode_enable_tiff_support = (
-            app_config.barcode_enable_tiff_support
-            or settings.CONSUMER_BARCODE_TIFF_SUPPORT
-        )
-        self.barcode_string = (
-            app_config.barcode_string or settings.CONSUMER_BARCODE_STRING
-        )
-        self.barcode_retain_split_pages = (
-            app_config.barcode_retain_split_pages
-            or settings.CONSUMER_BARCODE_RETAIN_SPLIT_PAGES
-        )
-        self.barcode_enable_asn = (
-            app_config.barcode_enable_asn or settings.CONSUMER_ENABLE_ASN_BARCODE
-        )
-        self.barcode_asn_prefix = (
-            app_config.barcode_asn_prefix or settings.CONSUMER_ASN_BARCODE_PREFIX
-        )
-        self.barcode_upscale = (
-            app_config.barcode_upscale or settings.CONSUMER_BARCODE_UPSCALE
-        )
-        self.barcode_dpi = app_config.barcode_dpi or settings.CONSUMER_BARCODE_DPI
-        self.barcode_max_pages = (
-            app_config.barcode_max_pages or settings.CONSUMER_BARCODE_MAX_PAGES
-        )
-        self.barcode_enable_tag = (
-            app_config.barcode_enable_tag or settings.CONSUMER_ENABLE_TAG_BARCODE
-        )
+        for field in self._FIELDS:
+            setattr(
+                self,
+                field,
+                _coalesce(
+                    getattr(app_config, field),
+                    getattr(settings, CONFIG_SETTINGS_MAP[field]),
+                ),
+            )
         self.barcode_tag_mapping = (
             app_config.barcode_tag_mapping or settings.CONSUMER_TAG_BARCODE_MAPPING
-        )
-        self.barcode_tag_split = (
-            app_config.barcode_tag_split or settings.CONSUMER_TAG_BARCODE_SPLIT
         )
 
 

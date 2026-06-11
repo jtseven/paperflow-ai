@@ -6,7 +6,7 @@ export const environment = {
   production: false,
   apiBaseUrl: document.baseURI + 'api/',
   apiVersion: '10',
-  appTitle: 'Paperless-ngx',
+  appTitle: 'Paperflow AI',
   tag: 'dev',
   version: 'DEVELOPMENT',
   webSocketHost: window.location.host,
