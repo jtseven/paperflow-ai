@@ -40,6 +40,7 @@ import { DocumentService } from 'src/app/services/rest/document.service'
 import {
   GlobalSearchResult,
   SearchService,
+  SemanticDocument,
 } from 'src/app/services/rest/search.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
@@ -85,6 +86,9 @@ export class GlobalSearchComponent implements OnInit {
   public query: string
   public queryDebounce: Subject<string>
   public searchResults: GlobalSearchResult
+  // Embedding-based document hits, surfaced as a separate "By meaning" group.
+  public semanticResults: SemanticDocument[] = []
+  public semanticLoading: boolean = false
   private currentItemIndex: number = -1
   private domIndex: number = -1
   public loading: boolean = false
@@ -100,6 +104,10 @@ export class GlobalSearchComponent implements OnInit {
       this.settingsService.get(SETTINGS_KEYS.SEARCH_FULL_TYPE) ===
       GlobalSearchType.ADVANCED
     )
+  }
+
+  get aiEnabled(): boolean {
+    return this.settingsService.get(SETTINGS_KEYS.AI_ENABLED)
   }
 
   constructor() {
@@ -132,6 +140,24 @@ export class GlobalSearchComponent implements OnInit {
       this.loading = false
       this.resultsDropdown.open()
     })
+
+    // Fire the embedding-based search in parallel; only when AI is enabled so
+    // installs without it never pay the cost. Failures are silent — the keyword
+    // results still stand on their own.
+    this.semanticResults = []
+    if (this.aiEnabled) {
+      this.semanticLoading = true
+      this.searchService.semanticSearch(query.trim()).subscribe({
+        next: (results) => {
+          this.semanticResults = results.documents ?? []
+          this.semanticLoading = false
+        },
+        error: () => {
+          this.semanticResults = []
+          this.semanticLoading = false
+        },
+      })
+    }
   }
 
   public primaryAction(
@@ -258,6 +284,8 @@ export class GlobalSearchComponent implements OnInit {
     this.queryDebounce.next(null)
     this.query = null
     this.searchResults = null
+    this.semanticResults = []
+    this.semanticLoading = false
     this.currentItemIndex = -1
     if (close) {
       this.resultsDropdown.close()

@@ -3678,6 +3678,106 @@ class GlobalSearchView(PassUserMixin):
 
 @extend_schema_view(
     get=extend_schema(
+        description=(
+            "Search documents by meaning (embedding similarity) using the AI "
+            "vector index, scoped to documents the user may view."
+        ),
+        responses={
+            (200, "application/json"): OpenApiTypes.OBJECT,
+        },
+    ),
+)
+class SemanticSearchView(PassUserMixin):
+    """Rank documents by embedding similarity to a natural-language query.
+
+    Reuses the same LanceDB index as chat. Retrieval is global; results are then
+    intersected with the documents the requesting user is allowed to view. When
+    AI or the index is unavailable the endpoint returns an empty result set with
+    flags so the frontend can explain why rather than erroring.
+    """
+
+    permission_classes = (IsAuthenticated,)
+    serializer_class = DocumentSerializer
+
+    MAX_RESULTS = 25
+    DEFAULT_RESULTS = 10
+
+    def get(self, request, *args, **kwargs):
+        query = (request.query_params.get("query") or "").strip()
+        if len(query) < 3:
+            return HttpResponseBadRequest("Query must be at least 3 characters")
+
+        try:
+            limit = int(request.query_params.get("limit", self.DEFAULT_RESULTS))
+        except (TypeError, ValueError):
+            limit = self.DEFAULT_RESULTS
+        limit = max(1, min(limit, self.MAX_RESULTS))
+
+        ai_config = AIConfig()
+        if not ai_config.llm_index_enabled:
+            return Response(
+                {"documents": [], "ai_enabled": False, "index_ready": False},
+            )
+
+        from paperless_ai.indexing import llm_index_exists
+
+        if not llm_index_exists():
+            return Response(
+                {"documents": [], "ai_enabled": True, "index_ready": False},
+            )
+
+        if not request.user.has_perm("documents.view_document"):
+            return Response(
+                {"documents": [], "ai_enabled": True, "index_ready": True},
+            )
+
+        from paperless_ai.search import semantic_search
+
+        try:
+            # Over-fetch so permission filtering still leaves a full page.
+            ranked = semantic_search(query, limit=limit * 3)
+        except Exception:
+            logger.exception("Semantic search failed for query %r", query)
+            return Response(
+                {"documents": [], "ai_enabled": True, "index_ready": True},
+            )
+
+        all_docs = get_objects_for_user_owner_aware(
+            request.user,
+            "view_document",
+            Document,
+        )
+        docs_by_id = all_docs.in_bulk([result.document_id for result in ranked])
+
+        ordered: list[Document] = []
+        meta: dict[int, Any] = {}
+        for result in ranked:
+            document = docs_by_id.get(result.document_id)
+            if document is None:
+                continue
+            ordered.append(document)
+            meta[result.document_id] = result
+            if len(ordered) >= limit:
+                break
+
+        data = DocumentSerializer(
+            ordered,
+            many=True,
+            context={"request": request},
+        ).data
+        for item in data:
+            result = meta.get(item["id"])
+            if result is not None:
+                item["search_score"] = round(result.score, 4)
+                item["search_snippet"] = result.snippet
+
+        return Response(
+            {"documents": data, "ai_enabled": True, "index_ready": True},
+        )
+
+
+@extend_schema_view(
+    get=extend_schema(
         description="Get statistics for the current user",
         responses={
             (200, "application/json"): OpenApiTypes.OBJECT,

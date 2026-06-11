@@ -36,6 +36,7 @@ from documents.views import RotateDocumentsView
 from documents.views import SavedViewViewSet
 from documents.views import SearchAutoCompleteView
 from documents.views import SelectionDataView
+from documents.views import SemanticSearchView
 from documents.views import SharedLinkView
 from documents.views import ShareLinkBundleViewSet
 from documents.views import ShareLinkViewSet
@@ -129,6 +130,11 @@ urlpatterns = [
                                 "^autocomplete/",
                                 SearchAutoCompleteView.as_view(),
                                 name="autocomplete",
+                            ),
+                            re_path(
+                                "^semantic/",
+                                SemanticSearchView.as_view(),
+                                name="semantic_search",
                             ),
                         ],
                     ),

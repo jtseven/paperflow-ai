@@ -59,4 +59,13 @@ describe('SearchService', () => {
       `${environment.apiBaseUrl}search/?query=${query}&db_only=true`
     )
   })
+
+  it('should call correct api endpoint on semanticSearch', () => {
+    const query = 'apple'
+    subscription = service.semanticSearch(query).subscribe()
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}search/semantic/?query=${query}`
+    )
+    expect(req.request.method).toEqual('GET')
+  })
 })

@@ -33,6 +33,18 @@ export interface GlobalSearchResult {
   workflows: Workflow[]
 }
 
+/** A document hit augmented with the semantic similarity score and a snippet. */
+export interface SemanticDocument extends Document {
+  search_score?: number
+  search_snippet?: string
+}
+
+export interface SemanticSearchResult {
+  documents: SemanticDocument[]
+  ai_enabled: boolean
+  index_ready: boolean
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -57,6 +69,18 @@ export class SearchService {
     return this.http.get<GlobalSearchResult>(
       `${environment.apiBaseUrl}search/`,
       { params }
+    )
+  }
+
+  /**
+   * Embedding-based ("by meaning") document search. Returns documents ranked by
+   * semantic similarity to the query, plus flags indicating whether AI / the
+   * vector index are available so the caller can stay quiet when they aren't.
+   */
+  semanticSearch(query: string): Observable<SemanticSearchResult> {
+    return this.http.get<SemanticSearchResult>(
+      `${environment.apiBaseUrl}search/semantic/`,
+      { params: new HttpParams().set('query', query) }
     )
   }
 

@@ -287,6 +287,35 @@ describe('GlobalSearchComponent', () => {
     expect(dropdownOpenSpy).toHaveBeenCalled()
   }))
 
+  it('should also run semantic search when AI is enabled', fakeAsync(() => {
+    jest.spyOn(searchService, 'globalSearch').mockReturnValue(of({} as any))
+    jest.spyOn(component, 'aiEnabled', 'get').mockReturnValue(true)
+    const semanticSpy = jest
+      .spyOn(searchService, 'semanticSearch')
+      .mockReturnValue(
+        of({
+          documents: [{ id: 7, title: 'X' } as any],
+          ai_enabled: true,
+          index_ready: true,
+        })
+      )
+    component.queryDebounce.next('bike')
+    tick(401)
+    expect(semanticSpy).toHaveBeenCalledWith('bike')
+    expect(component.semanticResults).toEqual([{ id: 7, title: 'X' }])
+    expect(component.semanticLoading).toBeFalsy()
+  }))
+
+  it('should not run semantic search when AI is disabled', fakeAsync(() => {
+    jest.spyOn(searchService, 'globalSearch').mockReturnValue(of({} as any))
+    jest.spyOn(component, 'aiEnabled', 'get').mockReturnValue(false)
+    const semanticSpy = jest.spyOn(searchService, 'semanticSearch')
+    component.queryDebounce.next('bike')
+    tick(401)
+    expect(semanticSpy).not.toHaveBeenCalled()
+    expect(component.semanticResults).toEqual([])
+  }))
+
   it('should support primary action', () => {
     const object = { id: 1 }
     const routerSpy = jest.spyOn(router, 'navigate')
