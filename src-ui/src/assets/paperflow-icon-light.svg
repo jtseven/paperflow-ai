@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="folderGradient" x1="58" y1="38" x2="276" y2="448" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1E7BFF"/><stop offset="1" stop-color="#7049FF"/></linearGradient>
+    <linearGradient id="bluePurple" x1="292" y1="292" x2="470" y2="405" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2E7BFF"/><stop offset="1" stop-color="#7049FF"/></linearGradient>
+    <linearGradient id="paperFill" x1="159" y1="71" x2="440" y2="460" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F7F9FD"/></linearGradient>
+    <filter id="shadow" x="22" y="22" width="468" height="468" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#10284D" flood-opacity="0.16"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="none"/>
+  <g filter="url(#shadow)">
+    <path d="M48 126C48 93 48 77 57 65C66 53 82 49 115 49H220V448H112C82 448 67 448 57 439C48 430 48 415 48 385V126Z" fill="url(#folderGradient)"/>
+    <path d="M99 147C95 127 111 109 132 109H320C337 109 351 121 354 138L399 371C403 391 387 409 366 409H178C161 409 147 397 144 380L99 147Z" fill="#CFE0FF" opacity="0.72"/>
+    <path d="M127 128C123 108 139 90 160 90H348C365 90 379 102 382 119L427 352C431 372 415 390 394 390H206C189 390 175 378 172 361L127 128Z" fill="#E9F0FF" opacity="0.82"/>
+    <path d="M152 88C152 69 167 54 186 54H327L448 175V425C448 444 433 459 414 459H186C167 459 152 444 152 425V88Z" fill="url(#paperFill)"/>
+    <path d="M327 54V139C327 159 343 175 363 175H448L327 54Z" fill="#EEF1F6"/>
+    <path d="M327 54V139C327 159 343 175 363 175H448" stroke="#E1E5EC" stroke-width="1"/>
+    <rect x="182" y="162" width="100" height="15" rx="7.5" fill="#2F7BFF"/>
+    <rect x="182" y="222" width="190" height="13" rx="6.5" fill="#C6CBD3"/>
+    <rect x="182" y="263" width="190" height="13" rx="6.5" fill="#C6CBD3"/>
+    <rect x="182" y="304" width="190" height="13" rx="6.5" fill="#C6CBD3"/>
+    <rect x="182" y="345" width="142" height="13" rx="6.5" fill="#C6CBD3"/>
+    <path d="M384 295C392 332 412 352 449 361C412 371 392 391 384 428C374 391 355 371 318 361C355 352 374 332 384 295Z" fill="url(#bluePurple)"/>
+    <rect x="317" y="411" width="75" height="16" rx="8" fill="url(#bluePurple)"/>
+    <rect x="259" y="449" width="86" height="15" rx="7.5" fill="url(#bluePurple)"/>
+    <rect x="359" y="449" width="29" height="15" rx="7.5" fill="#2F7BFF"/>
+    <rect x="401" y="449" width="25" height="15" rx="7.5" fill="#2F7BFF"/>
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 {
   "background_color": "white",
-  "description": "A supercharged version of paperless: scan, index and archive all your physical documents",
+  "description": "Paperflow AI — AI-assisted document management: scan, index, archive, and chat with all your documents.",
   "display": "standalone",
   "icons": [
     {
@@ -8,11 +8,12 @@
       "sizes": "256x256"
     },
     {
-      "src": "assets/logo-notext.svg",
-      "sizes": "any"
+      "src": "assets/paperflow-icon-light.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ],
-  "name": "Paperless-ngx",
-  "short_name": "Paperless-ngx",
+  "name": "Paperflow AI",
+  "short_name": "Paperflow AI",
   "start_url": "/"
 }

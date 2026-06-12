@@ -1,0 +1,5 @@
+<svg width="900" height="180" viewBox="0 0 900 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="aiGradient" x1="746" y1="42" x2="880" y2="145" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#397BFF"/><stop offset="1" stop-color="#7B48FF"/></linearGradient></defs>
+  <text x="0" y="128" font-family="Inter, Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="128" font-weight="700" letter-spacing="-4" fill="#061638">Paperflow</text>
+  <text x="739" y="128" font-family="Inter, Avenir Next, Segoe UI, Helvetica, Arial, sans-serif" font-size="128" font-weight="700" letter-spacing="-2" fill="url(#aiGradient)">AI</text>
+</svg>

@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/paperflow-ai-logo-dark.svg">
+    <img alt="Paperflow AI" src="docs/assets/paperflow-ai-logo-light.svg" width="440">
+  </picture>
+</p>
+
 # Paperflow AI
 
 Paperflow AI is a fork of [paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) that focuses on **AI-assisted document management** while keeping the core "scan, archive, search" workflow that paperless-ngx is known for.
