@@ -21,7 +21,6 @@ import { PermissionsService } from 'src/app/services/permissions.service'
 import { SavedViewService } from 'src/app/services/rest/saved-view.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
-import { LogoComponent } from '../common/logo/logo.component'
 import { PageHeaderComponent } from '../common/page-header/page-header.component'
 import { DashboardComponent } from './dashboard.component'
 import { SavedViewWidgetComponent } from './widgets/saved-view-widget/saved-view-widget.component'
@@ -90,7 +89,6 @@ describe('DashboardComponent', () => {
         UploadFileWidgetComponent,
         IfPermissionsDirective,
         SavedViewWidgetComponent,
-        LogoComponent,
       ],
       providers: [
         PermissionsGuard,
