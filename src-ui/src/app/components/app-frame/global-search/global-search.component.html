@@ -163,7 +163,7 @@
                     }
                 }
 
-                @if (semanticLoading || semanticResults.length) {
+                @if (semanticLoading || uniqueSemanticResults.length) {
                     <h6 class="dropdown-header d-flex align-items-center">
                         <lucide-icon width="1em" height="1em" name="stars" class="me-1"></lucide-icon>
                         <ng-container i18n>By meaning</ng-container>
@@ -171,8 +171,8 @@
                             <div class="spinner-border spinner-border-sm ms-2" role="status"></div>
                         }
                     </h6>
-                    @for (document of semanticResults; track document.id) {
-                        <ng-container *ngTemplateOutlet="resultItemTemplate; context: {item: document, nameProp: 'title', type: DataType.Document, icon: 'stars', date: document.created}"></ng-container>
+                    @for (document of uniqueSemanticResults; track document.id) {
+                        <ng-container *ngTemplateOutlet="resultItemTemplate; context: {item: document, nameProp: 'title', type: DataType.Document, icon: 'file-text', date: document.created}"></ng-container>
                     }
                 }
             }

@@ -112,6 +112,16 @@ export class GlobalSearchComponent implements OnInit {
     return this.settingsService.get(SETTINGS_KEYS.AI_ENABLED)
   }
 
+  // Embedding hits that aren't already shown among the keyword document
+  // results, so the same document never appears in both the "Documents" and
+  // "By meaning" groups.
+  get uniqueSemanticResults(): SemanticDocument[] {
+    const keywordIds = new Set(
+      this.searchResults?.documents?.map((doc) => doc.id) ?? []
+    )
+    return this.semanticResults.filter((doc) => !keywordIds.has(doc.id))
+  }
+
   constructor() {
     this.queryDebounce = new Subject<string>()
 

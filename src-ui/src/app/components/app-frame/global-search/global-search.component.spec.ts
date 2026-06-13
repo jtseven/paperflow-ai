@@ -306,6 +306,19 @@ describe('GlobalSearchComponent', () => {
     expect(component.semanticLoading).toBeFalsy()
   }))
 
+  it('should exclude semantic hits already shown in keyword document results', () => {
+    component.searchResults = {
+      documents: [{ id: 7 }, { id: 8 }],
+    } as any
+    component.semanticResults = [
+      { id: 7, title: 'Dup' },
+      { id: 9, title: 'Unique' },
+    ] as any
+    expect(component.uniqueSemanticResults).toEqual([
+      { id: 9, title: 'Unique' },
+    ])
+  })
+
   it('should not run semantic search when AI is disabled', fakeAsync(() => {
     jest.spyOn(searchService, 'globalSearch').mockReturnValue(of({} as any))
     jest.spyOn(component, 'aiEnabled', 'get').mockReturnValue(false)
