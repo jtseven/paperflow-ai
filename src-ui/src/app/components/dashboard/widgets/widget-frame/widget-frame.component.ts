@@ -2,13 +2,14 @@ import { DragDropModule } from '@angular/cdk/drag-drop'
 import { NgTemplateOutlet } from '@angular/common'
 import { AfterViewInit, Component, Input } from '@angular/core'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { LoadingComponentWithPermissions } from 'src/app/components/loading-component/loading.component'
 
 @Component({
   selector: 'pngx-widget-frame',
   templateUrl: './widget-frame.component.html',
   styleUrls: ['./widget-frame.component.scss'],
-  imports: [DragDropModule, NgxBootstrapIconsModule, NgTemplateOutlet],
+  imports: [DragDropModule, NgxBootstrapIconsModule, LucideAngularModule, NgTemplateOutlet],
 })
 export class WidgetFrameComponent
   extends LoadingComponentWithPermissions

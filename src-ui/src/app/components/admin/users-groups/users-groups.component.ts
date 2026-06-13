@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subject, first, takeUntil } from 'rxjs'
 import { Group } from 'src/app/data/group'
 import { User } from 'src/app/data/user'
@@ -30,6 +31,7 @@ import { ComponentWithPermissions } from '../../with-permissions/with-permission
     PageHeaderComponent,
     IfPermissionsDirective,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class UsersAndGroupsComponent

@@ -15,6 +15,7 @@ import {
 import { RouterModule } from '@angular/router'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import {
   catchError,
   concat,
@@ -53,6 +54,7 @@ import { AbstractInputComponent } from '../abstract-input'
     NgTemplateOutlet,
     NgSelectModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class DocumentLinkComponent

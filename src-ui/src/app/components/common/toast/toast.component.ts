@@ -6,6 +6,7 @@ import {
   NgbToastModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { interval, take } from 'rxjs'
 import { Toast } from 'src/app/services/toast.service'
 
@@ -16,6 +17,7 @@ import { Toast } from 'src/app/services/toast.service'
     NgbToastModule,
     NgbProgressbarModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
   templateUrl: './toast.component.html',
   styleUrl: './toast.component.scss',

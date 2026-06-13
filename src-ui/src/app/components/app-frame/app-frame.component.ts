@@ -16,6 +16,7 @@ import {
   NgbPopoverModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { Observable } from 'rxjs'
 import { first } from 'rxjs/operators'
@@ -70,6 +71,9 @@ const SCROLL_THRESHOLD = 16
     NgbCollapseModule,
     NgbNavModule,
     NgxBootstrapIconsModule,
+    // Lucide PoC for the app chrome (sidebar + navbar): a cleaner, more modern
+    // icon set than Bootstrap Icons. Icons are registered at bootstrap (main.ts).
+    LucideAngularModule,
     DragDropModule,
     TourNgBootstrap,
   ],
@@ -184,6 +188,9 @@ export class AppFrameComponent
   get customAppTitle(): string {
     return this.settingsService.get(SETTINGS_KEYS.APP_TITLE)
   }
+
+  // The navbar brand asset (icon / combined logo) renders both theme variants
+  // and CSS shows the one matching data-bs-theme — see the component styles.
 
   get canSaveSettings(): boolean {
     return (

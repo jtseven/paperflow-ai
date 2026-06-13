@@ -7,6 +7,7 @@ import {
   NgbProgressbarModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subject, takeUntil } from 'rxjs'
 import { PaperlessTaskType } from 'src/app/data/paperless-task'
 import {
@@ -36,6 +37,7 @@ import { environment } from 'src/environments/environment'
     CustomDatePipe,
     FileSizePipe,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class SystemStatusDialogComponent implements OnInit, OnDestroy {

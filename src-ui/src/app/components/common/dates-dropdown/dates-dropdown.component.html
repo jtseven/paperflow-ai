@@ -1,6 +1,6 @@
 <div class="btn-group w-100" ngbDropdown role="group" [popperOptions]="popperOptions" [placement]="placement">
   <button class="btn btn-sm" id="dropdown{{title}}" ngbDropdownToggle [ngClass]="createdDateTo || createdDateFrom ? 'btn-primary' : 'btn-outline-primary'" [disabled]="disabled">
-    <i-bs width="1em" height="1em" name="calendar-event-fill"></i-bs><div class="d-none d-sm-inline ms-1">{{title}}</div>
+    <lucide-icon width="1em" height="1em" name="calendar-event-fill"></lucide-icon><div class="d-none d-sm-inline ms-1">{{title}}</div>
     <pngx-clearable-badge [selected]="isActive" (cleared)="reset()"></pngx-clearable-badge><span class="visually-hidden">selected</span>
   </button>
   <div class="dropdown-menu date-dropdown shadow p-2" ngbDropdownMenu attr.aria-labelledby="dropdown{{title}}">
@@ -10,8 +10,8 @@
         <div class="selected-icon">
           @if (createdRelativeDate) {
             <a class="text-light focus-variants" href="javascript:void(0)" (click)="clearCreatedRelativeDate()">
-              <i-bs width="1em" height="1em" name="check" class="variant-unfocused text-dark"></i-bs>
-              <i-bs width="1em" height="1em" name="x" class="variant-focused text-primary"></i-bs>
+              <lucide-icon width="1em" height="1em" name="check" class="variant-unfocused text-dark"></lucide-icon>
+              <lucide-icon width="1em" height="1em" name="x" class="variant-focused text-primary"></lucide-icon>
             </a>
           }
         </div>
@@ -34,8 +34,8 @@
         <div class="selected-icon">
           @if (createdDateFrom) {
             <a class="text-light focus-variants" href="javascript:void(0)" (click)="clearCreatedFrom()">
-              <i-bs width="1em" height="1em" name="check" class="variant-unfocused"></i-bs>
-              <i-bs width="1em" height="1em" name="x" class="variant-focused text-primary"></i-bs>
+              <lucide-icon width="1em" height="1em" name="check" class="variant-unfocused"></lucide-icon>
+              <lucide-icon width="1em" height="1em" name="x" class="variant-focused text-primary"></lucide-icon>
             </a>
           }
         </div>
@@ -44,7 +44,7 @@
           <input class="form-control small" [placeholder]="datePlaceHolder" (dateSelect)="onChangeDebounce()" (change)="onChangeDebounce()" (keypress)="onKeyPress($event)"
             maxlength="10" [(ngModel)]="createdDateFrom" ngbDatepicker #createdDateFromPicker="ngbDatepicker" [footerTemplate]="createdFromFooterTemplate">
           <button class="btn btn-outline-secondary" (click)="createdDateFromPicker.toggle()" type="button">
-            <i-bs width="1em" height="1em" name="calendar"></i-bs>
+            <lucide-icon width="1em" height="1em" name="calendar"></lucide-icon>
           </button>
           <ng-template #createdFromFooterTemplate>
             <div class="btn-group-xs border-top p-2 d-flex">
@@ -58,8 +58,8 @@
         <div class="selected-icon">
           @if (createdDateTo) {
             <a class="text-light focus-variants" href="javascript:void(0)" (click)="clearCreatedTo()">
-              <i-bs width="1em" height="1em" name="check" class="variant-unfocused"></i-bs>
-              <i-bs width="1em" height="1em" name="x" class="variant-focused text-primary"></i-bs>
+              <lucide-icon width="1em" height="1em" name="check" class="variant-unfocused"></lucide-icon>
+              <lucide-icon width="1em" height="1em" name="x" class="variant-focused text-primary"></lucide-icon>
             </a>
           }
         </div>
@@ -68,7 +68,7 @@
           <input class="form-control small" [placeholder]="datePlaceHolder" (dateSelect)="onChangeDebounce()" (change)="onChangeDebounce()" (keypress)="onKeyPress($event)"
             maxlength="10" [(ngModel)]="createdDateTo" ngbDatepicker #createdDateToPicker="ngbDatepicker" [footerTemplate]="createdToFooterTemplate">
           <button class="btn btn-outline-secondary" (click)="createdDateToPicker.toggle()" type="button">
-            <i-bs width="1em" height="1em" name="calendar"></i-bs>
+            <lucide-icon width="1em" height="1em" name="calendar"></lucide-icon>
           </button>
           <ng-template #createdToFooterTemplate>
             <div class="btn-group-xs border-top p-2 d-flex">
@@ -86,8 +86,8 @@
         <div class="selected-icon">
           @if (addedRelativeDate) {
             <a class="text-light focus-variants" href="javascript:void(0)" (click)="clearAddedRelativeDate()">
-              <i-bs width="1em" height="1em" name="check" class="variant-unfocused text-dark"></i-bs>
-              <i-bs width="1em" height="1em" name="x" class="variant-focused text-primary"></i-bs>
+              <lucide-icon width="1em" height="1em" name="check" class="variant-unfocused text-dark"></lucide-icon>
+              <lucide-icon width="1em" height="1em" name="x" class="variant-focused text-primary"></lucide-icon>
             </a>
           }
         </div>
@@ -110,8 +110,8 @@
         <div class="selected-icon">
           @if (addedDateFrom) {
             <a class="text-light focus-variants" href="javascript:void(0)" (click)="clearAddedFrom()">
-              <i-bs width="1em" height="1em" name="check" class="variant-unfocused"></i-bs>
-              <i-bs width="1em" height="1em" name="x" class="variant-focused text-primary"></i-bs>
+              <lucide-icon width="1em" height="1em" name="check" class="variant-unfocused"></lucide-icon>
+              <lucide-icon width="1em" height="1em" name="x" class="variant-focused text-primary"></lucide-icon>
             </a>
           }
         </div>
@@ -120,7 +120,7 @@
           <input class="form-control small" [placeholder]="datePlaceHolder" (dateSelect)="onChangeDebounce()" (change)="onChangeDebounce()" (keypress)="onKeyPress($event)"
             maxlength="10" [(ngModel)]="addedDateFrom" ngbDatepicker #addedDateFromPicker="ngbDatepicker" [footerTemplate]="addedFromFooterTemplate">
           <button class="btn btn-outline-secondary" (click)="addedDateFromPicker.toggle()" type="button">
-            <i-bs width="1em" height="1em" name="calendar"></i-bs>
+            <lucide-icon width="1em" height="1em" name="calendar"></lucide-icon>
           </button>
           <ng-template #addedFromFooterTemplate>
             <div class="btn-group-xs border-top p-2 d-flex">
@@ -134,8 +134,8 @@
         <div class="selected-icon">
           @if (addedDateTo) {
             <a class="text-light focus-variants" href="javascript:void(0)" (click)="clearAddedTo()">
-              <i-bs width="1em" height="1em" name="check" class="variant-unfocused"></i-bs>
-              <i-bs width="1em" height="1em" name="x" class="variant-focused text-primary"></i-bs>
+              <lucide-icon width="1em" height="1em" name="check" class="variant-unfocused"></lucide-icon>
+              <lucide-icon width="1em" height="1em" name="x" class="variant-focused text-primary"></lucide-icon>
             </a>
           }
         </div>
@@ -144,7 +144,7 @@
           <input class="form-control small" [placeholder]="datePlaceHolder" (dateSelect)="onChangeDebounce()" (change)="onChangeDebounce()" (keypress)="onKeyPress($event)"
             maxlength="10" [(ngModel)]="addedDateTo" ngbDatepicker #addedDateToPicker="ngbDatepicker" [footerTemplate]="addedToFooterTemplate">
           <button class="btn btn-outline-secondary" (click)="addedDateToPicker.toggle()" type="button">
-            <i-bs width="1em" height="1em" name="calendar"></i-bs>
+            <lucide-icon width="1em" height="1em" name="calendar"></lucide-icon>
           </button>
           <ng-template #addedToFooterTemplate>
             <div class="btn-group-xs border-top p-2 d-flex">

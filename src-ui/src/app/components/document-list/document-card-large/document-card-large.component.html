@@ -48,7 +48,7 @@
             }
             @for (highlight of searchNoteHighlights; track highlight) {
               <span class="d-block">
-                <i-bs name="chat-left-text"></i-bs>
+                <lucide-icon name="chat-left-text"></lucide-icon>
                 <span [innerHtml]="highlight"></span>
               </span>
             }
@@ -66,16 +66,16 @@
           <div class="btn-group">
             @if (document) {
               <a class="btn btn-sm btn-outline-secondary" (click)="clickMoreLike.emit()">
-                <i-bs name="diagram-3" class="me-1"></i-bs><span class="d-none d-md-inline" i18n>More like this</span>
+                <lucide-icon name="diagram-3" class="me-1"></lucide-icon><span class="d-none d-md-inline" i18n>More like this</span>
               </a>
               <a routerLink="/documents/{{document.id}}" class="btn btn-sm btn-outline-secondary" *pngxIfPermissions="{ action: PermissionAction.Change, type: PermissionType.Document }">
-                <i-bs name="file-earmark-richtext" class="me-1"></i-bs><span class="d-none d-md-inline" i18n>Open</span>
+                <lucide-icon name="file-earmark-richtext" class="me-1"></lucide-icon><span class="d-none d-md-inline" i18n>Open</span>
               </a>
               <pngx-preview-popup [document]="document" #popupPreview>
-                <i-bs name="eye" class="me-1"></i-bs><span class="d-none d-md-inline" i18n>View</span>
+                <lucide-icon name="eye" class="me-1"></lucide-icon><span class="d-none d-md-inline" i18n>View</span>
               </pngx-preview-popup>
               <a class="btn btn-sm btn-outline-secondary" [href]="getDownloadUrl()">
-                <i-bs name="download" class="me-1"></i-bs><span class="d-none d-md-inline" i18n>Download</span>
+                <lucide-icon name="download" class="me-1"></lucide-icon><span class="d-none d-md-inline" i18n>Download</span>
               </a>
             } @else {
               <div class="placeholder btn btn-sm btn-outline-secondary bg-secondary" style="width: 60px;">&nbsp;</div>
@@ -89,24 +89,24 @@
             @if (document) {
               @if (displayFields.includes(DisplayField.NOTES) && notesEnabled && document.notes.length) {
                 <button routerLink="/documents/{{document.id}}/notes" class="list-group-item btn btn-sm bg-light text-dark p-1 border-0 me-2 d-flex align-items-center" title="View notes" i18n-title>
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="chat-left-text"></i-bs><small>{{document.notes.length}} Notes</small>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="chat-left-text"></lucide-icon><small>{{document.notes.length}} Notes</small>
                 </button>
               }
               @if (displayFields.includes(DisplayField.DOCUMENT_TYPE) && document.document_type) {
                 <button type="button" class="list-group-item btn btn-sm bg-light text-dark p-1 border-0 me-2 d-flex align-items-center" title="Filter by document type" i18n-title
                   (click)="clickDocumentType.emit(document.document_type);$event.stopPropagation()">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="file-earmark"></i-bs><small>{{document.document_type | documentTypeName | async}}</small>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="file-earmark"></lucide-icon><small>{{document.document_type | documentTypeName | async}}</small>
                 </button>
               }
               @if (displayFields.includes(DisplayField.STORAGE_PATH) && document.storage_path) {
                 <button type="button" class="list-group-item btn btn-sm bg-light text-dark p-1 border-0 me-2 d-flex align-items-center" title="Filter by storage path" i18n-title
                   (click)="clickStoragePath.emit(document.storage_path);$event.stopPropagation()">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="archive"></i-bs><small>{{document.storage_path | storagePathName | async}}</small>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="archive"></lucide-icon><small>{{document.storage_path | storagePathName | async}}</small>
                 </button>
               }
               @if (displayFields.includes(DisplayField.ASN) && document.archive_serial_number | isNumber) {
                 <div class="list-group-item me-2 bg-light text-dark p-1 border-0 d-flex align-items-center">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="upc-scan"></i-bs><small>#{{document.archive_serial_number}}</small>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="upc-scan"></lucide-icon><small>#{{document.archive_serial_number}}</small>
                 </div>
               }
               @if (displayFields.includes(DisplayField.CREATED) || displayFields.includes(DisplayField.ADDED)) {
@@ -119,29 +119,29 @@
                 </ng-template>
                 @if (displayFields.includes(DisplayField.CREATED)) {
                   <div class="list-group-item bg-light text-dark p-1 border-0 d-flex align-items-center" [ngbTooltip]="dateTooltip">
-                    <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="calendar-event"></i-bs><small>{{document.created | customDate:'mediumDate'}}</small>
+                    <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="calendar-event"></lucide-icon><small>{{document.created | customDate:'mediumDate'}}</small>
                   </div>
                 }
                 @if (displayFields.includes(DisplayField.ADDED)) {
                   <div class="list-group-item bg-light text-dark p-1 border-0 d-flex align-items-center" [ngbTooltip]="dateTooltip">
-                    <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="calendar-event"></i-bs><small>{{document.added | customDate:'mediumDate'}}</small>
+                    <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="calendar-event"></lucide-icon><small>{{document.added | customDate:'mediumDate'}}</small>
                   </div>
                 }
               }
               @if (displayFields.includes(DisplayField.PAGE_COUNT) && document.page_count) {
                 <div class="list-group-item bg-light text-dark p-1 border-0 d-flex align-items-center">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="files"></i-bs>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="files"></lucide-icon>
                   <small i18n>{document.page_count, plural, =1 {1 page} other {{{document.page_count}} pages}}</small>
                 </div>
               }
               @if (displayFields.includes(DisplayField.OWNER) && document.owner && document.owner !== settingsService.currentUser.id) {
                 <div class="list-group-item bg-light text-dark p-1 border-0 d-flex align-items-center">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="person-fill-lock"></i-bs><small>{{document.owner | username | async}}</small>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="person-fill-lock"></lucide-icon><small>{{document.owner | username | async}}</small>
                 </div>
               }
               @if (displayFields.includes(DisplayField.SHARED) && document.is_shared_by_requester) {
                 <div class="list-group-item bg-light text-dark p-1 border-0 d-flex align-items-center">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="people-fill"></i-bs><small i18n>Shared</small>
+                  <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="people-fill"></lucide-icon><small i18n>Shared</small>
                 </div>
               }
               @if (document.__search_hit__?.score) {
@@ -153,7 +153,7 @@
               @for (field of document.custom_fields; track field.field) {
                 @if (displayFields.includes(DisplayField.CUSTOM_FIELD + field.field)) {
                   <div class="list-group-item bg-light text-dark p-1 border-0 d-flex align-items-center">
-                    <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="ui-radios"></i-bs>
+                    <lucide-icon width=".9em" height=".9em" class="me-2 text-muted" name="ui-radios"></lucide-icon>
                     <small>
                       <pngx-custom-field-display [document]="document" [fieldId]="field.field" showNameIfEmpty="true"></pngx-custom-field-display>
                     </small>

@@ -10,6 +10,7 @@ import {
 import { NgbNavModule } from '@ng-bootstrap/ng-bootstrap'
 import { DirtyComponent, dirtyCheck } from '@ngneat/dirty-check-forms'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import {
   BehaviorSubject,
   Observable,
@@ -53,6 +54,7 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
     FormsModule,
     ReactiveFormsModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class ConfigComponent

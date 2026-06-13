@@ -12,6 +12,7 @@ import {
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { first, takeUntil } from 'rxjs'
 import { CustomField, DATA_TYPE_LABELS } from 'src/app/data/custom-field'
 import { CustomFieldInstance } from 'src/app/data/custom-field-instance'
@@ -33,6 +34,7 @@ import { CustomFieldEditDialogComponent } from '../edit-dialog/custom-field-edit
   imports: [
     NgbDropdownModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     FormsModule,
     ReactiveFormsModule,
   ],

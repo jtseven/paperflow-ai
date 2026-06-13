@@ -7,6 +7,7 @@ import {
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { TagEditDialogComponent } from 'src/app/components/common/edit-dialog/tag-edit-dialog/tag-edit-dialog.component'
 import { FILTER_HAS_TAGS_ALL } from 'src/app/data/filter-rule-type'
 import { Tag } from 'src/app/data/tag'
@@ -31,6 +32,7 @@ import { ManagementListComponent } from '../management-list.component'
     NgbDropdownModule,
     NgbPaginationModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class TagListComponent extends ManagementListComponent<Tag> {

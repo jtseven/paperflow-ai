@@ -16,6 +16,7 @@ import {
   NgbTypeaheadModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { Observable, Subject, from } from 'rxjs'
 import {
@@ -248,6 +249,7 @@ const DEFAULT_TEXT_FILTER_MODIFIER_OPTIONS = [
     DatesDropdownComponent,
     PermissionsFilterDropdownComponent,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     NgbDropdownModule,
     NgbTypeaheadModule,
     FormsModule,

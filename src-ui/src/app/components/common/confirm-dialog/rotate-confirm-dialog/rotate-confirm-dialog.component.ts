@@ -1,6 +1,7 @@
 import { NgStyle } from '@angular/common'
 import { Component, inject } from '@angular/core'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { ConfirmDialogComponent } from '../confirm-dialog.component'
 
@@ -8,7 +9,7 @@ import { ConfirmDialogComponent } from '../confirm-dialog.component'
   selector: 'pngx-rotate-confirm-dialog',
   templateUrl: './rotate-confirm-dialog.component.html',
   styleUrl: './rotate-confirm-dialog.component.scss',
-  imports: [NgStyle, NgxBootstrapIconsModule],
+  imports: [NgStyle, NgxBootstrapIconsModule, LucideAngularModule],
 })
 export class RotateConfirmDialogComponent extends ConfirmDialogComponent {
   documentService = inject(DocumentService)

@@ -1,11 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 
 @Component({
   selector: 'pngx-clearable-badge',
   templateUrl: './clearable-badge.component.html',
   styleUrls: ['./clearable-badge.component.scss'],
-  imports: [NgxBootstrapIconsModule],
+  imports: [NgxBootstrapIconsModule, LucideAngularModule],
 })
 export class ClearableBadgeComponent {
   constructor() {}

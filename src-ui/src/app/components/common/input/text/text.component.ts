@@ -6,6 +6,7 @@ import {
 } from '@angular/forms'
 import { RouterLink } from '@angular/router'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -23,6 +24,7 @@ import { AbstractInputComponent } from '../abstract-input'
     FormsModule,
     ReactiveFormsModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     RouterLink,
   ],
 })

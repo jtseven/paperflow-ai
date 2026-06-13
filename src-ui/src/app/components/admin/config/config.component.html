@@ -24,11 +24,11 @@
                                                   {{option.title}}
                                                 </h6>
                                                 <a class="btn btn-sm btn-link" title="Read the documentation about this setting" i18n-title [href]="getDocsUrl(option.config_key)" target="_blank" referrerpolicy="no-referrer">
-                                                    <i-bs name="info-circle"></i-bs>
+                                                    <lucide-icon name="info-circle"></lucide-icon>
                                                 </a>
                                                 @if (isSet(option.key)) {
                                                   <button type="button" class="btn btn-sm btn-link text-danger ms-auto pe-0" title="Reset" i18n-title (click)="resetOption(option.key)">
-                                                      <i-bs class="me-1" name="x"></i-bs><ng-container i18n>Reset</ng-container>
+                                                      <lucide-icon class="me-1" name="x"></lucide-icon><ng-container i18n>Reset</ng-container>
                                                   </button>
                                                 }
                                             </div>

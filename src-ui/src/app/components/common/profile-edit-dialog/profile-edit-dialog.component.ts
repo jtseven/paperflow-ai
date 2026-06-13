@@ -12,6 +12,7 @@ import {
   NgbPopoverModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { takeUntil } from 'rxjs'
 import {
   SocialAccount,
@@ -39,6 +40,7 @@ import { TextComponent } from '../input/text/text.component'
     NgbAccordionModule,
     NgbPopoverModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class ProfileEditDialogComponent

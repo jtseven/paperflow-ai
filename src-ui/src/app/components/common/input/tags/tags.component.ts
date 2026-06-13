@@ -18,6 +18,7 @@ import { RouterModule } from '@angular/router'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { first, firstValueFrom, tap } from 'rxjs'
 import { Tag } from 'src/app/data/tag'
 import { TagService } from 'src/app/services/rest/tag.service'
@@ -43,6 +44,7 @@ import { TagComponent } from '../../tag/tag.component'
     ReactiveFormsModule,
     RouterModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class TagsComponent implements OnInit, ControlValueAccessor {

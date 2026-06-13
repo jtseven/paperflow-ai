@@ -6,6 +6,7 @@ import {
 } from '@angular/forms'
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { ColorSliderModule } from 'ngx-color/slider'
 import { randomColor } from 'src/app/utils/color'
 import { AbstractInputComponent } from '../abstract-input'
@@ -23,6 +24,7 @@ import { AbstractInputComponent } from '../abstract-input'
   styleUrls: ['./color.component.scss'],
   imports: [
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     NgbPopoverModule,
     FormsModule,
     ReactiveFormsModule,

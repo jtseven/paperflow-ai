@@ -17,6 +17,7 @@ import {
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs'
 import { DataType } from 'src/app/data/datatype'
 import {
@@ -66,6 +67,7 @@ import { WorkflowEditDialogComponent } from '../../common/edit-dialog/workflow-e
     FormsModule,
     ReactiveFormsModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     NgbDropdownModule,
     NgTemplateOutlet,
   ],

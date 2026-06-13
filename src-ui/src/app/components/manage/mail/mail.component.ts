@@ -3,6 +3,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { ActivatedRoute } from '@angular/router'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subject, delay, first, takeUntil, tap } from 'rxjs'
 import { MailAccount, MailAccountType } from 'src/app/data/mail-account'
 import { MailRule } from 'src/app/data/mail-rule'
@@ -40,6 +41,7 @@ import { ProcessedMailDialogComponent } from './processed-mail-dialog/processed-
     ReactiveFormsModule,
     NgbDropdownModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class MailComponent

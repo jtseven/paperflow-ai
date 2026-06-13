@@ -1,12 +1,12 @@
 @use "sass:color";
-@mixin paperless-green {
-  // base color e.g. #17541f = hsl(128, 57%, 21%)
-  --pngx-primary: 128, 57%;
-  --pngx-primary-lightness: 21%;
+@mixin paperflow-primary {
+  // Paperflow AI brand blue #1d4ed8 = hsl(224, 76%, 48%)
+  --pngx-primary: 224, 76%;
+  --pngx-primary-lightness: 48%;
 }
 
 :root {
-  @include paperless-green;
+  @include paperflow-primary;
   --pngx-primary-text-contrast: var(--bs-light);
 
   --bs-primary: hsl(var(--pngx-primary), var(--pngx-primary-lightness));
@@ -23,6 +23,14 @@
   --pngx-bg-darker: var(--bs-gray-100);
   --pngx-bg-alt2: var(--bs-gray-200); // #e9ecef
   --pngx-bg-disabled: #f7f7f7;
+  // Chrome (top bar + sidebar) — neutral surfaces. The brand colour is reserved
+  // for interactive elements (buttons, links, active items, focus) rather than
+  // flooding the chrome.
+  --pngx-chrome-bg: #ffffff;
+  --pngx-chrome-border: #e4e7ec;
+  --pngx-chrome-input-bg: #eef0f3;
+  --pngx-chrome-hover-bg: rgba(0, 0, 0, 0.045);
+  --pngx-accent-subtle: hsla(var(--pngx-primary), var(--pngx-primary-lightness), 0.1);
   --pngx-focus-alpha: 0.3;
   --pngx-toast-max-width: 340px;
   --bs-info: var(--pngx-bg-alt2);
@@ -67,8 +75,8 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
 }
 
 // Dark mode
-@mixin paperless-green-dark-mode {
-  --pngx-primary-lightness: 31%;
+@mixin paperflow-primary-dark-mode {
+  --pngx-primary-lightness: 56%;
   --bs-primary: hsl(var(--pngx-primary),var(--pngx-primary-lightness));
 }
 
@@ -79,6 +87,10 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   --pngx-bg-alt2: #232323;
   --pngx-bg-darker: #101216;
   --pngx-bg-disabled: var(--pngx-bg-alt);
+  --pngx-chrome-bg: #1b1c1f;
+  --pngx-chrome-border: #2c2e33;
+  --pngx-chrome-input-bg: #232327;
+  --pngx-chrome-hover-bg: rgba(255, 255, 255, 0.06);
   --pngx-focus-alpha: 0.6;
   --pngx-primary-faded: var(--pngx-primary-darken-15);
   --pngx-primary-text-contrast: var(--bs-body-color);
@@ -160,7 +172,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 
   .search-container {
-    input, input:focus, i-bs[name="search"] , ::placeholder {
+    input, input:focus, lucide-icon[name="search"] , ::placeholder {
       color: var(--pngx-primary-text-contrast) !important;
     }
   }
@@ -268,9 +280,11 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 
   .alert-primary {
+    // Subtle translucent tint rather than a solid blue block (the brand blue is
+    // lighter than the old green, so the previous darken-18 bg read as a flood).
     --bs-alert-color: var(--bs-primary);
-    --bs-alert-bg: var(--pngx-primary-darken-18);
-    --bs-alert-border-color: var(--pngx-bg-darker);
+    --bs-alert-bg: hsla(var(--pngx-primary), var(--pngx-primary-lightness), 0.13);
+    --bs-alert-border-color: hsla(var(--pngx-primary), var(--pngx-primary-lightness), 0.28);
   }
 
   .alert-success {
@@ -325,12 +339,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
 
 [data-bs-theme="dark"] {
   body:not(.primary-light):not(.primary-dark) {
-    @include paperless-green-dark-mode;
-
-    .navbar.bg-primary {
-      // navbar is og green in dark mode
-      @include paperless-green;
-    }
+    @include paperflow-primary-dark-mode;
   }
 
   @include dark-mode;
@@ -342,16 +351,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
     body {
       // no custom theme color
       &:not(.primary-light):not(.primary-dark) {
-        @include paperless-green-dark-mode;
-
-        .navbar.bg-primary {
-          // navbar is og green in dark mode
-          @include paperless-green;
-        }
-
-        .navbar.bg-primary .dropdown-menu {
-          @include paperless-green-dark-mode;
-        }
+        @include paperflow-primary-dark-mode;
       }
 
       @include dark-mode;

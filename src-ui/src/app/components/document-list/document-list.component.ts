@@ -21,6 +21,7 @@ import {
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { filter, first, map, Subject, switchMap, takeUntil } from 'rxjs'
 import {
@@ -94,6 +95,7 @@ import { SaveViewConfigDialogComponent } from './save-view-config-dialog/save-vi
     DocumentTypeNamePipe,
     StoragePathNamePipe,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     AsyncPipe,
     FormsModule,
     ReactiveFormsModule,

@@ -16,6 +16,7 @@ import {
 } from '@angular/forms'
 import { NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { takeUntil } from 'rxjs'
 import {
   CustomField,
@@ -42,6 +43,7 @@ const SELECT_OPTION_PAGE_SIZE = 8
     ReactiveFormsModule,
     NgbPaginationModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class CustomFieldEditDialogComponent

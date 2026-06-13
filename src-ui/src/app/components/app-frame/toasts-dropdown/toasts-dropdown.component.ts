@@ -4,6 +4,7 @@ import {
   NgbProgressbarModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subscription } from 'rxjs'
 import { Toast, ToastService } from 'src/app/services/toast.service'
 import { ToastComponent } from '../../common/toast/toast.component'
@@ -17,6 +18,7 @@ import { ToastComponent } from '../../common/toast/toast.component'
     NgbDropdownModule,
     NgbProgressbarModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class ToastsDropdownComponent implements OnInit, OnDestroy {

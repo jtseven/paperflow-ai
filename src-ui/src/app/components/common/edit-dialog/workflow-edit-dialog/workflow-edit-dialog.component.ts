@@ -15,6 +15,7 @@ import {
 } from '@angular/forms'
 import { NgbAccordionModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subscription, first, takeUntil } from 'rxjs'
 import { Correspondent } from 'src/app/data/correspondent'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
@@ -459,6 +460,7 @@ const FILTER_HANDLERS: Record<TriggerFilterType, FilterHandler> = {
     NgTemplateOutlet,
     DragDropModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class WorkflowEditDialogComponent

@@ -23,7 +23,8 @@ export enum CollapsibleSection {
   ATTRIBUTES = 'attributes',
 }
 
-export const PAPERLESS_GREEN_HEX = '#17541f'
+// Paperflow AI brand blue — the default primary when no custom theme color is set.
+export const PAPERFLOW_PRIMARY_HEX = '#1d4ed8'
 
 export const SETTINGS_KEYS = {
   VERSION: 'version',

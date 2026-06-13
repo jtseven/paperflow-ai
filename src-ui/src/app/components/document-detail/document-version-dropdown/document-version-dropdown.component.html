@@ -1,6 +1,6 @@
 <div class="btn-group" ngbDropdown autoClose="outside">
   <button class="btn btn-sm btn-outline-secondary dropdown-toggle" ngbDropdownToggle>
-    <i-bs name="file-earmark-diff"></i-bs>
+    <lucide-icon name="file-earmark-diff"></lucide-icon>
     <span class="d-none d-lg-inline ps-1" i18n>Versions</span>
   </button>
   <div class="dropdown-menu shadow" ngbDropdownMenu>
@@ -28,7 +28,7 @@
           (click)="versionFileInput.click()"
           [disabled]="!userIsOwner || !userCanEdit"
         >
-          <i-bs name="file-earmark-plus"></i-bs><span class="ps-1" i18n>Add new version</span>
+          <lucide-icon name="file-earmark-plus"></lucide-icon><span class="ps-1" i18n>Add new version</span>
         </button>
       } @else {
         @switch (versionUploadState) {
@@ -64,9 +64,9 @@
           >
             <div class="check mx-3">
               @if (selectedVersionId === version.id) {
-                <i-bs name="check-circle"></i-bs>
+                <lucide-icon name="check-circle"></lucide-icon>
               } @else {
-                <i-bs class="text-muted" name="circle"></i-bs>
+                <lucide-icon class="text-muted" name="circle"></lucide-icon>
               }
             </div>
             <div class="d-flex flex-column">
@@ -100,9 +100,9 @@
                     (click)="isEditingVersion(version.id) ? submitEditedVersionLabel(version, $event) : beginEditingVersion(version, $event)"
                   >
                     @if (isEditingVersion(version.id)) {
-                      <i-bs width=".8rem" height=".8rem" name="check-lg"></i-bs>
+                      <lucide-icon width=".8rem" height=".8rem" name="check-lg"></lucide-icon>
                     } @else {
-                      <i-bs width=".8rem" height=".8rem" name="pencil"></i-bs>
+                      <lucide-icon width=".8rem" height=".8rem" name="pencil"></lucide-icon>
                     }
                   </button>
                 }

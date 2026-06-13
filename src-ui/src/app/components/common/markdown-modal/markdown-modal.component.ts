@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common'
-import { Component, Input, OnInit } from '@angular/core'
+import { Component, Input, OnInit, inject } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { MarkdownModule } from 'ngx-markdown'
 import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
 
@@ -10,7 +11,7 @@ import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
   templateUrl: './markdown-modal.component.html',
   styleUrls: ['./markdown-modal.component.scss'],
   standalone: true,
-  imports: [CommonModule, NgxBootstrapIconsModule, MarkdownModule],
+  imports: [CommonModule, NgxBootstrapIconsModule, LucideAngularModule, MarkdownModule],
 })
 export class MarkdownModalComponent implements OnInit {
   @Input() content: string
@@ -18,10 +19,8 @@ export class MarkdownModalComponent implements OnInit {
   @Input() isRTL: boolean
   @Input() documentId: number
 
-  constructor(
-    public activeModal: NgbActiveModal,
-    private markdownConfigService: MarkdownConfigService
-  ) {}
+  activeModal = inject(NgbActiveModal)
+  private markdownConfigService = inject(MarkdownConfigService)
 
   ngOnInit() {
     if (this.documentId) {

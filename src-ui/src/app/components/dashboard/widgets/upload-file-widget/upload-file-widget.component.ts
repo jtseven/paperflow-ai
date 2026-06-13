@@ -7,6 +7,7 @@ import {
   NgbProgressbarModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { ComponentWithPermissions } from 'src/app/components/with-permissions/with-permissions.component'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
@@ -33,6 +34,7 @@ import { WidgetFrameComponent } from '../widget-frame/widget-frame.component'
     NgbAlertModule,
     NgbProgressbarModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     TourNgBootstrap,
   ],
 })

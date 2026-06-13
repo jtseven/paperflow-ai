@@ -10,6 +10,7 @@ import {
   NgbPopoverModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import {
   debounceTime,
   distinctUntilChanged,
@@ -144,6 +145,7 @@ const TRIGGER_SOURCE_OPTIONS: Array<{
     NgbPaginationModule,
     NgbPopoverModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class TasksComponent

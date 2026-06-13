@@ -6,6 +6,7 @@ import {
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { delay, takeUntil, tap } from 'rxjs'
 import { ConfirmDialogComponent } from 'src/app/components/common/confirm-dialog/confirm-dialog.component'
 import { CustomFieldEditDialogComponent } from 'src/app/components/common/edit-dialog/custom-field-edit-dialog/custom-field-edit-dialog.component'
@@ -35,6 +36,7 @@ import { ToastService } from 'src/app/services/toast.service'
     NgbDropdownModule,
     NgbPaginationModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     RouterModule,
   ],
 })

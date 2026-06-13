@@ -3,6 +3,7 @@ import { Component, Input, inject } from '@angular/core'
 import { Title } from '@angular/platform-browser'
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { environment } from 'src/environments/environment'
 
@@ -10,7 +11,7 @@ import { environment } from 'src/environments/environment'
   selector: 'pngx-page-header',
   templateUrl: './page-header.component.html',
   styleUrls: ['./page-header.component.scss'],
-  imports: [NgbPopoverModule, NgxBootstrapIconsModule, TourNgBootstrap],
+  imports: [NgbPopoverModule, NgxBootstrapIconsModule, LucideAngularModule, TourNgBootstrap],
 })
 export class PageHeaderComponent {
   private titleService = inject(Title)

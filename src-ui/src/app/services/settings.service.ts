@@ -21,7 +21,7 @@ import { environment } from 'src/environments/environment'
 import { DEFAULT_DISPLAY_FIELDS, DisplayField } from '../data/document'
 import { SavedView } from '../data/saved-view'
 import {
-  PAPERLESS_GREEN_HEX,
+  PAPERFLOW_PRIMARY_HEX,
   SETTINGS,
   SETTINGS_KEYS,
   UiSettings,
@@ -504,7 +504,7 @@ export class SettingsService {
 
     this.meta.updateTag({
       name: 'theme-color',
-      content: themeColor?.length ? themeColor : PAPERLESS_GREEN_HEX,
+      content: themeColor?.length ? themeColor : PAPERFLOW_PRIMARY_HEX,
     })
   }
 

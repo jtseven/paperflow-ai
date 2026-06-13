@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common'
 import { Component, OnDestroy, OnInit, inject } from '@angular/core'
 import { NgbActiveModal, NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subject, catchError, of, switchMap, takeUntil, timer } from 'rxjs'
 import { FileVersion } from 'src/app/data/share-link'
 import {
@@ -27,6 +28,7 @@ import { ConfirmButtonComponent } from '../confirm-button/confirm-button.compone
     CommonModule,
     NgbPopoverModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     FileSizePipe,
   ],
 })

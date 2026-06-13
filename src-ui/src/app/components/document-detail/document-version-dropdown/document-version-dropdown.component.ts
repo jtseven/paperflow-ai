@@ -12,6 +12,7 @@ import {
 import { FormsModule } from '@angular/forms'
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { merge, of, Subject } from 'rxjs'
 import {
   filter,
@@ -41,6 +42,7 @@ import { ConfirmButtonComponent } from '../../common/confirm-button/confirm-butt
     FormsModule,
     NgbDropdownModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     ConfirmButtonComponent,
     SlicePipe,
     CustomDatePipe,

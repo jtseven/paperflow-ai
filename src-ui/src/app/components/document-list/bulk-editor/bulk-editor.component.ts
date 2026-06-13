@@ -12,6 +12,7 @@ import {
 } from '@ng-bootstrap/ng-bootstrap'
 import { saveAs } from 'file-saver'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { first, map, Observable, Subject, switchMap, takeUntil } from 'rxjs'
 import { ConfirmDialogComponent } from 'src/app/components/common/confirm-dialog/confirm-dialog.component'
 import { CustomField } from 'src/app/data/custom-field'
@@ -75,6 +76,7 @@ import { CustomFieldsBulkEditDialogComponent } from './custom-fields-bulk-edit-d
     ReactiveFormsModule,
     NgbDropdownModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class BulkEditorComponent

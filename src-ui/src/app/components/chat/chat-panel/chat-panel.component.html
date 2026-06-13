@@ -9,7 +9,7 @@
         title="Clear conversation"
         i18n-title
       >
-        <i-bs name="trash"></i-bs>&nbsp;<span i18n>Clear</span>
+        <lucide-icon name="trash"></lucide-icon>&nbsp;<span i18n>Clear</span>
       </button>
     </div>
   }
@@ -36,7 +36,7 @@
                         <span i18n>Searching:</span>
                         <span class="query">{{ step.query }}</span>
                       } @else {
-                        <i-bs name="search"></i-bs>
+                        <lucide-icon name="search"></lucide-icon>
                         <span class="query">{{ step.query }}</span>
                         <span class="count" i18n
                           >— {{ step.count }} results</span
@@ -52,11 +52,11 @@
                     class="steps-toggle"
                     (click)="message.stepsExpanded = !message.stepsExpanded"
                   >
-                    <i-bs
+                    <lucide-icon
                       [name]="
                         message.stepsExpanded ? 'chevron-down' : 'chevron-right'
                       "
-                    ></i-bs>
+                    ></lucide-icon>
                     <span i18n
                       >Searched {{ message.steps.length }} time(s)</span
                     >
@@ -105,7 +105,7 @@
                     [routerLink]="['/documents', reference.documentId]"
                   >
                     <span class="ref-marker">{{ reference.marker }}</span>
-                    <i-bs name="file-text" class="mx-1"></i-bs>
+                    <lucide-icon name="file-text" class="mx-1"></lucide-icon>
                     <span class="ref-title">{{ reference.title }}</span>
                   </a>
                 }
@@ -126,7 +126,7 @@
         [style.left.px]="popoverLeft"
       >
         <div class="citation-popover-title">
-          <i-bs name="file-text" class="me-1"></i-bs>{{ hoveredCitation.title }}
+          <lucide-icon name="file-text" class="me-1"></lucide-icon>{{ hoveredCitation.title }}
         </div>
         @if (hoveredCitation.snippet) {
           <div class="citation-popover-snippet">

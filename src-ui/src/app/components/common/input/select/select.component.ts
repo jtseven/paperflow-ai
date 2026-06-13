@@ -13,6 +13,7 @@ import {
 import { RouterModule } from '@angular/router'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -32,6 +33,7 @@ import { AbstractInputComponent } from '../abstract-input'
     ReactiveFormsModule,
     RouterModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class SelectComponent extends AbstractInputComponent<number> {

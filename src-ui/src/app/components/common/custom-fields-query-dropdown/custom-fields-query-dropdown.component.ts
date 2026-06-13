@@ -17,6 +17,7 @@ import {
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { first, Subject, Subscription, takeUntil } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import {
@@ -205,6 +206,7 @@ export class CustomFieldQueriesModel {
     NgTemplateOutlet,
     NgSelectModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     NgbDropdownModule,
   ],
 })

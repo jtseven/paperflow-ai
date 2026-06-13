@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http'
 import { Component, inject, Input, OnDestroy, ViewChild } from '@angular/core'
 import { NgbPopover, NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { first, Subject, takeUntil } from 'rxjs'
 import { Document } from 'src/app/data/document'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
@@ -22,6 +23,7 @@ import { PdfRenderMode } from '../pdf-viewer/pdf-viewer.types'
     PngxPdfViewerComponent,
     SafeUrlPipe,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class PreviewPopupComponent implements OnDestroy {

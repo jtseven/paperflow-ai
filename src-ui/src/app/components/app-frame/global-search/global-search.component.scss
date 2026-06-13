@@ -1,11 +1,11 @@
 form {
   position: relative;
 
-  > i-bs[name="search"] {
+  > lucide-icon[name="search"] {
     position: absolute;
     left: 0.6rem;
     top: .35rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--bs-secondary-color);
 
     @media screen and (min-width: 768px) {
       // adjust for smaller font size on non-mobile
@@ -14,13 +14,13 @@ form {
   }
 
   &:focus-within {
-    i-bs[name="search"],
+    lucide-icon[name="search"],
     .badge {
       display: none !important;
     }
 
     .form-control::placeholder {
-      color: rgba(255, 255, 255, 0);
+      color: transparent;
     }
   }
 
@@ -29,31 +29,31 @@ form {
   }
 
   .input-group .btn {
-    border-color: rgba(255, 255, 255, 0.2);
-    color: var(--pngx-primary-text-contrast);
+    border-color: var(--pngx-chrome-border);
+    color: var(--bs-body-color);
     padding-top: .15rem;
     padding-bottom: .15rem;
     min-height: calc(1.3em + 0.5rem + calc(var(--bs-border-width) * 2)) !important;
   }
 
   .form-control {
-    color: rgba(255, 255, 255, 0.3);
-    background-color: rgba(0, 0, 0, 0.15);
+    color: var(--bs-body-color);
+    background-color: var(--pngx-chrome-input-bg);
     padding-left: 1.8rem;
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--pngx-chrome-border);
     transition: all .3s ease, padding-left 0s ease, background-color 0s ease; // Safari requires all
     > input {
       outline: none;
-      color: var(--pngx-primary-text-contrast);
+      color: var(--bs-body-color);
 
       &::placeholder {
-        color: rgba(255, 255, 255, 0.4);
+        color: var(--bs-secondary-color);
       }
     }
 
     &:focus-within {
-      background-color: rgba(0, 0, 0, 0.3);
-      color: var(--bs-light);
+      background-color: var(--pngx-chrome-input-bg);
+      color: var(--bs-body-color);
       flex-grow: 1;
       padding-left: 0.5rem;
     }

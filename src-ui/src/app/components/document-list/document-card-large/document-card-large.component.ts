@@ -14,6 +14,7 @@ import {
   NgbTooltipModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { delay, of } from 'rxjs'
 import {
   DEFAULT_DISPLAY_FIELDS,
@@ -57,6 +58,7 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
     NgbTooltipModule,
     NgbProgressbarModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class DocumentCardLargeComponent

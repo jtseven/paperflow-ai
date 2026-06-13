@@ -2,6 +2,7 @@ import { AsyncPipe, KeyValuePipe, TitleCasePipe } from '@angular/common'
 import { Component, Input, OnInit, inject } from '@angular/core'
 import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Observable, first, map, of, shareReplay } from 'rxjs'
 import { AuditLogAction, AuditLogEntry } from 'src/app/data/auditlog-entry'
 import { DataType } from 'src/app/data/datatype'
@@ -23,6 +24,7 @@ import { UserService } from 'src/app/services/rest/user.service'
     KeyValuePipe,
     TitleCasePipe,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class DocumentHistoryComponent implements OnInit {

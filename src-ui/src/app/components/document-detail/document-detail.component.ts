@@ -20,6 +20,7 @@ import {
 } from '@ng-bootstrap/ng-bootstrap'
 import { dirtyCheck, DirtyComponent } from '@ngneat/dirty-check-forms'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { DeviceDetectorService } from 'ngx-device-detector'
 import { MarkdownModule } from 'ngx-markdown'
 import { BehaviorSubject, Observable, of, Subject, timer } from 'rxjs'
@@ -186,6 +187,7 @@ interface IncomingDocumentUpdate {
     NgbNavModule,
     NgbDropdownModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     TextAreaComponent,
     RouterModule,
     PngxPdfViewerComponent,

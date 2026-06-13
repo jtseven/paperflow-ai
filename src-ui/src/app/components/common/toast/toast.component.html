@@ -11,10 +11,10 @@
         }
         <div class="d-flex align-items-top">
         @if (!toast.error) {
-            <i-bs width="0.9em" height="0.9em" name="info-circle"></i-bs>
+            <lucide-icon width="0.9em" height="0.9em" name="info-circle"></lucide-icon>
         }
         @if (toast.error) {
-            <i-bs width="0.9em" height="0.9em" name="exclamation-triangle"></i-bs>
+            <lucide-icon width="0.9em" height="0.9em" name="exclamation-triangle"></lucide-icon>
         }
         <div>
             <p class="ms-2 mb-0 text-break">{{toast.content}}</p>
@@ -35,10 +35,10 @@
                     <div class="col offset-sm-3">
                     <button class="btn btn-sm btn-outline-secondary" (click)="copyError(toast.error)">
                         @if (!copied) {
-                        <i-bs name="clipboard" class="me-1"></i-bs>
+                        <lucide-icon name="clipboard" class="me-1"></lucide-icon>
                         }
                         @if (copied) {
-                        <i-bs name="clipboard-check" class="me-1"></i-bs>
+                        <lucide-icon name="clipboard-check" class="me-1"></lucide-icon>
                         }
                         <ng-container i18n>Copy Raw Error</ng-container>
                     </button>

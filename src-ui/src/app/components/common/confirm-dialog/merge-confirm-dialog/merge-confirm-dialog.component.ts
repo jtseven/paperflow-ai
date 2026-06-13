@@ -7,6 +7,7 @@ import { AsyncPipe } from '@angular/common'
 import { Component, OnInit, inject } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { takeUntil } from 'rxjs'
 import { Document } from 'src/app/data/document'
 import { CorrespondentNamePipe } from 'src/app/pipes/correspondent-name.pipe'
@@ -27,6 +28,7 @@ import { ConfirmDialogComponent } from '../confirm-dialog.component'
     FormsModule,
     ReactiveFormsModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
   ],
 })
 export class MergeConfirmDialogComponent

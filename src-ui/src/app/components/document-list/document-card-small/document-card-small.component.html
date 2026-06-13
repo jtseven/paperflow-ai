@@ -31,7 +31,7 @@
     @if (document && displayFields.includes(DisplayField.NOTES) && notesEnabled && document.notes.length) {
       <a routerLink="/documents/{{document.id}}/notes" class="document-card-notes py-2 px-1">
         <span class="badge rounded-pill bg-light border text-primary">
-          <i-bs width="1.2em" height="1.2em" class="ms-1 me-1" name="chat-left-text"></i-bs>
+          <lucide-icon width="1.2em" height="1.2em" class="ms-1 me-1" name="chat-left-text"></lucide-icon>
         {{document.notes.length}}</span>
       </a>
     }
@@ -58,14 +58,14 @@
           @if (displayFields.includes(DisplayField.DOCUMENT_TYPE) && document.document_type) {
             <button type="button" class="list-group-item list-group-item-action bg-transparent ps-0 p-1 border-0" title="Toggle document type filter" i18n-title
               (click)="clickDocumentType.emit(document.document_type);$event.stopPropagation()">
-              <i-bs width="1em" height="1em" class="me-2 text-muted" name="file-earmark"></i-bs>
+              <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="file-earmark"></lucide-icon>
               <small>{{document.document_type | documentTypeName | async}}</small>
             </button>
           }
           @if (displayFields.includes(DisplayField.STORAGE_PATH) && document.storage_path) {
             <button type="button" class="list-group-item list-group-item-action bg-transparent ps-0 p-1 border-0" title="Toggle storage path filter" i18n-title
               (click)="clickStoragePath.emit(document.storage_path);$event.stopPropagation()">
-              <i-bs width="1em" height="1em" class="me-2 text-muted" name="folder"></i-bs>
+              <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="folder"></lucide-icon>
               <small>{{document.storage_path | storagePathName | async}}</small>
             </button>
           }
@@ -79,7 +79,7 @@
                 </div>
               </ng-template>
               <div class="ps-0 p-1" placement="top" [ngbTooltip]="dateCreatedTooltip">
-                <i-bs width="1em" height="1em" class="me-2 text-muted" name="calendar-event"></i-bs>
+                <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="calendar-event"></lucide-icon>
                 <small>{{document.created | customDate:'mediumDate'}}</small>
               </div>
             </div>
@@ -94,7 +94,7 @@
                 </div>
               </ng-template>
               <div class="ps-0 p-1" placement="top" [ngbTooltip]="dateAddedTooltip">
-                <i-bs width="1em" height="1em" class="me-2 text-muted" name="calendar-event"></i-bs>
+                <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="calendar-event"></lucide-icon>
                 <small>{{document.added | customDate:'mediumDate'}}</small>
               </div>
             </div>
@@ -102,33 +102,33 @@
           @if (displayFields.includes(DisplayField.PAGE_COUNT) && document.page_count) {
             <div class="list-group-item bg-transparent p-0 border-0 d-flex flex-wrap-reverse justify-content-between">
               <div class="ps-0 p-1" placement="top">
-                <i-bs width="1em" height="1em" class="me-2 text-muted" name="files"></i-bs>
+                <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="files"></lucide-icon>
                 <small i18n>{document.page_count, plural, =1 {1 page} other {{{document.page_count}} pages}}</small>
               </div>
             </div>
           }
           @if (displayFields.includes(DisplayField.ASN) && document.archive_serial_number | isNumber) {
             <div class="ps-0 p-1">
-              <i-bs width="1em" height="1em" class="me-2 text-muted" name="upc-scan"></i-bs>
+              <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="upc-scan"></lucide-icon>
               <small>#{{document.archive_serial_number}}</small>
             </div>
           }
           @if (displayFields.includes(DisplayField.OWNER) && document.owner && document.owner !== settingsService.currentUser.id) {
             <div class="ps-0 p-1">
-              <i-bs width="1em" height="1em" class="me-2 text-muted" name="person-fill-lock"></i-bs>
+              <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="person-fill-lock"></lucide-icon>
               <small>{{document.owner | username | async}}</small>
             </div>
           }
           @if (displayFields.includes(DisplayField.SHARED) && document.is_shared_by_requester) {
             <div class="ps-0 p-1">
-              <i-bs width="1em" height="1em" class="me-2 text-muted" name="people-fill"></i-bs>
+              <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="people-fill"></lucide-icon>
               <small i18n>Shared</small>
             </div>
           }
           @for (field of document.custom_fields; track field.field) {
             @if (displayFields.includes(DisplayField.CUSTOM_FIELD + field.field)) {
               <div class="ps-0 p-1 d-flex align-items-center overflow-hidden">
-                <i-bs width="1em" height="1em" class="me-2 text-muted" name="ui-radios"></i-bs>
+                <lucide-icon width="1em" height="1em" class="me-2 text-muted" name="ui-radios"></lucide-icon>
                 <small><pngx-custom-field-display [document]="document" [fieldId]="field.field" showNameIfEmpty="true"></pngx-custom-field-display></small>
               </div>
             }
@@ -141,13 +141,13 @@
         <div class="btn-group w-100">
           @if (document) {
             <a routerLink="/documents/{{document.id}}" class="btn btn-sm btn-outline-secondary" title="Open" i18n-title *pngxIfPermissions="{ action: PermissionAction.Change, type: PermissionType.Document }" i18n-title>
-              <i-bs name="file-earmark-richtext"></i-bs>
+              <lucide-icon name="file-earmark-richtext"></lucide-icon>
             </a>
             <pngx-preview-popup [document]="document" #popupPreview>
-              <i-bs name="eye"></i-bs>
+              <lucide-icon name="eye"></lucide-icon>
             </pngx-preview-popup>
             <a [href]="getDownloadUrl()" class="btn btn-sm btn-outline-secondary" title="Download" i18n-title (click)="$event.stopPropagation()">
-              <i-bs name="download"></i-bs>
+              <lucide-icon name="download"></lucide-icon>
             </a>
           } @else {
             <button class="btn btn-sm btn-outline-secondary placeholder bg-secondary"></button>

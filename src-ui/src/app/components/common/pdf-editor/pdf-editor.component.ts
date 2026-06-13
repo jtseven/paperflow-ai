@@ -7,6 +7,7 @@ import { Component, inject } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { SettingsService } from 'src/app/services/settings.service'
@@ -34,6 +35,7 @@ interface PageOperation {
     DragDropModule,
     FormsModule,
     NgxBootstrapIconsModule,
+    LucideAngularModule,
     PngxPdfViewerComponent,
   ],
 })

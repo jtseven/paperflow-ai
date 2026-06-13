@@ -7,12 +7,13 @@ import {
 } from '@angular/core'
 import { NgbDropdown, NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { DocumentSuggestions } from 'src/app/data/document-suggestions'
 import { pngxPopperOptions } from 'src/app/utils/popper-options'
 
 @Component({
   selector: 'pngx-suggestions-dropdown',
-  imports: [NgbDropdownModule, NgxBootstrapIconsModule],
+  imports: [NgbDropdownModule, NgxBootstrapIconsModule, LucideAngularModule],
   templateUrl: './suggestions-dropdown.component.html',
   styleUrl: './suggestions-dropdown.component.scss',
 })

@@ -89,9 +89,36 @@ svg.logo {
   }
 }
 
+// Lucide icons (the app icon set). Default to text size (1em) like the previous
+// Bootstrap Icons, with a slightly lighter stroke for a cleaner, modern feel.
+lucide-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -0.125em;
+  line-height: 0;
+  flex-shrink: 0;
+
+  > svg {
+    width: 1em;
+    height: 1em;
+    stroke-width: 1.85;
+  }
+}
+
 .navbar.bg-primary {
+  // Neutral chrome: a calm surface with a hairline divider rather than a solid
+  // band of accent colour. Brand blue is reserved for interactive elements.
+  background-color: var(--pngx-chrome-bg) !important;
+  border-bottom: 1px solid var(--pngx-chrome-border);
   --bs-primary: hsl(var(--pngx-primary),var(--pngx-primary-lightness));
   --bs-primary-rgb: var(--bs-primary);
+  --bs-navbar-color: var(--bs-body-color);
+  --bs-navbar-hover-color: var(--bs-primary);
+  --bs-navbar-active-color: var(--bs-primary);
+  --bs-navbar-brand-color: var(--bs-body-color);
+  --bs-navbar-brand-hover-color: var(--bs-primary);
+  --bs-navbar-toggler-border-color: var(--pngx-chrome-border);
 }
 
 .border {
@@ -137,11 +164,11 @@ table .btn-link {
 }
 
 .navbar-brand {
-  color: var(--pngx-primary-text-contrast) !important;
+  color: var(--bs-body-color) !important;
 }
 
 .navbar .dropdown > .btn {
-  color: var(--pngx-primary-text-contrast) !important;
+  color: var(--bs-body-color) !important;
 }
 
 .btn-primary {
@@ -770,14 +797,14 @@ canvas.hiddenCanvasElement {
 }
 
 // bs icons
-.btn-sm i-bs svg {
+.btn-sm lucide-icon svg {
   vertical-align: text-bottom;
 }
 
 .document-card {
   overflow: hidden;
 
-  .card-footer i-bs svg {
+  .card-footer lucide-icon svg {
     vertical-align: middle;
   }
 }
