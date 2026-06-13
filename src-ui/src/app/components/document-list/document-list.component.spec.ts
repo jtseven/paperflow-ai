@@ -183,7 +183,10 @@ describe('DocumentListComponent', () => {
     documentListService.isReloading = false
     fixture.detectChanges()
     expect(component.isFiltered).toBeTruthy()
-    expect(fixture.nativeElement.textContent.match(/Reset/g)).toHaveLength(2)
+    // Two toolbar "Reset filters" affordances (filter editor + header) plus the
+    // empty-state "Reset filters" button, which shows when a filter matches no
+    // documents.
+    expect(fixture.nativeElement.textContent.match(/Reset/g)).toHaveLength(3)
     component.resetFilters()
     fixture.detectChanges()
     expect(fixture.nativeElement.textContent.match(/Reset/g)).toHaveLength(1)

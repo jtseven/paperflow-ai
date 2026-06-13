@@ -1,9 +1,33 @@
 import '@angular/localize/init'
 import { jest } from '@jest/globals'
 import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone'
+import { LucideAngularComponent } from 'lucide-angular'
 import { TextDecoder, TextEncoder } from 'node:util'
 if (process.env.NODE_ENV === 'test') {
   setupZoneTestEnv()
+}
+
+// The Lucide icon set is registered globally in main.ts, which the TestBed does
+// not load. Unlike the previous <i-bs> component (which silently rendered
+// nothing for an unregistered icon), <lucide-icon> throws from ngOnChanges when
+// an icon isn't provided, breaking any spec that renders one. Swallow only that
+// specific error so tests mirror the old tolerant behaviour without having to
+// register the full icon set in every TestBed.
+const originalLucideNgOnChanges = LucideAngularComponent.prototype.ngOnChanges
+LucideAngularComponent.prototype.ngOnChanges = function (
+  ...args: Parameters<typeof originalLucideNgOnChanges>
+) {
+  try {
+    return originalLucideNgOnChanges.apply(this, args)
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes('has not been provided')
+    ) {
+      return
+    }
+    throw error
+  }
 }
 ;(globalThis as any).TextEncoder = TextEncoder as unknown as {
   new (): TextEncoder

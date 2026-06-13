@@ -124,11 +124,13 @@ describe('SettingsService', () => {
 
   it('should catch error and show toast on retrieve ui_settings error', fakeAsync(() => {
     const toastSpy = jest.spyOn(toastService, 'showError')
+    // A 401/403 means "not authenticated" and redirects to the login page
+    // instead of toasting; a generic server error surfaces the toast.
     httpTestingController
       .expectOne(`${environment.apiBaseUrl}ui_settings/`)
       .flush(
-        { detail: 'You do not have permission to perform this action.' },
-        { status: 403, statusText: 'Forbidden' }
+        { detail: 'Internal server error.' },
+        { status: 500, statusText: 'Server Error' }
       )
     tick(500)
     expect(toastSpy).toHaveBeenCalled()

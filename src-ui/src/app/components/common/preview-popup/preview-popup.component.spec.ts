@@ -88,7 +88,7 @@ describe('PreviewPopupComponent', () => {
     component.onError({ name: 'PasswordException' })
     fixture.detectChanges()
     expect(component.requiresPassword).toBeTruthy()
-    expect(fixture.debugElement.query(By.css('i-bs'))).not.toBeNull()
+    expect(fixture.debugElement.query(By.css('lucide-icon'))).not.toBeNull()
   })
 
   it('should fall back to object for non-pdf', () => {
