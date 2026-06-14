@@ -43,16 +43,42 @@ logger = logging.getLogger("paperless_ai.agent_chat")
 AGENT_RETRIEVER_TOP_K = 5
 AGENT_MAX_REFERENCES = 10
 
+# How many times the agent may call ``search_documents`` while gathering
+# evidence for a single question. Each search round is an LLM turn that issues a
+# tool call followed by another turn that reads the result, so the underlying
+# workflow iteration budget is one more than the number of searches we allow
+# (the final turn writes the answer). The cap bounds latency and token cost when
+# a question can never be answered from the collection; on the happy path the
+# model stops searching as soon as it has enough evidence, well under the limit.
+AGENT_MAX_SEARCHES = 5
+AGENT_MAX_ITERATIONS = AGENT_MAX_SEARCHES + 1
+
+# The agent workflow's default 45s timeout is comfortable for a single search +
+# synthesis but too tight once the model fans out into several search rounds.
+# Give the whole multi-step run room to complete before the workflow aborts.
+AGENT_TIMEOUT_SECONDS = 120.0
+
 CHAT_INDEX_NOT_READY_MESSAGE = (
     "The document index isn't ready yet. It is being built in the background — "
     "please try again in a few minutes."
 )
 
-AGENT_SYSTEM_PROMPT = """You are a helpful assistant for a document management system.
+AGENT_SYSTEM_PROMPT = f"""You are a helpful assistant for a document management system.
 Answer the user's question using only information found in the user's documents.
-Always use the `search_documents` tool to look for relevant information before
-answering; call it multiple times with different queries if that helps. If the
-tool returns nothing relevant, say so politely and do not invent information.
+
+Work iteratively. Always start by calling the `search_documents` tool, then stop
+and judge what came back before you answer:
+- If the results fully answer the question, write the answer.
+- If they are empty, off-topic, or only partial, search again with a DIFFERENT
+  query — rephrase with synonyms, try more specific or more general wording, or
+  break a multi-part question into separate searches. Do not repeat a query that
+  already failed.
+You may search up to {AGENT_MAX_SEARCHES} times in total, so spend those searches
+to actually track down the information instead of giving up after one try. Only
+once you have gathered enough evidence (or have genuinely exhausted sensible
+queries) should you write the final answer. If the documents truly do not
+contain the answer, say so politely and do not invent information.
+
 Reply in the same language as the question and format your answer with markdown.
 
 Each chunk returned by the tool is prefixed with a citation marker such as [1].
@@ -233,6 +259,11 @@ def stream_agentic_chat(
             tools=[search_tool],
             llm=client.llm,
             system_prompt=AGENT_SYSTEM_PROMPT,
+            # When the search budget is exhausted, synthesize a best-effort
+            # answer from whatever evidence was gathered instead of raising
+            # (the library default, "force", aborts the run with an error).
+            early_stopping_method="generate",
+            timeout=AGENT_TIMEOUT_SECONDS,
         )
 
         logger.debug("Agentic chat query: %s", query_str)
@@ -282,7 +313,14 @@ async def _astream_agent_events(
 
     # chat_history is falsy-normalized to None: AgentWorkflow.run treats an
     # empty list as "no history" anyway, so this keeps the call explicit.
-    handler = agent.run(query_str, chat_history=chat_history or None)
+    # max_iterations bounds how many search/answer turns the agent may take
+    # (see AGENT_MAX_ITERATIONS); paired with early_stopping_method="generate"
+    # the agent answers from gathered evidence rather than erroring at the cap.
+    handler = agent.run(
+        query_str,
+        chat_history=chat_history or None,
+        max_iterations=AGENT_MAX_ITERATIONS,
+    )
     produced_text = False
     async for event in handler.stream_events():
         # ToolCallResult subclasses ToolCall in some llama-index versions, so
