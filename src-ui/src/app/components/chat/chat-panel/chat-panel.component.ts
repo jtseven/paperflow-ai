@@ -204,11 +204,16 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   /**
-   * Force change detection for this view. The chat stream is read from a
-   * `fetch` ReadableStream, whose promises aren't reliably patched by zone.js,
-   * so streamed updates can land outside Angular's zone and wouldn't render on
-   * their own (the navbar dropdown showed nothing until a later tick). Driving
-   * CD explicitly keeps the answer rendering live wherever the panel is mounted.
+   * Run change detection for this view explicitly.
+   *
+   * The chat stream is read from a `fetch` ReadableStream, whose reader promises
+   * aren't reliably patched by zone.js, so streamed updates — and the DOM (plus
+   * `(click)` listeners) of the views they render, such as the search-overview
+   * toggle — land outside Angular's zone. Out-of-zone changes don't trigger
+   * change detection on their own (the answer wouldn't render live; the toggle
+   * appeared dead until some unrelated event ran CD). Anything that mutates view
+   * state off the back of the stream, or from a listener created by it, calls
+   * this so the view updates immediately and predictably.
    */
   private render(): void {
     if (!this.destroyed) {
@@ -302,10 +307,22 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     return this.documentId != null ? all : []
   }
 
+  /**
+   * Expand/collapse a finished message's search overview. Persisted so the
+   * chosen state survives a reload (the thread is restored from localStorage).
+   *
+   * Calls `render()` because this button is created while the answer streams in,
+   * so its `(click)` listener is bound out-of-zone (see `render()`) and the
+   * toggle would otherwise not refresh the view on its own.
+   */
+  public toggleSteps(message: ChatMessage): void {
+    message.stepsExpanded = !message.stepsExpanded
+    this.persist()
+    this.render()
+  }
+
   public showTyping(message: ChatMessage): boolean {
-    return (
-      !!message.isStreaming && !message.content && !message.steps?.length
-    )
+    return !!message.isStreaming && !message.content && !message.steps?.length
   }
 
   public showLiveSteps(message: ChatMessage): boolean {
@@ -320,9 +337,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       return
     }
     event.preventDefault()
-    this.router.navigateByUrl(
-      anchor.getAttribute('href') ?? anchor.pathname
-    )
+    this.router.navigateByUrl(anchor.getAttribute('href') ?? anchor.pathname)
   }
 
   public onAnswerHover(event: MouseEvent, message: ChatMessage): void {
@@ -330,7 +345,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       'a[href^="/documents/"]'
     )
     if (!anchor || !message.citations?.size) {
-      this.hoveredCitation = null
+      this.onAnswerLeave()
       return
     }
     const id = +(anchor.getAttribute('href')?.split('/').pop() ?? '')
@@ -338,7 +353,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       (c) => c.documentId === id
     )
     if (!citation) {
-      this.hoveredCitation = null
+      this.onAnswerLeave()
       return
     }
     const containerRect =
@@ -348,10 +363,14 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       rect.bottom - (containerRect?.top ?? 0) + this.scrollOffset() + 4
     this.popoverLeft = rect.left - (containerRect?.left ?? 0)
     this.hoveredCitation = citation
+    // Same out-of-zone caveat as the toggle: this listener is bound while the
+    // answer streams in, so refresh the popover explicitly.
+    this.render()
   }
 
   public onAnswerLeave(): void {
     this.hoveredCitation = null
+    this.render()
   }
 
   private scrollOffset(): number {

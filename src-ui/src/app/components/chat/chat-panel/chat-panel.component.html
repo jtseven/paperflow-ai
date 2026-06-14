@@ -39,7 +39,7 @@
                         <lucide-icon name="search"></lucide-icon>
                         <span class="query">{{ step.query }}</span>
                         <span class="count" i18n
-                          >— {{ step.count }} results</span
+                          >{{ step.count ?? 0 }} results</span
                         >
                       }
                     </div>
@@ -50,12 +50,18 @@
                   <button
                     type="button"
                     class="steps-toggle"
-                    (click)="message.stepsExpanded = !message.stepsExpanded"
+                    [attr.aria-expanded]="!!message.stepsExpanded"
+                    (click)="toggleSteps(message)"
                   >
                     <lucide-icon
+                      class="chevron"
                       [name]="
                         message.stepsExpanded ? 'chevron-down' : 'chevron-right'
                       "
+                    ></lucide-icon>
+                    <lucide-icon
+                      name="search"
+                      class="search-icon"
                     ></lucide-icon>
                     <span i18n
                       >Searched {{ message.steps.length }} time(s)</span
@@ -64,9 +70,29 @@
                   @if (message.stepsExpanded) {
                     <ul class="steps-list">
                       @for (step of message.steps; track step.id) {
-                        <li>
-                          <span class="query">{{ step.query }}</span>
-                          <span class="count" i18n>— {{ step.count }} results</span>
+                        <li class="step-item">
+                          <div class="step-query">
+                            <span class="query">{{ step.query }}</span>
+                            <span class="count" i18n
+                              >{{ step.count ?? 0 }} results</span
+                            >
+                          </div>
+                          @if (step.documents?.length) {
+                            <div class="step-docs">
+                              @for (doc of step.documents; track doc.id) {
+                                <a
+                                  class="step-doc"
+                                  [routerLink]="['/documents', doc.id]"
+                                  [title]="doc.title"
+                                >
+                                  <lucide-icon name="file-text"></lucide-icon>
+                                  <span class="step-doc-title">{{
+                                    doc.title
+                                  }}</span>
+                                </a>
+                              }
+                            </div>
+                          }
                         </li>
                       }
                     </ul>
@@ -98,8 +124,10 @@
             <!-- Sources actually cited -->
             @if (citedReferences(message).length) {
               <div class="chat-references list-group mt-2">
-                @for (reference of citedReferences(message); track
-                reference.documentId) {
+                @for (
+                  reference of citedReferences(message);
+                  track reference.documentId
+                ) {
                   <a
                     class="list-group-item list-group-item-action"
                     [routerLink]="['/documents', reference.documentId]"
@@ -126,7 +154,8 @@
         [style.left.px]="popoverLeft"
       >
         <div class="citation-popover-title">
-          <lucide-icon name="file-text" class="me-1"></lucide-icon>{{ hoveredCitation.title }}
+          <lucide-icon name="file-text" class="me-1"></lucide-icon
+          >{{ hoveredCitation.title }}
         </div>
         @if (hoveredCitation.snippet) {
           <div class="citation-popover-snippet">

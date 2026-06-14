@@ -1,5 +1,6 @@
+import { NgZone } from '@angular/core'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
-import { Router } from '@angular/router'
+import { provideRouter, Router } from '@angular/router'
 import { provideMarkdown } from 'ngx-markdown'
 import { from, Observable, Subject } from 'rxjs'
 import { ChatEvent, ChatService } from 'src/app/services/chat.service'
@@ -9,18 +10,16 @@ describe('ChatPanelComponent', () => {
   let component: ChatPanelComponent
   let fixture: ComponentFixture<ChatPanelComponent>
   let chatService: { streamChat: jest.Mock }
-  let router: { navigateByUrl: jest.Mock }
 
   beforeEach(async () => {
     localStorage.clear()
     chatService = { streamChat: jest.fn() }
-    router = { navigateByUrl: jest.fn() }
     await TestBed.configureTestingModule({
       imports: [ChatPanelComponent],
       providers: [
         provideMarkdown(),
+        provideRouter([]),
         { provide: ChatService, useValue: chatService },
-        { provide: Router, useValue: router },
       ],
     }).compileComponents()
 
@@ -71,10 +70,7 @@ describe('ChatPanelComponent', () => {
   it('excludes the welcome greeting from history', () => {
     component.welcome = 'Hi there'
     component.ngOnInit()
-    send('a question', [
-      { type: 'token', text: 'an answer' },
-      { type: 'done' },
-    ])
+    send('a question', [{ type: 'token', text: 'an answer' }, { type: 'done' }])
     expect(chatService.streamChat).toHaveBeenCalledWith(null, 'a question', [])
   })
 
@@ -109,7 +105,11 @@ describe('ChatPanelComponent', () => {
       { type: 'done' },
     ])
 
-    expect(chatService.streamChat).toHaveBeenCalledWith(null, 'How much rent?', [])
+    expect(chatService.streamChat).toHaveBeenCalledWith(
+      null,
+      'How much rent?',
+      []
+    )
     const assistant = component.messages[component.messages.length - 1]
     expect(assistant.content).toBe('Your rent is 1200 [1]')
     expect(assistant.isStreaming).toBe(false)
@@ -125,6 +125,92 @@ describe('ChatPanelComponent', () => {
       title: 'Lease',
       snippet: 'Rent is 1200/mo',
     })
+  })
+
+  it('captures the documents found by each search', () => {
+    send('How much rent?', [
+      { type: 'tool_call', id: 't1', name: 'search_documents', query: 'rent' },
+      {
+        type: 'tool_result',
+        id: 't1',
+        name: 'search_documents',
+        count: 2,
+        documents: [
+          { id: 5, title: 'Lease' },
+          { id: 8, title: 'Addendum' },
+        ],
+      },
+      { type: 'token', text: 'answer' },
+      { type: 'done' },
+    ])
+    const assistant = component.messages[component.messages.length - 1]
+    expect(assistant.steps![0].documents).toEqual([
+      { id: 5, title: 'Lease' },
+      { id: 8, title: 'Addendum' },
+    ])
+  })
+
+  it('toggles and persists the search overview expanded state', () => {
+    send('q', [
+      { type: 'tool_call', id: 't1', name: 'search_documents', query: 'rent' },
+      {
+        type: 'tool_result',
+        id: 't1',
+        name: 'search_documents',
+        count: 1,
+        documents: [{ id: 5, title: 'Lease' }],
+      },
+      { type: 'token', text: 'answer' },
+      { type: 'done' },
+    ])
+    const assistant = component.messages[component.messages.length - 1]
+    expect(assistant.stepsExpanded).toBeFalsy()
+
+    component.toggleSteps(assistant)
+    expect(assistant.stepsExpanded).toBe(true)
+
+    // Persisted so a reload restores the expanded state.
+    const reloaded = component['history'].load(
+      component['history'].key(undefined)
+    )
+    expect(reloaded?.at(-1)?.stepsExpanded).toBe(true)
+
+    component.toggleSteps(assistant)
+    expect(assistant.stepsExpanded).toBe(false)
+  })
+
+  it('expands the search overview on a real click bound out-of-zone', () => {
+    // Reproduce production: the overview's toggle button is created while the
+    // answer streams in, i.e. during change detection that runs outside the
+    // Angular zone, so its (click) listener is bound — and later fires — out of
+    // zone and won't trigger CD on its own. The component must refresh itself.
+    send('q', [
+      { type: 'tool_call', id: 't1', name: 'search_documents', query: 'rent' },
+      {
+        type: 'tool_result',
+        id: 't1',
+        name: 'search_documents',
+        count: 1,
+        documents: [{ id: 5, title: 'Lease' }],
+      },
+      { type: 'token', text: 'answer' },
+      { type: 'done' },
+    ])
+
+    const zone = TestBed.inject(NgZone)
+    // Bind the template (and the click listener) outside the Angular zone.
+    zone.runOutsideAngular(() => fixture.detectChanges())
+
+    const button: HTMLButtonElement =
+      fixture.nativeElement.querySelector('.steps-toggle')
+    expect(button).toBeTruthy()
+    expect(fixture.nativeElement.querySelector('.steps-list')).toBeNull()
+
+    // A real click runs the handler in the captured (root) zone. Deliberately
+    // no fixture.detectChanges() afterwards — the view must update by itself.
+    button.click()
+
+    expect(fixture.nativeElement.querySelector('.steps-list')).toBeTruthy()
   })
 
   it('rewrites cited [n] markers into document links and leaves unknown ones', () => {
@@ -201,9 +287,9 @@ describe('ChatPanelComponent', () => {
       { type: 'done' },
     ])
     const message = component.messages[component.messages.length - 1]
-    expect(component.citedReferences(message).map((c) => c.documentId)).toEqual([
-      7,
-    ])
+    expect(component.citedReferences(message).map((c) => c.documentId)).toEqual(
+      [7]
+    )
     expect(chatService.streamChat).toHaveBeenCalledWith(7, 'q', [])
   })
 
@@ -229,10 +315,7 @@ describe('ChatPanelComponent', () => {
   })
 
   it('handles an error event and stops streaming', () => {
-    send('q', [
-      { type: 'error', message: 'It broke' },
-      { type: 'done' },
-    ])
+    send('q', [{ type: 'error', message: 'It broke' }, { type: 'done' }])
     const message = component.messages[component.messages.length - 1]
     expect(message.error).toBe(true)
     expect(message.content).toBe('It broke')
@@ -256,10 +339,7 @@ describe('ChatPanelComponent', () => {
   it('persists a finished turn and restores it on a fresh panel', () => {
     component.welcome = 'Hello'
     component.ngOnInit()
-    send('What is X?', [
-      { type: 'token', text: 'X is Y' },
-      { type: 'done' },
-    ])
+    send('What is X?', [{ type: 'token', text: 'X is Y' }, { type: 'done' }])
 
     // A freshly created panel (e.g. after refresh) restores the thread.
     const fixture2 = TestBed.createComponent(ChatPanelComponent)
@@ -291,7 +371,9 @@ describe('ChatPanelComponent', () => {
     expect(component.canClear).toBe(true)
 
     component.clear()
-    expect(component.messages).toEqual([{ role: 'assistant', content: 'Hello' }])
+    expect(component.messages).toEqual([
+      { role: 'assistant', content: 'Hello' },
+    ])
     expect(component.canClear).toBe(false)
 
     const fresh = TestBed.createComponent(ChatPanelComponent).componentInstance
@@ -301,11 +383,13 @@ describe('ChatPanelComponent', () => {
   })
 
   it('navigates via the router when a citation link is clicked', () => {
+    const router = TestBed.inject(Router)
+    const navigate = jest.spyOn(router, 'navigateByUrl').mockResolvedValue(true)
     const anchor = document.createElement('a')
     anchor.setAttribute('href', '/documents/12')
     const event = { target: anchor, preventDefault: jest.fn() } as any
     component.onAnswerClick(event)
     expect(event.preventDefault).toHaveBeenCalled()
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/documents/12')
+    expect(navigate).toHaveBeenCalledWith('/documents/12')
   })
 })
