@@ -21,7 +21,11 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     port,
-    command: 'pnpm run start',
+    // Serve with the e2e environment so the app's API/WebSocket requests target
+    // http://localhost:8000, matching the recorded HAR fixtures (the default dev
+    // server derives URLs from document.baseURI on :4200, which they no longer
+    // match). See src/environments/environment.e2e.ts.
+    command: 'pnpm run start:e2e',
     reuseExistingServer: !process.env.CI,
     timeout: 2 * 60 * 1000,
   },

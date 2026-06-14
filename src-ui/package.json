@@ -5,6 +5,7 @@
     "preinstall": "npx only-allow pnpm",
     "ng": "ng",
     "start": "ng serve",
+    "start:e2e": "ng serve --configuration e2e",
     "build": "ng build",
     "test": "ng test --no-watch --coverage",
     "lint": "ng lint"

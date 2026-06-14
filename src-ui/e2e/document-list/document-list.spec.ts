@@ -83,17 +83,16 @@ test('date filtering', async ({ page }) => {
   await page.routeFromHAR(REQUESTS_HAR3, { notFound: 'fallback' })
   await page.goto('/documents')
   await page.getByRole('button', { name: 'Dates' }).click()
+  // Created relative date: "Within 3 months".
   await page.locator('.ng-arrow-wrapper').first().click()
   await page.getByRole('option', { name: 'Within 3 months' }).click()
   await expect(page.locator('pngx-document-list')).toHaveText(/one document/i)
+  // Clear the relative date, then pick an absolute "from" date instead.
+  await page.locator('pngx-dates-dropdown a.focus-variants').first().click()
   await page
-    .getByRole('menuitem', { name: 'Relative dates' })
-    .locator('span')
+    .locator('pngx-dates-dropdown button:has(lucide-icon[name="calendar"])')
     .first()
     .click()
-  await page.getByRole('option', { name: 'Within 3 months' }).click()
-  await page.getByLabel('Dates selected').locator('button').first().click()
-  await page.getByLabel('Dates selected').locator('button').first().click()
   await page.getByRole('combobox', { name: 'Select month' }).selectOption('12')
   await page.getByRole('combobox', { name: 'Select year' }).selectOption('2022')
   await page.getByText('11', { exact: true }).click()
@@ -135,7 +134,7 @@ test('sorting', async ({ page }) => {
   await page.getByRole('button', { name: 'Notes' }).click()
   await expect(page).toHaveURL(/sort=num_notes/)
   await page.getByRole('button', { name: 'Sort' }).click()
-  await page.locator('.w-100 > label > i-bs').first().click()
+  await page.locator('.w-100 > label > lucide-icon').first().click()
   await expect(page).not.toHaveURL(/reverse=1/)
 })
 
