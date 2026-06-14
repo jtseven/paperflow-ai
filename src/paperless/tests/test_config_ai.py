@@ -24,7 +24,7 @@ def test_coalesce_inherits_when_unset():
 @pytest.mark.django_db
 @override_settings(AI_ENABLED=True)
 def test_ai_enabled_inherits_env_when_unset():
-    config = ApplicationConfiguration.objects.first()
+    config, _ = ApplicationConfiguration.objects.get_or_create()
     config.ai_enabled = None
     config.save()
     assert AIConfig().ai_enabled is True
@@ -34,7 +34,7 @@ def test_ai_enabled_inherits_env_when_unset():
 @override_settings(AI_ENABLED=True)
 def test_ai_can_be_disabled_from_ui_despite_env():
     """Regression: a UI override of False must win over AI_ENABLED=True."""
-    config = ApplicationConfiguration.objects.first()
+    config, _ = ApplicationConfiguration.objects.get_or_create()
     config.ai_enabled = False
     config.save()
     assert AIConfig().ai_enabled is False
@@ -47,7 +47,7 @@ def test_ai_can_be_disabled_from_ui_despite_env():
     LLM_API_KEY="secret",
 )
 def test_ai_string_override_wins_over_env():
-    config = ApplicationConfiguration.objects.first()
+    config, _ = ApplicationConfiguration.objects.get_or_create()
     config.llm_model = "ui-model"
     config.save()
     cfg = AIConfig()
