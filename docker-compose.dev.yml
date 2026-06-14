@@ -1,4 +1,9 @@
-# Development override — picked up automatically by `docker compose up`.
+# Development override, bring up the dev stack with:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# (Tip: export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml to make a
+# plain `docker compose up` use dev in your shell.)
 #
 # Entry point: http://localhost:4200  (Angular dev server + proxy to Django)
 #   - Frontend HMR: changes to src-ui/ are reflected instantly

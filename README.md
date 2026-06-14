@@ -55,11 +55,17 @@ From this repository on your server:
 
 ```bash
 cd paperflow-ai
-cp docker-compose.yml docker-compose.override.yml  # adjust as needed
+docker compose build
 docker compose up -d
 ```
 
-The provided `docker-compose.yml` expects environment variables for API keys and secrets (e.g. Mistral, database password). Check the `webserver` service section and configure the relevant variables (preferably via a `.env` file) before running in production.
+`docker compose` uses [docker-compose.yml](docker-compose.yml) by default, which is the **production** deployment (built image, no source mounts, served on host port 8010). The provided `docker-compose.yml` expects environment variables for API keys and secrets (e.g. Mistral, database password). Check the `webserver` service section and configure the relevant variables (preferably via a `.env` file) before running in production.
+
+To run the **development** stack instead (Angular dev server with HMR on `http://localhost:4200`, live source mounts, Django auto-reload), opt in with the dev override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
 
 The AI features are configured through these variables (sensible Mistral
 defaults are baked into `docker-compose.yml`):
