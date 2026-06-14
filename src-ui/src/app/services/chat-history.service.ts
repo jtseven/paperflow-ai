@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core'
-import { Citation, ChatMessage, ChatStep } from './chat.service'
+import { ChatMessage, ChatStep, Citation } from './chat.service'
 
 interface StoredMessage {
   role: 'user' | 'assistant'

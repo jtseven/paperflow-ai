@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { ConfirmDialogComponent } from '../confirm-dialog.component'
 
 @Component({

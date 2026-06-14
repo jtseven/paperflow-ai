@@ -62,7 +62,7 @@ _Impact: high · Effort: medium · Reuses: LanceDB index, chat retriever._
 
 - 💡 **AI cost & usage dashboard.** Tokens/calls per feature, estimated spend, model in use.
 - 💡 **Per-document / per-tag "exclude from AI" flag.** Sensitive docs never leave for a remote LLM.
-- 💡 **Confidence + feedback loop on suggestions.** Show *why*; accept/reject feeds back.
+- 💡 **Confidence + feedback loop on suggestions.** Show _why_; accept/reject feeds back.
 - 💡 **Per-document "AI activity" timeline.** What the AI did (classified, summarized, indexed) and when.
 
 ## Theme 5 — Onboarding & search UX

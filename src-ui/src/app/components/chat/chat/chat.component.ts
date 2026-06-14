@@ -1,14 +1,19 @@
 import { Component, inject, OnInit } from '@angular/core'
 import { NavigationEnd, Router } from '@angular/router'
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { filter, map } from 'rxjs'
 import { ChatPanelComponent } from '../chat-panel/chat-panel.component'
 
 @Component({
   selector: 'pngx-chat',
-  imports: [NgbDropdownModule, NgxBootstrapIconsModule, LucideAngularModule, ChatPanelComponent],
+  imports: [
+    NgbDropdownModule,
+    NgxBootstrapIconsModule,
+    LucideAngularModule,
+    ChatPanelComponent,
+  ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss',
 })

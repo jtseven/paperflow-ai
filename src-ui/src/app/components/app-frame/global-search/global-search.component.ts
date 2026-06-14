@@ -16,8 +16,8 @@ import {
   NgbModal,
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs'
 import { DataType } from 'src/app/data/datatype'
 import {

@@ -3,7 +3,6 @@
 # documents and database. Without this, Compose derives the project name from
 # the directory ("paperflow") and would create empty paperflow_* volumes.
 name: paperless
-
 services:
   broker:
     image: docker.io/library/redis:8

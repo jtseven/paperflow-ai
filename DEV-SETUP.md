@@ -8,10 +8,10 @@ docker compose up -d
 
 This automatically applies `docker-compose.override.yml`, which adds:
 
-| Service | URL | Notes |
-|---|---|---|
-| Angular dev server (HMR) | http://localhost:4200 | Frontend with live reload |
-| Django / granian (API + WS) | http://localhost:8000 | Backend in debug mode |
+| Service                     | URL                   | Notes                     |
+| --------------------------- | --------------------- | ------------------------- |
+| Angular dev server (HMR)    | http://localhost:4200 | Frontend with live reload |
+| Django / granian (API + WS) | http://localhost:8000 | Backend in debug mode     |
 
 The first start takes a few extra minutes while pnpm installs frontend dependencies into an isolated Docker volume (`frontend_nm`).
 

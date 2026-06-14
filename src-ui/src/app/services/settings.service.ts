@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http'
+import { HttpClient, HttpErrorResponse } from '@angular/common/http'
 import {
   DOCUMENT,
   EventEmitter,
@@ -10,7 +10,6 @@ import {
 } from '@angular/core'
 import { Meta } from '@angular/platform-browser'
 import { CookieService } from 'ngx-cookie-service'
-import { HttpErrorResponse } from '@angular/common/http'
 import { catchError, EMPTY, first, Observable, of, tap } from 'rxjs'
 import {
   BRIGHTNESS,

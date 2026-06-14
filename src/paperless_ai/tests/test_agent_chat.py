@@ -286,7 +286,10 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
-            patch("paperless_ai.agent_chat._build_search_tool", return_value=MagicMock()),
+            patch(
+                "paperless_ai.agent_chat._build_search_tool",
+                return_value=MagicMock(),
+            ),
             patch(
                 "llama_index.core.agent.workflow.FunctionAgent",
                 return_value=fake_agent,
@@ -308,7 +311,10 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
-            patch("paperless_ai.agent_chat._build_search_tool", return_value=MagicMock()),
+            patch(
+                "paperless_ai.agent_chat._build_search_tool",
+                return_value=MagicMock(),
+            ),
             patch(
                 "llama_index.core.agent.workflow.FunctionAgent",
                 return_value=fake_agent,

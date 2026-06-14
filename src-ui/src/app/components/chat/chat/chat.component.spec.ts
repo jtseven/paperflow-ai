@@ -55,6 +55,8 @@ describe('ChatComponent', () => {
   it('renders the shared chat panel', () => {
     jest.spyOn(router, 'url', 'get').mockReturnValue('/documents/3')
     fixture.detectChanges()
-    expect(fixture.nativeElement.querySelector('pngx-chat-panel')).not.toBeNull()
+    expect(
+      fixture.nativeElement.querySelector('pngx-chat-panel')
+    ).not.toBeNull()
   })
 })

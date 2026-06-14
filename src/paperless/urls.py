@@ -429,8 +429,7 @@ if settings.DEBUG:
     from django.conf.urls.static import static
 
     urlpatterns = (
-        static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-        + urlpatterns
+        static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + urlpatterns
     )
 
 

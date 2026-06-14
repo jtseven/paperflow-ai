@@ -76,7 +76,10 @@ class TestSemanticSearchView(APITestCase):
                 return_value=ranked,
             ) as mock_search,
         ):
-            resp = self.client.get(self.ENDPOINT, {"query": "bicycle order", "limit": 5})
+            resp = self.client.get(
+                self.ENDPOINT,
+                {"query": "bicycle order", "limit": 5},
+            )
 
         assert resp.status_code == status.HTTP_200_OK
         mock_search.assert_called_once()

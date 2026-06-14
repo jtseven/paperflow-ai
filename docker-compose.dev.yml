@@ -12,14 +12,12 @@
 #
 # Backend Python changes are picked up automatically via --reload.
 # To wipe the frontend node_modules cache: docker volume rm paperless_frontend_nm
-
 services:
   broker:
     # Disable RDB persistence in dev — the redisdata volume may have wrong
     # ownership from a previous install, causing stop-writes-on-bgsave-error
     # which blocks all Celery task writes and breaks document processing.
     command: redis-server --save "" --appendonly no
-
   webserver:
     ports:
       - "8000:8000"
@@ -29,18 +27,16 @@ services:
       PAPERLESS_DEBUG: "yes"
       PAPERLESS_DISABLE_WHITENOISE: "1"
       GRANIAN_RELOAD: "true"
-
   frontend:
     image: docker.io/node:24-trixie-slim
     working_dir: /app
     command: ["sh", "-c", "corepack enable && pnpm install && ./node_modules/.bin/ng serve --host 0.0.0.0 --port 4200 --disable-host-check --proxy-config proxy.conf.js"]
     environment:
-      BACKEND_HOST: webserver   # Docker service name; override with localhost for local ng serve
+      BACKEND_HOST: webserver # Docker service name; override with localhost for local ng serve
     ports:
       - "4200:4200"
     volumes:
       - ./src-ui:/app
       - frontend_nm:/app/node_modules
-
 volumes:
   frontend_nm:

@@ -6,8 +6,8 @@ import {
   NgbDropdownModule,
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { DocumentTypeEditDialogComponent } from 'src/app/components/common/edit-dialog/document-type-edit-dialog/document-type-edit-dialog.component'
 import { DocumentType } from 'src/app/data/document-type'
 import { FILTER_HAS_DOCUMENT_TYPE_ANY } from 'src/app/data/filter-rule-type'

@@ -14,8 +14,8 @@ import {
 } from '@angular/forms'
 import { RouterModule } from '@angular/router'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import {
   catchError,
   concat,

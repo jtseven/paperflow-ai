@@ -4,8 +4,8 @@ import {
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
 } from '@angular/forms'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -19,7 +19,12 @@ import { AbstractInputComponent } from '../abstract-input'
   selector: 'pngx-input-textarea',
   templateUrl: './textarea.component.html',
   styleUrls: ['./textarea.component.scss'],
-  imports: [FormsModule, ReactiveFormsModule, NgxBootstrapIconsModule, LucideAngularModule],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    NgxBootstrapIconsModule,
+    LucideAngularModule,
+  ],
 })
 export class TextAreaComponent extends AbstractInputComponent<string> {
   @Input()

@@ -5,6 +5,7 @@ FROM httpd:2.4.67-alpine
 
 # openssl: used by the entrypoint to hash the basic-auth password.
 # apr-util-dbm_gdbm: DBM backend used by mod_dav's lock database.
+# hadolint ignore=DL3018
 RUN apk add --no-cache openssl apr-util-dbm_gdbm
 
 # Enable the modules WebDAV + basic auth need, run as uid/gid 1000 so files

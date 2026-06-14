@@ -1,5 +1,5 @@
-import { Meta } from '@angular/platform-browser'
 import { TestBed } from '@angular/core/testing'
+import { Meta } from '@angular/platform-browser'
 import { CookieService } from 'ngx-cookie-service'
 import { environment } from 'src/environments/environment'
 import { ChatEvent, ChatService } from './chat.service'
@@ -156,7 +156,9 @@ describe('ChatService', () => {
   it('ignores malformed lines but keeps valid events', (done) => {
     const events: ChatEvent[] = []
     fetchMock.mockResolvedValue(
-      fakeResponse(['not-json\n{"type":"token","text":"ok"}\n{"type":"done"}\n'])
+      fakeResponse([
+        'not-json\n{"type":"token","text":"ok"}\n{"type":"done"}\n',
+      ])
     )
 
     service.streamChat(null, 'hi').subscribe({

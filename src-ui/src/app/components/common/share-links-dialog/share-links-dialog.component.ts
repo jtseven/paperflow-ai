@@ -2,8 +2,8 @@ import { Clipboard } from '@angular/cdk/clipboard'
 import { Component, Input, OnInit, inject } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first } from 'rxjs'
 import {
   FileVersion,
@@ -18,7 +18,12 @@ import { environment } from 'src/environments/environment'
   selector: 'pngx-share-links-dialog',
   templateUrl: './share-links-dialog.component.html',
   styleUrls: ['./share-links-dialog.component.scss'],
-  imports: [FormsModule, ReactiveFormsModule, NgxBootstrapIconsModule, LucideAngularModule],
+  imports: [
+    FormsModule,
+    ReactiveFormsModule,
+    NgxBootstrapIconsModule,
+    LucideAngularModule,
+  ],
 })
 export class ShareLinksDialogComponent implements OnInit {
   private activeModal = inject(NgbActiveModal)

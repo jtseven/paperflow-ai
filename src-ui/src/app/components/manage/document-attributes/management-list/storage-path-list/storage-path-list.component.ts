@@ -6,8 +6,8 @@ import {
   NgbDropdownModule,
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { LucideAngularModule } from 'lucide-angular'
+import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { StoragePathEditDialogComponent } from 'src/app/components/common/edit-dialog/storage-path-edit-dialog/storage-path-edit-dialog.component'
 import { FILTER_HAS_STORAGE_PATH_ANY } from 'src/app/data/filter-rule-type'
 import { StoragePath } from 'src/app/data/storage-path'
