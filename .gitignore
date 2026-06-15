@@ -1,6 +1,8 @@
 /documents/
 /scans/
 
+.playwright-mcp
+
 .env
 
 # Byte-compiled / optimized / DLL files

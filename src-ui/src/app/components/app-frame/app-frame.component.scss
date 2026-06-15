@@ -44,6 +44,9 @@
 @media (max-width: 767.98px) {
   .sidebar {
     top: 3.5rem;
+    // Navbar wraps to two rows on mobile (toggle/brand/buttons + search); pad
+    // so the nav list clears the search row instead of hiding behind it.
+    padding-top: 60px;
   }
 
   .search-container {
@@ -66,7 +69,9 @@
 
 main {
   transition: all .2s ease;
-  padding-top: 110px;
+  // Clear the fixed mobile navbar, which wraps to two rows
+  // (toggle/brand/buttons + search ≈ 112px).
+  padding-top: 120px;
 }
 
 @media (min-width: 768px) {
@@ -287,10 +292,70 @@ main {
   }
 }
 
-@media screen and (min-width: 376px) and (max-width: 768px) {
-  .navbar-toggler {
-    // compensate for 2 buttons on the right
-    margin-right: 45px;
+// The bar uses a light "chrome" background, so the inherited navbar-dark
+// (white) toggler icon is invisible in light mode. Recolour it to follow the
+// body text colour via a mask, so it stays visible in both light and dark themes.
+.navbar-toggler-icon {
+  background-image: none;
+  background-color: var(--bs-body-color);
+  -webkit-mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='black' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='black' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") center / 100% 100% no-repeat;
+}
+
+// Below the md breakpoint the hamburger is shown and the navbar wraps to two
+// rows: a top row with the toggle (left), centered brand, and action buttons
+// (right); and a full-width search row beneath. !important overrides the
+// Bootstrap order-* utilities that otherwise apply from the sm breakpoint up.
+@media (max-width: 767.98px) {
+  .navbar {
+    // Reserve a full top-row height so the centered brand doesn't spill into
+    // the search row below.
+    .navbar-toggler {
+      order: 0 !important;
+      min-height: 3.5rem;
+    }
+
+    // Action buttons hug the right edge of the top row.
+    > ul {
+      order: 1 !important;
+      margin-left: auto;
+    }
+
+    // Brand is centered over the top row. It spans the full width so it stays
+    // page-centered regardless of the side widths; pointer-events are disabled
+    // so the toggle and buttons underneath remain clickable. The logo is capped
+    // so it can never reach (and overlap) the side controls — on narrow screens
+    // it scales down instead. The reserve (~8rem each side) matches the widest
+    // side group (the action buttons).
+    .navbar-brand {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3.5rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+
+      img {
+        pointer-events: auto;
+        // Cap height at the natural logo size (no upscaling) while the width cap
+        // keeps it clear of the side controls; auto dims preserve aspect ratio so
+        // it shrinks proportionally on narrow screens.
+        width: auto;
+        height: auto;
+        max-width: calc(100vw - 17rem);
+        max-height: 2.9rem;
+      }
+    }
+
+    // Search drops to its own full-width row beneath the top row.
+    .search-container {
+      order: 2 !important;
+      flex: 0 0 100%;
+    }
   }
 }
 
@@ -358,8 +423,13 @@ main {
 }
 
 .navbar-brand .brand-logo {
-  height: 2.9rem;
+  // Cap height at the natural size, but never let the wordmark overflow its
+  // column (which is sized to match the sidebar) into the search bar. auto dims
+  // keep the aspect ratio so it scales down proportionally on narrow columns.
   width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 2.9rem;
 }
 
 // Both theme variants are rendered; show the one matching the actual rendered
