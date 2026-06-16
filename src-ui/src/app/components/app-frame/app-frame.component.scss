@@ -51,11 +51,14 @@
 
   .search-container {
     max-height: 4.5rem;
-    overflow: hidden;
+    // Keep overflow visible while open so the search results dropdown can escape
+    // the navbar; only clip when collapsed (the show/hide animation).
+    overflow: visible;
     transition: max-height .2s ease, opacity .2s ease, padding-top .2s ease, padding-bottom .2s ease;
 
     &.mobile-hidden {
       max-height: 0;
+      overflow: hidden;
       opacity: 0;
       padding-top: 0 !important;
       padding-bottom: 0 !important;
