@@ -32,7 +32,7 @@
     </div>
   </div>
   <ul ngbNav class="order-sm-3">
-    @if (aiEnabled) {
+    @if (aiEnabled && !isDashboard) {
       <pngx-chat></pngx-chat>
     }
     <pngx-toasts-dropdown></pngx-toasts-dropdown>

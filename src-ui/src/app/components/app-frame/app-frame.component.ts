@@ -278,6 +278,11 @@ export class AppFrameComponent
     return this.settingsService.get(SETTINGS_KEYS.AI_ENABLED)
   }
 
+  get isDashboard(): boolean {
+    // The dashboard already embeds the chat, so the header chat is redundant there.
+    return this.router.url.split('?')[0] === '/dashboard'
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
     if (!this.isMobileViewport()) {
