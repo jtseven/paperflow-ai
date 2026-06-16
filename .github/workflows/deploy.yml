@@ -1,0 +1,19 @@
+name: Deploy to Pi
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    # Only allow the canonical repo to deploy, not forks
+    if: github.repository == 'jtseven/paperflow-ai'
+    steps:
+      - name: Pull latest code
+        working-directory: /home/joschka/paperflow
+        run: git pull
+
+      - name: Rebuild and restart
+        working-directory: /home/joschka/paperflow
+        run: docker compose up --build -d
