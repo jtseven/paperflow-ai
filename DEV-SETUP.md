@@ -15,6 +15,27 @@ This automatically applies `docker-compose.override.yml`, which adds:
 
 The first start takes a few extra minutes while pnpm installs frontend dependencies into an isolated Docker volume (`frontend_nm`).
 
+## Git hooks (lint before commit/push)
+
+Install the local git hooks once per clone so failing changes are caught before
+they reach CI:
+
+```bash
+uv run prek install --hook-type pre-commit --hook-type pre-push
+```
+
+- **pre-commit** runs the hooks in `.pre-commit-config.yaml` (ruff, prettier,
+  codespell, shellcheck, yamlfmt, …) — the same set the `Lint` workflow runs via
+  `prek`.
+- **pre-push** additionally runs `ng lint` (the `ci-frontend` Lint job) when
+  `src-ui/` sources changed.
+
+Run everything manually at any time with `uv run prek run --all-files`.
+
+> Heavier CI jobs (Jest/Playwright, backend pytest, Docker build, Semgrep/CodeQL)
+> are not run as hooks — they need services/containers and would make commits too
+> slow. They still run in GitHub Actions.
+
 ## Live reload behaviour
 
 **Frontend** — Angular HMR is on by default. Any change to `src-ui/` is reflected in the browser within seconds.
