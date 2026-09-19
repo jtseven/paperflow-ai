@@ -94,7 +94,7 @@ class TestStreamAgenticChat:
     def test_streams_tokens_then_citation_and_done(self):
         documents = [_doc(1, "Invoice"), _doc(2, "Receipt")]
 
-        def fake_build_tool(index, registry):
+        def fake_build_tool(index, registry, filters=None):
             # Simulate the agent's retrieval surfacing document 2.
             registry.register("2", "Receipt", "the matched chunk")
             return MagicMock()
@@ -195,7 +195,7 @@ class TestStreamAgenticChat:
     def test_emits_tool_call_and_result_events(self):
         documents = [_doc(5, "Lease")]
 
-        def fake_build_tool(index, registry):
+        def fake_build_tool(index, registry, filters=None):
             registry.register("5", "Lease", "rent is due monthly")
             registry.record_call(
                 "rent",

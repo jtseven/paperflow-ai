@@ -9,6 +9,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { By } from '@angular/platform-browser'
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import {
   NgbDropdown,
   NgbDropdownItem,
@@ -733,7 +734,9 @@ describe('DocumentListComponent', () => {
       showInSideBar: true,
     })
     expect(updateVisibilitySpy).not.toHaveBeenCalled()
-    expect(openModal.componentInstance.error).toEqual({ filter_rules: ['11'] })
+    expect(openModal.componentInstance.error()).toEqual({
+      filter_rules: ['11'],
+    })
   })
 
   it('should detect saved view changes', () => {
@@ -780,7 +783,7 @@ describe('DocumentListComponent', () => {
   })
 
   it('should hide columns if no perms or notes disabled', () => {
-    jest.spyOn(permissionService, 'currentUserCan').mockReturnValue(true)
+    permissionService.initialize([], { is_superuser: true } as any)
     jest.spyOn(documentListService, 'documents', 'get').mockReturnValue(docs)
     expect(documentListService.sortField).toEqual('created')
 
@@ -801,7 +804,7 @@ describe('DocumentListComponent', () => {
     ).toHaveLength(9)
 
     // insufficient perms
-    jest.spyOn(permissionService, 'currentUserCan').mockReturnValue(false)
+    permissionService.initialize([], { is_superuser: false } as any)
     fixture.detectChanges()
     expect(
       fixture.debugElement.queryAll(By.directive(SortableDirective))
@@ -840,11 +843,10 @@ describe('DocumentListComponent', () => {
 
   it('should get custom field title', () => {
     fixture.detectChanges()
-    jest
-      .spyOn(settingsService, 'allDisplayFields', 'get')
-      .mockReturnValue([
-        { id: 'custom_field_1' as any, name: 'Custom Field 1' },
-      ])
+    const mockDisplayFields = [
+      { id: 'custom_field_1' as any, name: 'Custom Field 1' },
+    ]
+    settingsService.allDisplayFields = jest.fn(() => mockDisplayFields) as any
     expect(component.getDisplayCustomFieldTitle('custom_field_1')).toEqual(
       'Custom Field 1'
     )

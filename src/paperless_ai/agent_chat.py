@@ -22,6 +22,7 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
+from documents.models import Document
 from paperless_ai.chat import CHAT_NO_CONTENT_MESSAGE
 from paperless_ai.chat import EVENT_CITATION
 from paperless_ai.chat import EVENT_TOOL_CALL
@@ -36,7 +37,6 @@ from paperless_ai.chat import token_event
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from documents.models import Document
 
 logger = logging.getLogger("paperless_ai.agent_chat")
 
@@ -142,16 +142,18 @@ class _ReferenceRegistry:
         self.calls[query] = {"count": count, "documents": documents}
 
 
-def _build_search_tool(index, registry: _ReferenceRegistry):
+def _build_search_tool(index, registry: _ReferenceRegistry, filters=None):
     from llama_index.core.retrievers import VectorIndexRetriever
     from llama_index.core.tools import FunctionTool
 
-    from paperless_ai.indexing import _document_id_filters
+    from paperless_ai.indexing import document_id_filters
 
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=AGENT_RETRIEVER_TOP_K,
-        filters=_document_id_filters(registry._allowed.keys()),
+        filters=filters
+        if filters is not None
+        else document_id_filters(registry._allowed.keys()),
     )
 
     def search_documents(query: str) -> str:
@@ -197,8 +199,14 @@ def _build_search_tool(index, registry: _ReferenceRegistry):
             return "No relevant documents were found for that query."
         return "\n\n".join(blocks)
 
+    async def asearch_documents(query: str) -> str:
+        # SQLite connections belong to the streaming worker thread. Avoid
+        # FunctionTool offloading the sync callable to a different thread.
+        return search_documents(query)
+
     return FunctionTool.from_defaults(
         fn=search_documents,
+        async_fn=asearch_documents,
         name="search_documents",
         description=(
             "Search the user's document collection for information relevant to "
@@ -211,6 +219,9 @@ def stream_agentic_chat(
     query_str: str,
     documents: list[Document],
     chat_history: list | None = None,
+    *,
+    unrestricted: bool = False,
+    output_language: str | None = None,
 ) -> Generator[str, None, None]:
     """Stream an agentic answer over ``documents`` as NDJSON events.
 
@@ -218,7 +229,7 @@ def stream_agentic_chat(
     database, building the index may query documents) happens **here**, in the
     synchronous generator, which the streaming view iterates on a worker thread
     where the ORM is available. Only the agent's event streaming — which talks
-    to the LLM and the memory-mapped LanceDB table, never the ORM — runs inside
+    to the LLM and the sqlite-vec index, never the ORM — runs inside
     the private event loop in :func:`_drive_async_stream`. Doing the ORM work
     inside that loop would trip Django's ``SynchronousOnlyOperation`` guard.
 
@@ -230,9 +241,12 @@ def stream_agentic_chat(
         from llama_index.core.agent.workflow import FunctionAgent
 
         from paperless_ai.client import AIClient
+        from paperless_ai.db import db_connection_released
+        from paperless_ai.indexing import exclude_document_ids_filter
         from paperless_ai.indexing import llm_index_exists
         from paperless_ai.indexing import load_or_build_index
         from paperless_ai.indexing import queue_llm_index_update_if_needed
+        from paperless_ai.indexing import read_store
 
         if not documents:
             yield token_event(CHAT_NO_CONTENT_MESSAGE)
@@ -251,24 +265,39 @@ def stream_agentic_chat(
             yield token_event(CHAT_INDEX_NOT_READY_MESSAGE)
             yield done_event()
             return
-        index = load_or_build_index(client.settings)
         registry = _ReferenceRegistry(documents)
-        search_tool = _build_search_tool(index, registry)
-
-        agent = FunctionAgent(
-            tools=[search_tool],
-            llm=client.llm,
-            system_prompt=AGENT_SYSTEM_PROMPT,
-            # When the search budget is exhausted, synthesize a best-effort
-            # answer from whatever evidence was gathered instead of raising
-            # (the library default, "force", aborts the run with an error).
-            early_stopping_method="generate",
-            timeout=AGENT_TIMEOUT_SECONDS,
+        filters = (
+            exclude_document_ids_filter(
+                str(pk) for pk in Document.deleted_objects.values_list("pk", flat=True)
+            )
+            if unrestricted
+            else None
         )
+        with read_store() as store:
+            index = load_or_build_index(client.settings, store)
+            search_tool = _build_search_tool(index, registry, filters)
 
-        logger.debug("Agentic chat query: %s", query_str)
+            agent = FunctionAgent(
+                tools=[search_tool],
+                llm=client.llm,
+                system_prompt=AGENT_SYSTEM_PROMPT
+                + (f"\nRespond in {output_language}." if output_language else ""),
+                # When the search budget is exhausted, synthesize a best-effort
+                # answer from whatever evidence was gathered instead of raising
+                # (the library default, "force", aborts the run with an error).
+                early_stopping_method="generate",
+                timeout=AGENT_TIMEOUT_SECONDS,
+            )
 
-        yield from _drive_async_stream(agent, query_str, registry, chat_history or [])
+            logger.debug("Agentic chat query: %s", query_str)
+
+            with db_connection_released():
+                yield from _drive_async_stream(
+                    agent,
+                    query_str,
+                    registry,
+                    chat_history or [],
+                )
     except Exception as e:  # pragma: no cover - defensive
         logger.exception("Failed to stream agentic chat response: %s", e)
         yield error_event()

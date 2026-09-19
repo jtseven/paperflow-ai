@@ -1,5 +1,6 @@
 import { Component } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 import { ComponentWithPermissions } from '../with-permissions/with-permissions.component'
 import { LoadingComponentWithPermissions } from './loading.component'
 
@@ -25,11 +26,11 @@ describe('LoadingComponentWithPermissions', () => {
   })
 
   it('should have loading set to true by default', () => {
-    expect(component.loading).toBeTruthy()
+    expect(component.loading()).toBeTruthy()
   })
 
   it('should have show set to false by default', () => {
-    expect(component.show).toBeFalsy()
+    expect(component.show()).toBeFalsy()
   })
 
   it('should call next and complete on unsubscribeNotifier with itself on destroy', () => {

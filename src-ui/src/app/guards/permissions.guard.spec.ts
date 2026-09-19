@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing'
 import { ActivatedRoute, RouterState } from '@angular/router'
+import { jest } from '@jest/globals'
 import { provideUiTour, TourService } from 'ngx-ui-tour-ng-bootstrap'
 import {
   PermissionAction,

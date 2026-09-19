@@ -9,6 +9,7 @@ import {
 } from '@angular/common/http/testing'
 import { TestBed } from '@angular/core/testing'
 import { Meta } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 import { CookieService } from 'ngx-cookie-service'
 import { withCsrfInterceptor } from './csrf.interceptor'
 

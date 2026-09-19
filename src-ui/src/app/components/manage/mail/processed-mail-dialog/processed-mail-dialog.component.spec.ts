@@ -7,6 +7,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { ToastService } from 'src/app/services/toast.service'
@@ -64,7 +65,7 @@ describe('ProcessedMailDialogComponent', () => {
     toastService = TestBed.inject(ToastService)
     fixture = TestBed.createComponent(ProcessedMailDialogComponent)
     component = fixture.componentInstance
-    component.rule = rule
+    component.rule.set(rule)
   })
 
   afterEach(() => {
@@ -83,8 +84,8 @@ describe('ProcessedMailDialogComponent', () => {
     fixture.detectChanges()
     const req = expectListRequest(rule.id)
     req.flush({ count: 2, results: mails })
-    expect(component.loading).toBeFalsy()
-    expect(component.processedMails).toEqual(mails)
+    expect(component.loading()).toBeFalsy()
+    expect(component.processedMails()).toEqual(mails)
   })
 
   it('should delete selected mails and reload', () => {
@@ -94,8 +95,8 @@ describe('ProcessedMailDialogComponent', () => {
     initialReq.flush({ count: 0, results: [] })
 
     // select a couple of mails and delete
-    component.selectedMailIds.add(5)
-    component.selectedMailIds.add(6)
+    component.selectedMailIds().add(5)
+    component.selectedMailIds().add(6)
     const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
     component.deleteSelected()
 
@@ -127,18 +128,18 @@ describe('ProcessedMailDialogComponent', () => {
     header.dispatchEvent(new Event('click'))
     header.checked = true
     header.dispatchEvent(new Event('click'))
-    expect(component.selectedMailIds.size).toEqual(mails.length)
+    expect(component.selectedMailIds().size).toEqual(mails.length)
 
     // toggle a single mail
     component.toggleSelected(mails[0] as any)
-    expect(component.selectedMailIds.has(mails[0].id)).toBeFalsy()
+    expect(component.selectedMailIds().has(mails[0].id)).toBeFalsy()
     component.toggleSelected(mails[0] as any)
-    expect(component.selectedMailIds.has(mails[0].id)).toBeTruthy()
+    expect(component.selectedMailIds().has(mails[0].id)).toBeTruthy()
 
     // clear selection
     component.clearSelection()
-    expect(component.selectedMailIds.size).toEqual(0)
-    expect(component.toggleAllEnabled).toBeFalsy()
+    expect(component.selectedMailIds().size).toEqual(0)
+    expect(component.toggleAllEnabled()).toBeFalsy()
   })
 
   it('should close the dialog', () => {

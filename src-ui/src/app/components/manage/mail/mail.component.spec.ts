@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 
 import { DatePipe } from '@angular/common'
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
@@ -113,7 +114,7 @@ describe('MailComponent', () => {
     permissionsService = TestBed.inject(PermissionsService)
     activatedRoute = TestBed.inject(ActivatedRoute)
     settingsService = TestBed.inject(SettingsService)
-    settingsService.currentUser = { id: 1 }
+    settingsService.currentUser.set({ id: 1 })
     jest.spyOn(permissionsService, 'currentUserCan').mockReturnValue(true)
     jest
       .spyOn(permissionsService, 'currentUserHasObjectPermissions')
@@ -261,7 +262,7 @@ describe('MailComponent', () => {
     const editDialog = modal.componentInstance as MailRuleEditDialogComponent
     expect(editDialog.object.id).toBeNull()
     expect(editDialog.object.name).toEqual(`${mailRules[0].name} (copy)`)
-    expect(editDialog.dialogMode).toEqual(EditDialogMode.CREATE)
+    expect(editDialog.dialogMode()).toEqual(EditDialogMode.CREATE)
   })
 
   it('should support delete mail rule, show error if needed', () => {
@@ -414,6 +415,6 @@ describe('MailComponent', () => {
     modalService.activeInstances.subscribe((refs) => (modal = refs[0]))
     component.viewProcessedMail(mailRules[0] as MailRule)
     const dialog = modal.componentInstance as any
-    expect(dialog.rule).toEqual(mailRules[0])
+    expect(dialog.rule()).toEqual(mailRules[0])
   })
 })

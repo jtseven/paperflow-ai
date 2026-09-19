@@ -1,70 +1,137 @@
-<div class="mb-3 paperless-input-select paperless-input-tags" [class.disabled]="disabled" [class.pb-3]="getSuggestions().length > 0">
+<div
+  class="mb-3 paperless-input-select paperless-input-tags"
+  [class.disabled]="disabled"
+  [class.pb-3]="getSuggestions().length > 0"
+>
   <div class="row">
     @if (title) {
       <div class="d-flex align-items-center" [class.col-md-3]="horizontal">
-        <label class="form-label" [class.mb-md-0]="horizontal" for="tags">{{title}}</label>
+        <label class="form-label" [class.mb-md-0]="horizontal" for="tags">{{
+          title
+        }}</label>
       </div>
     }
     <div class="position-relative" [class.col-md-9]="horizontal">
       <div class="input-group flex-nowrap">
-        <ng-select #tagSelect name="tags" [items]="tags" bindLabel="name" bindValue="id" [(ngModel)]="value"
+        <ng-select
+          #tagSelect
+          name="tags"
+          [items]="tags"
+          bindLabel="name"
+          bindValue="id"
+          [(ngModel)]="value"
+          [ngModelOptions]="{ standalone: true }"
           [disabled]="disabled"
           [multiple]="multiple"
           [closeOnSelect]="false"
           [clearSearchOnAdd]="true"
           [hideSelected]="tags.length > 0"
           [addTag]="allowCreate ? createTagRef : false"
+          [searchFn]="searchFn"
           addTagText="Add tag"
           i18n-addTagText
           (add)="onAdd($event)"
-          (change)="onChange(value)">
-
+          (change)="onChange(value)"
+        >
           <ng-template ng-label-tmp let-item="item">
-            <button class="tag-wrap btn p-0 d-flex align-items-center" (click)="removeTag(item.id)" (mousedown)="$event.stopImmediatePropagation()" type="button" title="Remove tag" i18n-title>
-              <lucide-icon name="x" style="margin-inline-end: 1px;"></lucide-icon>
+            <button
+              class="tag-wrap btn p-0 d-flex align-items-center"
+              (click)="removeTag(item.id)"
+              (mousedown)="$event.stopImmediatePropagation()"
+              type="button"
+              title="Remove tag"
+              i18n-title
+            >
+              <lucide-icon
+                name="x"
+                style="margin-inline-end: 1px"
+              ></lucide-icon>
               @if (item.id && tags) {
-                <pngx-tag style="background-color: none;" [tag]="getTag(item.id)"></pngx-tag>
+                <pngx-tag
+                  style="background-color: none"
+                  [tag]="getTag(item.id)"
+                ></pngx-tag>
               }
             </button>
           </ng-template>
-          <ng-template ng-option-tmp let-item="item" let-index="index" let-search="searchTerm">
-            <div class="tag-option-row d-flex align-items-center" [class.w-auto]="!getTag(item.id)?.parent">
+          <ng-template
+            ng-option-tmp
+            let-item="item"
+            let-index="index"
+            let-search="searchTerm"
+          >
+            <div
+              class="tag-option-row d-flex align-items-center"
+              [class.w-auto]="!getTag(item.id)?.parent"
+            >
               @if (item.id && tags) {
                 @if (getTag(item.id)?.parent) {
                   <lucide-icon name="list-nested" class="me-1"></lucide-icon>
                   <span class="hierarchy-reveal d-flex align-items-center">
                     <span class="parents d-flex align-items-center">
                       @for (p of getParentChain(item.id); track p.id) {
-                        <span class="badge me-1" [style.background]="p.color" [style.color]="p.text_color">{{p.name}}</span>
-                        <lucide-icon name="chevron-right" width=".8em" height=".8em" class="me-1"></lucide-icon>
+                        <span
+                          class="badge me-1"
+                          [style.background]="p.color"
+                          [style.color]="p.text_color"
+                          >{{ p.name }}</span
+                        >
+                        <lucide-icon
+                          name="chevron-right"
+                          width=".8em"
+                          height=".8em"
+                          class="me-1"
+                        ></lucide-icon>
                       }
                     </span>
                   </span>
                 }
-                <pngx-tag class="current-tag d-flex" [tag]="getTag(item.id)"></pngx-tag>
+                <pngx-tag
+                  class="current-tag d-flex"
+                  [tag]="getTag(item.id)"
+                ></pngx-tag>
               }
             </div>
           </ng-template>
         </ng-select>
         @if (allowCreate && !hideAddButton) {
-          <button class="btn btn-outline-secondary" type="button" (click)="createTag(null, true)" [disabled]="disabled">
+          <button
+            class="btn btn-outline-secondary"
+            type="button"
+            (click)="createTag(null, true)"
+            [disabled]="disabled"
+            aria-label="Create new tag"
+            i18n-aria-label
+          >
             <lucide-icon width="1.2em" height="1.2em" name="plus"></lucide-icon>
           </button>
         }
         @if (showFilter) {
-          <button class="btn btn-outline-secondary" type="button" (click)="onFilterDocuments()" [disabled]="hasPrivate || this.value === null" i18n-title title="Filter documents with these Tags">
-            <lucide-icon width="1.2em" height="1.2em" name="filter"></lucide-icon>
+          <button
+            class="btn btn-outline-secondary"
+            type="button"
+            (click)="onFilterDocuments()"
+            [disabled]="hasPrivate || this.value === null"
+            i18n-title
+            title="Filter documents with these Tags"
+          >
+            <lucide-icon
+              width="1.2em"
+              height="1.2em"
+              name="filter"
+            ></lucide-icon>
           </button>
         }
       </div>
       @if (hint) {
-        <small class="form-text text-muted">{{hint}}</small>
+        <small class="form-text text-muted">{{ hint }}</small>
       }
       @if (getSuggestions().length > 0) {
         <small class="position-absolute top-100">
           <span i18n>Suggestions:</span>&nbsp;
           @for (tag of getSuggestions(); track tag.id) {
-            <a (click)="addTag(tag.id)" [routerLink]="[]">{{tag?.name}}</a>&nbsp;
+            <a (click)="addTag(tag.id)" [routerLink]="[]">{{ tag?.name }}</a
+            >&nbsp;
           }
         </small>
       }

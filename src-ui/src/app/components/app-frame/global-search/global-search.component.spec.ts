@@ -1,14 +1,10 @@
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ElementRef } from '@angular/core'
-import {
-  ComponentFixture,
-  TestBed,
-  fakeAsync,
-  tick,
-} from '@angular/core/testing'
+import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { Router } from '@angular/router'
+import { jest } from '@jest/globals'
 import {
   NgbDropdownModule,
   NgbModal,
@@ -154,6 +150,7 @@ describe('GlobalSearchComponent', () => {
 
     searchService = TestBed.inject(SearchService)
     router = TestBed.inject(Router)
+    jest.spyOn(router, 'navigate').mockResolvedValue(true)
     modalService = TestBed.inject(NgbModal)
     documentService = TestBed.inject(DocumentService)
     documentListViewService = TestBed.inject(DocumentListViewService)
@@ -170,7 +167,7 @@ describe('GlobalSearchComponent', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: '/' }))
     expect(focusSpy).toHaveBeenCalled()
 
-    component.searchResults = searchResults as any
+    component.searchResults.set(searchResults as any)
     component.resultsDropdown.open()
     fixture.detectChanges()
 
@@ -238,26 +235,26 @@ describe('GlobalSearchComponent', () => {
     )
     expect(component['currentItemIndex']).toBe(0)
 
-    component.searchResults = { total: 1 } as any
+    component.searchResults.set({ total: 1 } as any)
     const primaryActionSpy = jest.spyOn(component, 'primaryAction')
     component.searchInputKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
     expect(primaryActionSpy).toHaveBeenCalled()
 
-    component.query = 'test'
+    component.query.set('test')
     const resetSpy = jest.spyOn(GlobalSearchComponent.prototype as any, 'reset')
     component.searchInputKeyDown(
       new KeyboardEvent('keydown', { key: 'Escape' })
     )
     expect(resetSpy).toHaveBeenCalled()
 
-    component.query = ''
+    component.query.set('')
     const blurSpy = jest.spyOn(component.searchInput.nativeElement, 'blur')
     component.searchInputKeyDown(
       new KeyboardEvent('keydown', { key: 'Escape' })
     )
     expect(blurSpy).toHaveBeenCalled()
 
-    component.searchResults = { total: 1 } as any
+    component.searchResults.set({ total: 1 } as any)
     component.resultsDropdown.open()
 
     component.searchInputKeyDown(
@@ -268,26 +265,42 @@ describe('GlobalSearchComponent', () => {
     component.dropdownKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(closeSpy).toHaveBeenCalled()
 
-    component.searchResults = searchResults as any
+    component.searchResults.set(searchResults as any)
     component.resultsDropdown.open()
-    component.query = 'test'
+    component.query.set('test')
     const advancedSearchSpy = jest.spyOn(component, 'runFullSearch')
     component.searchInputKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
     expect(advancedSearchSpy).toHaveBeenCalled()
   })
 
-  it('should search on query debounce', fakeAsync(() => {
+  it('should set query immediately and run full search on enter without waiting for debounce', () => {
+    jest.useFakeTimers()
+    const searchSpy = jest.spyOn(searchService, 'globalSearch')
+    searchSpy.mockReturnValue(of({} as any))
+    const fullSearchSpy = jest.spyOn(component, 'runFullSearch')
+    component.onQueryChange('test')
+    expect(component.query()).toBe('test')
+    component.searchInputKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
+    expect(fullSearchSpy).toHaveBeenCalled()
+    expect(searchSpy).not.toHaveBeenCalled()
+    jest.useRealTimers()
+  })
+
+  it('should search on query debounce', () => {
+    jest.useFakeTimers()
     const query = 'test'
     const searchSpy = jest.spyOn(searchService, 'globalSearch')
     searchSpy.mockReturnValue(of({} as any))
     const dropdownOpenSpy = jest.spyOn(component.resultsDropdown, 'open')
     component.queryDebounce.next(query)
-    tick(401)
+    jest.advanceTimersByTime(401)
     expect(searchSpy).toHaveBeenCalledWith(query)
     expect(dropdownOpenSpy).toHaveBeenCalled()
-  }))
+    jest.useRealTimers()
+  })
 
-  it('should also run semantic search when AI is enabled', fakeAsync(() => {
+  it('should also run semantic search when AI is enabled', () => {
+    jest.useFakeTimers()
     jest.spyOn(searchService, 'globalSearch').mockReturnValue(of({} as any))
     jest.spyOn(component, 'aiEnabled', 'get').mockReturnValue(true)
     const semanticSpy = jest
@@ -300,38 +313,41 @@ describe('GlobalSearchComponent', () => {
         })
       )
     component.queryDebounce.next('bike')
-    tick(401)
+    jest.advanceTimersByTime(401)
     expect(semanticSpy).toHaveBeenCalledWith('bike')
-    expect(component.semanticResults).toEqual([{ id: 7, title: 'X' }])
-    expect(component.semanticLoading).toBeFalsy()
-  }))
+    expect(component.semanticResults()).toEqual([{ id: 7, title: 'X' }])
+    expect(component.semanticLoading()).toBeFalsy()
+    jest.useRealTimers()
+  })
 
   it('should exclude semantic hits already shown in keyword document results', () => {
-    component.searchResults = {
+    component.searchResults.set({
       documents: [{ id: 7 }, { id: 8 }],
-    } as any
-    component.semanticResults = [
+    } as any)
+    component.semanticResults.set([
       { id: 7, title: 'Dup' },
       { id: 9, title: 'Unique' },
-    ] as any
+    ] as any)
     expect(component.uniqueSemanticResults).toEqual([
       { id: 9, title: 'Unique' },
     ])
   })
 
-  it('should not run semantic search when AI is disabled', fakeAsync(() => {
+  it('should not run semantic search when AI is disabled', () => {
+    jest.useFakeTimers()
     jest.spyOn(searchService, 'globalSearch').mockReturnValue(of({} as any))
     jest.spyOn(component, 'aiEnabled', 'get').mockReturnValue(false)
     const semanticSpy = jest.spyOn(searchService, 'semanticSearch')
     component.queryDebounce.next('bike')
-    tick(401)
+    jest.advanceTimersByTime(401)
     expect(semanticSpy).not.toHaveBeenCalled()
-    expect(component.semanticResults).toEqual([])
-  }))
+    expect(component.semanticResults()).toEqual([])
+    jest.useRealTimers()
+  })
 
   it('should support primary action', () => {
     const object = { id: 1 }
-    const routerSpy = jest.spyOn(router, 'navigate')
+    const routerSpy = jest.mocked(router.navigate)
     const modalSpy = jest.spyOn(modalService, 'open')
 
     let modal: NgbModalRef
@@ -507,13 +523,13 @@ describe('GlobalSearchComponent', () => {
     const closeSpy = jest.spyOn(component.resultsDropdown, 'close')
     component['reset'](true)
     expect(debounce).toHaveBeenCalledWith(null)
-    expect(component.searchResults).toBeNull()
+    expect(component.searchResults()).toBeNull()
     expect(component['currentItemIndex']).toBe(-1)
     expect(closeSpy).toHaveBeenCalled()
   })
 
   it('should support focus current item', () => {
-    component.searchResults = searchResults as any
+    component.searchResults.set(searchResults as any)
     fixture.detectChanges()
     const focusSpy = jest.spyOn(
       component.primaryButtons.get(0).nativeElement,
@@ -531,7 +547,7 @@ describe('GlobalSearchComponent', () => {
   })
 
   it('should focus button on dropdown item hover', () => {
-    component.searchResults = searchResults as any
+    component.searchResults.set(searchResults as any)
     fixture.detectChanges()
     const item: ElementRef = component.resultItems.first
     const focusSpy = jest.spyOn(
@@ -557,7 +573,7 @@ describe('GlobalSearchComponent', () => {
     component.primaryAction(DataType.Document, { id: 2 }, event as any)
     expect(openSpy).toHaveBeenCalledWith('/documents/2', '_blank')
 
-    component.searchResults = searchResults as any
+    component.searchResults.set(searchResults as any)
     component.resultsDropdown.open()
     fixture.detectChanges()
 
@@ -584,7 +600,7 @@ describe('GlobalSearchComponent', () => {
 
   it('should support title content search and advanced search', () => {
     const qfSpy = jest.spyOn(documentListViewService, 'quickFilter')
-    component.query = 'test'
+    component.query.set('test')
     component.runFullSearch()
     expect(qfSpy).toHaveBeenCalledWith([
       { rule_type: FILTER_SIMPLE_TEXT, value: 'test' },
@@ -594,7 +610,7 @@ describe('GlobalSearchComponent', () => {
       SETTINGS_KEYS.SEARCH_FULL_TYPE,
       GlobalSearchType.ADVANCED
     )
-    component.query = 'test'
+    component.query.set('test')
     component.runFullSearch()
     expect(qfSpy).toHaveBeenCalledWith([
       { rule_type: FILTER_FULLTEXT_QUERY, value: 'test' },

@@ -1,6 +1,7 @@
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 import { of, throwError } from 'rxjs'
 import { MatchingModel } from '../data/matching-model'
 import { PermissionsService } from '../services/permissions.service'

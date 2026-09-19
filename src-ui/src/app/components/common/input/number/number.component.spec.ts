@@ -6,6 +6,7 @@ import {
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
 } from '@angular/forms'
+import { jest } from '@jest/globals'
 import { of } from 'rxjs'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { NumberComponent } from './number.component'

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { HotkeyDialogComponent } from './hotkey-dialog.component'

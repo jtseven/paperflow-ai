@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 
 import { provideHttpClient } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
@@ -40,6 +41,20 @@ describe('CustomFieldsBulkEditDialogComponent', () => {
     component.fieldsToAddIds = [1, 2]
     expect(component.form.contains('1')).toBeTruthy()
     expect(component.form.contains('2')).toBeTruthy()
+  })
+
+  it('should render the document count for a filtered selection', () => {
+    component.selection = {
+      all: true,
+      filters: { title__icontains: 'invoice' },
+    }
+    component.selectionCount = 42
+    fixture.detectChanges()
+
+    expect(component.documents).toEqual([])
+    expect(
+      fixture.nativeElement.querySelector('.modal-title').textContent
+    ).toContain('Set custom fields for 42 documents')
   })
 
   it('should emit succeeded event and close modal on successful save', () => {

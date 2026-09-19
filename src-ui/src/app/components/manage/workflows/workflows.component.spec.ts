@@ -3,6 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 import {
   NgbModal,
   NgbModalModule,
@@ -183,7 +184,7 @@ describe('WorkflowsComponent', () => {
     expect(modal).not.toBeUndefined()
     const editDialog = modal.componentInstance as WorkflowEditDialogComponent
     expect(editDialog.object.name).toEqual(workflows[0].name + ' (copy)')
-    expect(editDialog.dialogMode).toEqual(EditDialogMode.CREATE)
+    expect(editDialog.dialogMode()).toEqual(EditDialogMode.CREATE)
   })
 
   it('should null ids on copy', () => {

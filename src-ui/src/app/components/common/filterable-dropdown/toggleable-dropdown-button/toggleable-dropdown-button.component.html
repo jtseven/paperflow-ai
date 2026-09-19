@@ -3,7 +3,8 @@
   [class.opacity-50]="opacifyCount && !hideCount && currentCount === 0"
   role="menuitem"
   (click)="toggleItem($event)"
-  [disabled]="disabled">
+  [disabled]="disabled"
+>
   <div class="selected-icon me-1">
     @if (isChecked()) {
       <lucide-icon width="1em" height="1em" name="check"></lucide-icon>
@@ -23,11 +24,13 @@
       @if (isTag) {
         <pngx-tag [tag]="item" [clickable]="false"></pngx-tag>
       } @else {
-        <small>{{item.name}}</small>
+        <small>{{ item.name }}</small>
       }
     </div>
   </div>
   @if (!hideCount) {
-    <div class="badge bg-light text-dark rounded-pill ms-auto me-1">{{currentCount}}</div>
+    <div class="badge bg-light text-dark rounded-pill ms-auto me-1">
+      {{ currentCount }}
+    </div>
   }
 </button>

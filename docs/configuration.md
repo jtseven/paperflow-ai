@@ -8,6 +8,12 @@ common [OCR](#ocr) related settings and some frontend settings. If set, these wi
 preference over the settings via environment variables. If not set, the environment setting
 or applicable default will be utilized instead.
 
+!!! warning
+
+    Changing configuration from the UI requires the `AppConfig` permission, which applies
+    instance-wide and should be treated as an admin-level permission. See
+    [global permissions](usage.md#global-permissions).
+
 - If you run paperless on docker, `paperless.conf` is not used.
   Rather, configure paperless by copying necessary options to
   `docker-compose.env`.
@@ -22,7 +28,11 @@ or applicable default will be utilized instead.
 
 ## Required services
 
-### Redis Broker
+### Message Broker
+
+Paperless-ngx uses a Redis-compatible message broker. Any broker that
+speaks the Redis protocol works here, including [Valkey](https://valkey.io/)
+(the default in the bundled Docker Compose files) and Redis itself.
 
 #### [`PAPERLESS_REDIS=<url>`](#PAPERLESS_REDIS) {#PAPERLESS_REDIS}
 
@@ -30,21 +40,21 @@ or applicable default will be utilized instead.
 fetching, index optimization and for training the automatic document
 matcher.
 
-    -   If your Redis server needs login credentials PAPERLESS_REDIS =
+    -   If your broker needs login credentials PAPERLESS_REDIS =
         `redis://<username>:<password>@<host>:<port>`
     -   With the requirepass option PAPERLESS_REDIS =
         `redis://:<password>@<host>:<port>`
-    -   To include the redis database index PAPERLESS_REDIS =
+    -   To include the database index PAPERLESS_REDIS =
         `redis://<username>:<password>@<host>:<port>/<DBIndex>`
 
-    [More information on securing your Redis
-    Instance](https://redis.io/docs/latest/operate/oss_and_stack/management/security).
+    [More information on securing your broker
+    instance](https://valkey.io/topics/security/).
 
     Defaults to `redis://localhost:6379`.
 
 #### [`PAPERLESS_REDIS_PREFIX=<prefix>`](#PAPERLESS_REDIS_PREFIX) {#PAPERLESS_REDIS_PREFIX}
 
-: Prefix to be used in Redis for keys and channels. Useful for sharing one Redis server among multiple Paperless instances.
+: Prefix to be used in the broker for keys and channels. Useful for sharing one broker among multiple Paperless instances.
 
     Defaults to no prefix.
 
@@ -58,13 +68,13 @@ and the relevant connection variables.
 #### [`PAPERLESS_DBENGINE=<engine>`](#PAPERLESS_DBENGINE) {#PAPERLESS_DBENGINE}
 
 : Specifies the database engine to use. Accepted values are `sqlite`, `postgresql`,
-and `mariadb`.
-
-    Defaults to `sqlite` if not set.
+and `mariadb`. PostgreSQL and MariaDB users must set this explicitly.
 
     PostgreSQL and MariaDB both require [`PAPERLESS_DBHOST`](#PAPERLESS_DBHOST) to be
     set. SQLite does not use any other connection variables; the database file is always
     located at `<PAPERLESS_DATA_DIR>/db.sqlite3`.
+
+    Defaults to `sqlite`.
 
     !!! warning
         Using MariaDB comes with some caveats.
@@ -238,7 +248,7 @@ dictionaries; for example, `pool.max_size=20` sets
 
 #### [`PAPERLESS_DB_READ_CACHE_ENABLED=<bool>`](#PAPERLESS_DB_READ_CACHE_ENABLED) {#PAPERLESS_DB_READ_CACHE_ENABLED}
 
-: Caches the database read query results into Redis. This can significantly improve application response times by caching database queries, at the cost of slightly increased memory usage.
+: Caches the database read query results into the broker. This can significantly improve application response times by caching database queries, at the cost of slightly increased memory usage.
 
     Defaults to `false`.
 
@@ -258,18 +268,18 @@ dictionaries; for example, `pool.max_size=20` sets
 
         A high TTL increases memory usage over time. Memory may be used until end of TTL, even if the cache is invalidated with the `invalidate_cachalot` command.
 
-In case of an out-of-memory (OOM) situation, Redis may stop accepting new data — including cache entries, scheduled tasks, and documents to consume.
-If your system has limited RAM, consider configuring a dedicated Redis instance for the read cache, with a memory limit and the eviction policy set to `allkeys-lru`.
-For more details, refer to the [Redis eviction policy documentation](https://redis.io/docs/latest/develop/reference/eviction/), and see the `PAPERLESS_READ_CACHE_REDIS_URL` setting to specify a separate Redis broker.
+In case of an out-of-memory (OOM) situation, the broker may stop accepting new data — including cache entries, scheduled tasks, and documents to consume.
+If your system has limited RAM, consider configuring a dedicated broker instance for the read cache, with a memory limit and the eviction policy set to `allkeys-lru`.
+For more details, refer to the [Redis eviction policy documentation](https://redis.io/docs/latest/develop/reference/eviction/), and see the `PAPERLESS_READ_CACHE_REDIS_URL` setting to specify a separate broker.
 
 #### [`PAPERLESS_READ_CACHE_REDIS_URL=<url>`](#PAPERLESS_READ_CACHE_REDIS_URL) {#PAPERLESS_READ_CACHE_REDIS_URL}
 
-: Defines the Redis instance used for the read cache.
+: Defines the broker instance used for the read cache.
 
     Defaults to `None`.
 
     !!! Note
-    If this value is not set, the same Redis instance used for scheduled tasks will be used for caching as well.
+    If this value is not set, the same broker instance used for scheduled tasks will be used for caching as well.
 
 ## Optional Services
 
@@ -403,18 +413,12 @@ details.
 
     Defaults to `PAPERLESS_DATA_DIR/log/`.
 
-#### [`PAPERLESS_NLTK_DIR=<path>`](#PAPERLESS_NLTK_DIR) {#PAPERLESS_NLTK_DIR}
+#### ~~[`PAPERLESS_NLTK_DIR`](#PAPERLESS_NLTK_DIR)~~ {#PAPERLESS_NLTK_DIR}
 
-: This is where paperless will search for the data required for NLTK
-processing, if you are using it. If you are using the Docker image,
-this should not be changed, as the data is included in the image
-already.
+!!! failure "Removed in v3.2"
 
-Previously, the location defaulted to `PAPERLESS_DATA_DIR/nltk`.
-Unless you are using this in a bare metal install or other setup,
-this folder is no longer needed and can be removed manually.
-
-Defaults to `/usr/share/nltk_data`
+    Removed and ignored. Any previously downloaded NLTK data folder can be
+    deleted.
 
 #### [`PAPERLESS_MODEL_FILE=<path>`](#PAPERLESS_MODEL_FILE) {#PAPERLESS_MODEL_FILE}
 
@@ -518,22 +522,36 @@ do CORS calls. Set this to your public domain name.
 fail2ban with log entries for failed authorization attempts. Value should be
 IP address(es).
 
-    This setting also controls allauth's
-    [`ALLAUTH_TRUSTED_PROXY_COUNT`](https://docs.allauth.org/en/latest/account/configuration.html),
-    which is set to the number of proxies listed here. Without this,
-    allauth cannot determine the client IP address for rate limiting when
-    running behind a reverse proxy, resulting in a `403 Forbidden` on login.
+    By default, this setting also controls allauth's trusted proxy count,
+    which is set to the number of proxies listed here. Override that default
+    with [`PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT`](#PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT)
+    when the list length does not match the number of proxy hops.
 
     Defaults to empty string.
+
+#### [`PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT=<integer>`](#PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT) {#PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT}
+
+: Sets allauth's
+[`ALLAUTH_TRUSTED_PROXY_COUNT`](https://docs.allauth.org/en/latest/common/rate_limits.html#configuration).
+This is the number of trusted proxy **hops** represented in each
+`X-Forwarded-For` header, not the number of IP addresses through which those
+proxies may be reached. For example, a single dual-stack proxy is one hop even
+when its IPv4 and IPv6 addresses are both listed in
+[`PAPERLESS_TRUSTED_PROXIES`](#PAPERLESS_TRUSTED_PROXIES).
+
+    Only trust `X-Forwarded-For` when untrusted clients cannot connect directly
+    to Paperless-ngx.
+
+    Defaults to the number of entries in `PAPERLESS_TRUSTED_PROXIES`.
 
 #### [`PAPERLESS_ALLAUTH_TRUSTED_CLIENT_IP_HEADER=<header-name>`](#PAPERLESS_ALLAUTH_TRUSTED_CLIENT_IP_HEADER) {#PAPERLESS_ALLAUTH_TRUSTED_CLIENT_IP_HEADER}
 
 : Sets allauth's
-[`ALLAUTH_TRUSTED_CLIENT_IP_HEADER`](https://docs.allauth.org/en/latest/account/configuration.html).
+[`ALLAUTH_TRUSTED_CLIENT_IP_HEADER`](https://docs.allauth.org/en/latest/common/rate_limits.html#configuration).
 Use this when your reverse proxy sets a dedicated header for the real
 client IP instead of `X-Forwarded-For`, for example `X-Real-IP` (nginx)
 or `CF-Connecting-IP` (Cloudflare). When set, this takes precedence over
-[`PAPERLESS_TRUSTED_PROXIES`](#PAPERLESS_TRUSTED_PROXIES).
+`PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT`.
 
     Defaults to none.
 
@@ -758,6 +776,24 @@ system. See the corresponding
 
     Defaults to "groups"
 
+#### [`PAPERLESS_SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP=<str>`](#PAPERLESS_SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP) {#PAPERLESS_SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP}
+
+: Allows you to define a group name that, if present in the third-party authentication system's groups claim, will grant the user superuser (admin) and staff status in Paperless-ngx. If the group is not present in the claim, superuser status will be revoked upon next login.
+
+    !!! warning
+        This is a direct reflection of the claim on every login, including the connecting user, with no exemption for the last remaining admin. If the group is missing or misconfigured on the identity provider side, the logged-in user will immediately lose their own superuser access. Fix the group membership or claim mapping on the identity provider to restore it. If the identity provider itself is unreachable or misconfigured and you are locked out, you can recover admin access locally with `manage.py createsuperuser`.
+
+    Defaults to None
+
+#### [`PAPERLESS_SOCIAL_ACCOUNT_SYNC_STAFF_GROUP=<str>`](#PAPERLESS_SOCIAL_ACCOUNT_SYNC_STAFF_GROUP) {#PAPERLESS_SOCIAL_ACCOUNT_SYNC_STAFF_GROUP}
+
+: Allows you to define a group name that, if present in the third-party authentication system's groups claim, will grant the user staff status in Paperless-ngx. If the group is not present in the claim and the user is not a superuser, staff status will be revoked upon next login.
+
+    !!! warning
+        As with [`PAPERLESS_SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP`](#PAPERLESS_SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP), this is applied on every login unconditionally, including for the connecting user themselves.
+
+    Defaults to None
+
 #### [`PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS=<comma-separated-list>`](#PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS) {#PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS}
 
 : A list of group names that users who signup via social accounts will be added to upon signup. Groups listed here must already exist.
@@ -888,7 +924,7 @@ modes are available:
 
     The default is `auto`.
 
-    For the `skip`, `redo`, and `force` modes, read more about OCR
+    For the `redo` and `force` modes, read more about OCR
     behaviour in the [OCRmyPDF
     documentation](https://ocrmypdf.readthedocs.io/en/latest/advanced.html#when-ocr-is-skipped).
 
@@ -914,8 +950,8 @@ for display in the web interface.
     | Document type              | `never` | `auto` (default)           | `always` |
     | -------------------------- | ------- | -------------------------- | -------- |
     | Scanned image (TIFF, JPEG) | No      | **Yes**                    | Yes      |
-    | Image-based PDF            | No      | **Yes** (short/no text, untagged) | Yes |
-    | Born-digital PDF           | No      | No (tagged or has embedded text)  | Yes |
+    | Image-based PDF            | No      | **Yes** (no embedded text) | Yes |
+    | Born-digital PDF           | No      | No (has embedded text, optionally confirmed by tag) | Yes |
     | Plain text, email, HTML    | No      | No                         | No       |
     | DOCX / ODT (via Tika)      | Yes\*   | Yes\*                      | Yes\*    |
 
@@ -930,10 +966,11 @@ for display in the web interface.
 
     !!! note
 
-        The **remote OCR parser** (Azure AI) always produces a searchable
-        PDF and stores it as the archive copy, regardless of this setting.
-        `ARCHIVE_FILE_GENERATION=never` has no effect when the remote
-        parser handles a document.
+        The **remote OCR parser** (Azure AI) also honors this setting: when
+        no archive is requested (`never`, or `auto` with a born-digital PDF),
+        the remote engine is skipped entirely and locally-extracted text is
+        used instead, avoiding an unnecessary API call and a duplicate text
+        layer.
 
 #### [`PAPERLESS_OCR_CLEAN=<mode>`](#PAPERLESS_OCR_CLEAN) {#PAPERLESS_OCR_CLEAN}
 
@@ -1088,6 +1125,10 @@ they use underscores instead of dashes.
         so specifying invalid options may prevent paperless from consuming
         any documents.  Use with caution!
 
+        These arguments are passed directly to OCRmyPDF, so this setting should only
+        be changed by trusted users. This applies to the `AppConfig` permission as well,
+        which allows setting these arguments from the UI.
+
     Specify arguments as a JSON dictionary. Keep note of lower case
     booleans and double quoted parameter names and strings. Examples:
 
@@ -1143,31 +1184,49 @@ for details on how to set it.
 
     Defaults to UTC.
 
-#### [`PAPERLESS_ENABLE_NLTK=<bool>`](#PAPERLESS_ENABLE_NLTK) {#PAPERLESS_ENABLE_NLTK}
+#### ~~[`PAPERLESS_ENABLE_NLTK`](#PAPERLESS_ENABLE_NLTK)~~ {#PAPERLESS_ENABLE_NLTK}
 
-: Enables or disables the advanced natural language processing
-used during automatic classification. If disabled, paperless will
-still perform some basic text pre-processing before matching.
+!!! failure "Removed in v3.2"
 
-: See also `PAPERLESS_NLTK_DIR`.
+    Removed and ignored. Automatic classification always removes stop words
+    and stems words when the primary OCR language is Danish, Dutch, English,
+    Finnish, French, German, Italian, Norwegian, Portuguese, Russian, Spanish
+    or Swedish. Other languages are only lowercased and split into words.
 
-    Defaults to true, enabling the feature.
+#### [`PAPERLESS_CLASSIFIER_MATCH_THRESHOLD=<float>`](#PAPERLESS_CLASSIFIER_MATCH_THRESHOLD) {#PAPERLESS_CLASSIFIER_MATCH_THRESHOLD}
+
+: Sets the minimum confidence score (0.0-1.0) required for the automatic
+classifier to assign a correspondent, document type, or storage path to a
+document. Predictions below this threshold are discarded and the field is
+left unassigned, preventing low-confidence guesses from being applied.
+
+    Defaults to 0.3.
+
+#### [`PAPERLESS_MATCH_REGEX_TIMEOUT_SECONDS=<float>`](#PAPERLESS_MATCH_REGEX_TIMEOUT_SECONDS) {#PAPERLESS_MATCH_REGEX_TIMEOUT_SECONDS}
+
+: Sets the timeout, in seconds, for regular expression matching. Increase this
+value if date parsing or user-defined matching rules time out when processing
+long documents, especially on slower hardware.
+
+    Defaults to 0.1 seconds.
 
 #### [`PAPERLESS_DATE_PARSER_LANGUAGES=<lang>`](#PAPERLESS_DATE_PARSER_LANGUAGES) {#PAPERLESS_DATE_PARSER_LANGUAGES}
 
-Specifies which language Paperless should use when parsing dates from documents.
+: Specifies which language Paperless should use when parsing dates from documents.
 
-    This should be a language code supported by the dateparser library,
-    for example: "en", or a combination such as "en+de".
-    Locales are also supported (e.g., "en-AU").
-    Multiple languages can be combined using "+", for example: "en+de" or "en-AU+de".
-    For valid values, refer to the list of supported languages and locales in the [dateparser documentation](https://dateparser.readthedocs.io/en/latest/supported_locales.html).
+: This should be a language code supported by the dateparser library,
+for example: "en", or a combination such as "en+de".
+Locales are also supported (e.g., "en-AU").
+Multiple languages can be combined using "+", for example: "en+de" or "en-AU+de".
+For valid values, refer to the list of supported languages and locales in the [dateparser documentation](https://dateparser.readthedocs.io/en/latest/supported_locales.html).
 
-    Set this to match the languages in which most of your documents are written.
+: Set this to match the languages in which most of your documents are written.
+
     If not set, Paperless will attempt to infer the language(s) from the OCR configuration (`PAPERLESS_OCR_LANGUAGE`).
 
-!!! note
-This format differs from the `PAPERLESS_OCR_LANGUAGE` setting, which uses ISO 639-2 codes (3 letters, e.g., "eng+deu" for Tesseract OCR).
+    !!! note
+
+        This format differs from the `PAPERLESS_OCR_LANGUAGE` setting, which uses ISO 639-2 codes (3 letters, e.g., "eng+deu" for Tesseract OCR).
 
 #### [`PAPERLESS_EMAIL_TASK_CRON=<cron expression>`](#PAPERLESS_EMAIL_TASK_CRON) {#PAPERLESS_EMAIL_TASK_CRON}
 
@@ -1176,7 +1235,7 @@ should be a valid crontab(5) expression describing when to run.
 
 : If set to the string "disable", no emails will be fetched automatically.
 
-    Defaults to `*/10 * * * *` or every ten minutes.
+    Defaults to every ten minutes, with an installation-specific minute offset.
 
 #### [`PAPERLESS_TRAIN_TASK_CRON=<cron expression>`](#PAPERLESS_TRAIN_TASK_CRON) {#PAPERLESS_TRAIN_TASK_CRON}
 
@@ -1219,6 +1278,8 @@ Tantivy stemmer equivalent, stemming is disabled.
 : When set to a float value, approximate/fuzzy matching is applied alongside exact
 matching. Fuzzy results rank below exact matches. A value of `0.5` is a reasonable
 starting point. Leave unset to disable fuzzy matching entirely.
+
+    Words of a single character are not fuzzy-matched, since a single-character approximate match would match nearly every term in the index.
 
     Defaults to unset (disabled).
 
@@ -1340,12 +1401,15 @@ don't exist yet.
 #### [`PAPERLESS_CONSUMER_IGNORE_PATTERNS=<json>`](#PAPERLESS_CONSUMER_IGNORE_PATTERNS) {#PAPERLESS_CONSUMER_IGNORE_PATTERNS}
 
 : Additional regex patterns for files to ignore in the consumption directory. Patterns are matched against filenames only (not full paths)
-using Python's `re.match()`, which anchors at the start of the filename.
+using Python's `re.search()`. Use `^` to anchor a pattern to the start of the filename and `$` to anchor it to the end.
 
     See the [watchfiles documentation](https://watchfiles.helpmanual.io/api/filters/#watchfiles.BaseFilter.ignore_entity_patterns)
 
     This setting is for additional patterns beyond the built-in defaults. Common system files and directories are already ignored automatically.
     The patterns will be compiled via Python's standard `re` module.
+
+    These are regular expressions, not glob patterns. For example, the glob pattern `._*` does not mean "starts with `._`" when used as a
+    regular expression; it matches nearly any non-empty filename. Use `^\._.*` for that behavior instead.
 
     Example custom patterns:
 
@@ -1361,7 +1425,11 @@ using Python's `re.match()`, which anchors at the start of the filename.
 
     Defaults to `[]` (empty list, uses only built-in defaults).
 
-    The default ignores are `[.DS_Store, .DS_STORE, ._*, desktop.ini, Thumbs.db]` and cannot be overridden.
+    The built-in file patterns are equivalent to the following regular expressions and cannot be overridden:
+
+    ```json
+    ["^\\.DS_Store$", "^\\.DS_STORE$", "^\\._.*", "^desktop\\.ini$", "^Thumbs\\.db$"]
+    ```
 
 #### [`PAPERLESS_CONSUMER_IGNORE_DIRS=<json>`](#PAPERLESS_CONSUMER_IGNORE_DIRS) {#PAPERLESS_CONSUMER_IGNORE_DIRS}
 
@@ -2020,6 +2088,24 @@ password. All of these options come from their similarly-named [Django settings]
 
     Defaults to None.
 
+#### [`PAPERLESS_REMOTE_OCR_MODE=<str>`](#PAPERLESS_REMOTE_OCR_MODE) {#PAPERLESS_REMOTE_OCR_MODE}
+
+: Which documents are sent to the remote OCR engine.
+
+    - `always`: every document of a supported file type is sent to the remote
+      engine, bypassing the local OCR engine.
+    - `workflow_only`: documents are processed locally unless a workflow
+      explicitly enables remote OCR for them, letting you use the remote engine
+      selectively.
+
+    Defaults to "always".
+
+#### [`PAPERLESS_REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS=<bool>`](#PAPERLESS_REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS) {#PAPERLESS_REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS}
+
+: If set to false, Paperless blocks remote OCR endpoint URLs that resolve to non-public addresses (e.g., localhost, etc).
+
+    Defaults to True.
+
 ## AI {#ai}
 
 #### [`PAPERLESS_AI_ENABLED=<bool>`](#PAPERLESS_AI_ENABLED) {#PAPERLESS_AI_ENABLED}
@@ -2042,6 +2128,8 @@ suggestions. This setting is required to be set to true in order to use the AI f
 models supported by the current embedding backend. If not supplied, defaults to
 "text-embedding-3-small" for the OpenAI-compatible backend,
 "sentence-transformers/all-MiniLM-L6-v2" for Huggingface, and "embeddinggemma" for Ollama.
+See [choosing AI models](https://github.com/paperless-ngx/paperless-ngx/wiki/AI-Model-Recommendations)
+for language and resource considerations.
 
     Defaults to None.
 
@@ -2068,6 +2156,13 @@ context by default.
 
     Defaults to 8192.
 
+#### [`PAPERLESS_AI_LLM_REQUEST_TIMEOUT=<int>`](#PAPERLESS_AI_LLM_REQUEST_TIMEOUT) {#PAPERLESS_AI_LLM_REQUEST_TIMEOUT}
+
+: The timeout, in seconds, for requests to the configured AI backend. Increase this when using
+local or slow inference servers that need more time to generate responses.
+
+    Defaults to 120.
+
 #### [`PAPERLESS_AI_LLM_BACKEND=<str>`](#PAPERLESS_AI_LLM_BACKEND) {#PAPERLESS_AI_LLM_BACKEND}
 
 : The AI backend to use. This can be either "openai-like" or "ollama". If set to "ollama", the AI
@@ -2091,6 +2186,8 @@ setting is required to be set to use the AI features.
 : The model to use for the AI backend, i.e. "gpt-3.5-turbo", "gpt-4" or any of the models supported
 by the current backend. If not supplied, defaults to "gpt-3.5-turbo" for the OpenAI-compatible
 backend and "llama3.1" for Ollama.
+See [choosing AI models](https://github.com/paperless-ngx/paperless-ngx/wiki/AI-Model-Recommendations)
+for local versus remote and model-size considerations.
 
     Defaults to None.
 
@@ -2108,7 +2205,7 @@ used with the OpenAI-compatible backend to target a custom provider or local gat
 
     Defaults to None.
 
-### [`PAPERLESS_AI_LLM_OUTPUT_LANGUAGE=<str>`](#PAPERLESS_AI_LLM_OUTPUT_LANGUAGE) {#PAPERLESS_AI_LLM_OUTPUT_LANGUAGE}
+#### [`PAPERLESS_AI_LLM_OUTPUT_LANGUAGE=<str>`](#PAPERLESS_AI_LLM_OUTPUT_LANGUAGE) {#PAPERLESS_AI_LLM_OUTPUT_LANGUAGE}
 
 : The language to use for AI suggestions (results may vary by LLM model). If not supplied, defaults to the user's UI language setting or None.
 
@@ -2120,7 +2217,7 @@ used with the OpenAI-compatible backend to target a custom provider or local gat
 
     Defaults to true, which allows internal endpoints.
 
-#### [`PAPERLESS_AI_LLM_INDEX_TASK_CRON=<cron expression>`](#PAPERLESS_AI_LLM_INDEX_TASK_CRON) {#PAPERLESS_AI_LLM_INDEX_TASK_CRON}
+#### [`PAPERLESS_LLM_INDEX_TASK_CRON=<cron expression>`](#PAPERLESS_LLM_INDEX_TASK_CRON) {#PAPERLESS_LLM_INDEX_TASK_CRON}
 
 : Configures the schedule to update the AI embeddings of text content and metadata for all documents. Only performed if
 AI is enabled and the LLM embedding backend is set.

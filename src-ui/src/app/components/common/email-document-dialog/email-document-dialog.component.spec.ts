@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
@@ -36,23 +37,24 @@ describe('EmailDocumentDialogComponent', () => {
     documentService = TestBed.inject(DocumentService)
     toastService = TestBed.inject(ToastService)
     component = fixture.componentInstance
-    component.documentIds = [1]
+    component.documentIds.set([1])
     fixture.detectChanges()
   })
 
   it('should set hasArchiveVersion and useArchiveVersion', () => {
-    expect(component.hasArchiveVersion).toBeTruthy()
-    expect(component.useArchiveVersion).toBeTruthy()
+    expect(component.hasArchiveVersion()).toBeTruthy()
+    expect(component.useArchiveVersion()).toBeTruthy()
 
-    component.hasArchiveVersion = false
-    expect(component.hasArchiveVersion).toBeFalsy()
-    expect(component.useArchiveVersion).toBeFalsy()
+    component.hasArchiveVersion.set(false)
+    fixture.detectChanges()
+    expect(component.hasArchiveVersion()).toBeFalsy()
+    expect(component.useArchiveVersion()).toBeFalsy()
   })
 
   it('should support sending single document via email, showing error if needed', () => {
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
     const toastSuccessSpy = jest.spyOn(toastService, 'showInfo')
-    component.documentIds = [1]
+    component.documentIds.set([1])
     component.emailAddress = 'hello@paperless-ngx.com'
     component.emailSubject = 'Hello'
     component.emailMessage = 'World'
@@ -73,7 +75,7 @@ describe('EmailDocumentDialogComponent', () => {
   it('should support sending multiple documents via email, showing appropriate messages', () => {
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
     const toastSuccessSpy = jest.spyOn(toastService, 'showInfo')
-    component.documentIds = [1, 2, 3]
+    component.documentIds.set([1, 2, 3])
     component.emailAddress = 'hello@paperless-ngx.com'
     component.emailSubject = 'Hello'
     component.emailMessage = 'World'

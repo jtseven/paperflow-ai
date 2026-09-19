@@ -1,22 +1,46 @@
 <form [formGroup]="objectForm" (ngSubmit)="save()" autocomplete="off">
   <div class="modal-header">
-    <h4 class="modal-title" id="modal-basic-title">{{getTitle()}}</h4>
+    <h4 class="modal-title" id="modal-basic-title">{{ getTitle() }}</h4>
     @if (object?.id) {
-      <span class="badge bg-primary text-primary-text-contrast ms-2">ID: {{object.id}}</span>
+      <span class="badge bg-primary text-primary-text-contrast ms-2"
+        >ID: {{ object.id }}</span
+      >
     }
-    <button type="button" [disabled]="!closeEnabled" class="btn-close" aria-label="Close" (click)="cancel()">
-    </button>
+    <button
+      type="button"
+      [disabled]="!closeEnabled"
+      class="btn-close"
+      aria-label="Close"
+      (click)="cancel()"
+    ></button>
   </div>
   <div class="modal-body">
     <div class="row">
       <div class="col-md-6">
-        <pngx-input-text i18n-title title="Name" formControlName="name" [error]="error?.name" autocomplete="off"></pngx-input-text>
+        <pngx-input-text
+          i18n-title
+          title="Name"
+          formControlName="name"
+          [error]="error?.name"
+          autocomplete="off"
+        ></pngx-input-text>
       </div>
       <div class="col-4">
-        <pngx-input-number i18n-title title="Sort order" formControlName="order" [showAdd]="false" [error]="error?.order"></pngx-input-number>
+        <pngx-input-number
+          i18n-title
+          title="Sort order"
+          formControlName="order"
+          [showAdd]="false"
+          [error]="error?.order"
+        ></pngx-input-number>
       </div>
       <div class="col">
-        <pngx-input-switch i18n-title title="Enabled" formControlName="enabled" [error]="error?.enabled"></pngx-input-switch>
+        <pngx-input-switch
+          i18n-title
+          title="Enabled"
+          formControlName="enabled"
+          [error]="error?.enabled"
+        ></pngx-input-switch>
       </div>
     </div>
     <div ngbAccordion>
@@ -29,30 +53,55 @@
             <ng-template>
               <div class="d-flex">
                 <p class="p-2" i18n>Trigger Workflow On:</p>
-                <button type="button" class="btn btn-sm btn-outline-primary ms-auto mb-3" (click)="addTrigger()">
-                  <lucide-icon name="plus-circle" class="me-1"></lucide-icon><ng-container i18n>Add Trigger</ng-container>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary ms-auto mb-3"
+                  (click)="addTrigger()"
+                >
+                  <lucide-icon name="plus-circle" class="me-1"></lucide-icon
+                  ><ng-container i18n>Add Trigger</ng-container>
                 </button>
               </div>
               <div ngbAccordion [closeOthers]="true">
-                @for (trigger of object?.triggers; track trigger; let i = $index){
+                @for (
+                  trigger of object?.triggers;
+                  track trigger;
+                  let i = $index
+                ) {
                   <div ngbAccordionItem>
                     <div ngbAccordionHeader>
-                      <button ngbAccordionButton>{{i + 1}}. {{getTriggerTypeOptionName(triggerFields.controls[i].value.type)}}
-                        @if(trigger.id) {
-                          <span class="badge bg-primary text-primary-text-contrast ms-2">ID: {{trigger.id}}</span>
+                      <button ngbAccordionButton>
+                        {{ i + 1 }}.
+                        {{
+                          getTriggerTypeOptionName(
+                            triggerFields.controls[i].value.type
+                          )
+                        }}
+                        @if (trigger.id) {
+                          <span
+                            class="badge bg-primary text-primary-text-contrast ms-2"
+                            >ID: {{ trigger.id }}</span
+                          >
                         }
                         <pngx-confirm-button
                           label="Delete"
                           i18n-label
                           (confirm)="removeTrigger(i)"
                           buttonClasses="btn-link text-danger ms-2"
-                          iconName="trash">
+                          iconName="trash"
+                        >
                         </pngx-confirm-button>
                       </button>
                     </div>
                     <div ngbAccordionCollapse>
                       <div ngbAccordionBody>
-                        <ng-template [ngTemplateOutlet]="triggerForm" [ngTemplateOutletContext]="{ formGroup: triggerFields.controls[i], trigger: trigger }"></ng-template>
+                        <ng-template
+                          [ngTemplateOutlet]="triggerForm"
+                          [ngTemplateOutletContext]="{
+                            formGroup: triggerFields.controls[i],
+                            trigger: trigger,
+                          }"
+                        ></ng-template>
                       </div>
                     </div>
                   </div>
@@ -71,32 +120,60 @@
             <ng-template>
               <div class="d-flex">
                 <p class="p-2" i18n>Apply Actions:</p>
-                <button type="button" class="btn btn-sm btn-outline-primary ms-auto mb-3" (click)="addAction()">
-                  <lucide-icon name="plus-circle" class="me-1"></lucide-icon><ng-container i18n>Add Action</ng-container>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary ms-auto mb-3"
+                  (click)="addAction()"
+                >
+                  <lucide-icon name="plus-circle" class="me-1"></lucide-icon
+                  ><ng-container i18n>Add Action</ng-container>
                 </button>
               </div>
-              <div ngbAccordion [closeOthers]="true" cdkDropList (cdkDropListDropped)="onActionDrop($event)">
-                @for (action of object?.actions; track action; let i = $index){
+              <div
+                ngbAccordion
+                [closeOthers]="true"
+                cdkDropList
+                (cdkDropListDropped)="onActionDrop($event)"
+              >
+                @for (action of object?.actions; track action; let i = $index) {
                   <div ngbAccordionItem [formGroup]="actionFields.controls[i]">
                     <div ngbAccordionHeader cdkDrag>
                       <button ngbAccordionButton>
-                        <lucide-icon name="grip-vertical" class="ms-n3 pe-1"></lucide-icon>
-                        {{i + 1}}. {{getActionTypeOptionName(actionFields.controls[i].value.type)}}
-                        @if(action.id) {
-                          <span class="badge bg-primary text-primary-text-contrast ms-2">ID: {{action.id}}</span>
+                        <lucide-icon
+                          name="grip-vertical"
+                          class="ms-n3 pe-1"
+                        ></lucide-icon>
+                        {{ i + 1 }}.
+                        {{
+                          getActionTypeOptionName(
+                            actionFields.controls[i].value.type
+                          )
+                        }}
+                        @if (action.id) {
+                          <span
+                            class="badge bg-primary text-primary-text-contrast ms-2"
+                            >ID: {{ action.id }}</span
+                          >
                         }
                         <pngx-confirm-button
                           label="Delete"
                           i18n-label
                           (confirm)="removeAction(i)"
                           buttonClasses="btn-link text-danger ms-2"
-                          iconName="trash">
+                          iconName="trash"
+                        >
                         </pngx-confirm-button>
                       </button>
                     </div>
                     <div ngbAccordionCollapse>
                       <div ngbAccordionBody>
-                        <ng-template [ngTemplateOutlet]="actionForm" [ngTemplateOutletContext]="{ formGroup: actionFields.controls[i], action: action }"></ng-template>
+                        <ng-template
+                          [ngTemplateOutlet]="actionForm"
+                          [ngTemplateOutletContext]="{
+                            formGroup: actionFields.controls[i],
+                            action: action,
+                          }"
+                        ></ng-template>
                       </div>
                     </div>
                   </div>
@@ -110,19 +187,45 @@
   </div>
   <div class="modal-footer">
     @if (error?.non_field_errors) {
-      <span class="text-danger"><ng-container i18n>Error</ng-container>: {{error.non_field_errors}}</span>
+      <span class="text-danger"
+        ><ng-container i18n>Error</ng-container>:
+        {{ error.non_field_errors }}</span
+      >
     }
-    <button type="button" class="btn btn-outline-secondary" (click)="cancel()" i18n [disabled]="networkActive">Cancel</button>
-    <button type="submit" class="btn btn-primary" i18n [disabled]="networkActive">Save</button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      (click)="cancel()"
+      i18n
+      [disabled]="networkActive"
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      class="btn btn-primary"
+      i18n
+      [disabled]="networkActive"
+    >
+      Save
+    </button>
   </div>
 </form>
 
 <ng-template #triggerForm let-formGroup="formGroup" let-trigger="trigger">
   <div [formGroup]="formGroup">
     <input type="hidden" formControlName="id" />
-    <pngx-input-select i18n-title title="Trigger type" [horizontal]="true" [items]="triggerTypeOptions" formControlName="type"></pngx-input-select>
+    <pngx-input-select
+      i18n-title
+      title="Trigger type"
+      [horizontal]="true"
+      [items]="triggerTypeOptions"
+      formControlName="type"
+    ></pngx-input-select>
     @if (formGroup.get('type').value === WorkflowTriggerType.Scheduled) {
-      <p class="small" i18n>Set scheduled trigger offset and which date field to use.</p>
+      <p class="small" i18n>
+        Set scheduled trigger offset and which date field to use.
+      </p>
       <div class="row">
         <div class="col-4">
           <pngx-input-number
@@ -136,65 +239,162 @@
           ></pngx-input-number>
         </div>
         <div class="col-4">
-          <pngx-input-select i18n-title title="Relative to" formControlName="schedule_date_field" [items]="scheduleDateFieldOptions" [error]="error?.schedule_date_field"></pngx-input-select>
+          <pngx-input-select
+            i18n-title
+            title="Relative to"
+            formControlName="schedule_date_field"
+            [items]="scheduleDateFieldOptions"
+            [error]="error?.schedule_date_field"
+          ></pngx-input-select>
         </div>
         @if (formGroup.get('schedule_date_field').value === 'custom_field') {
           <div class="col-4">
-            <pngx-input-select i18n-title title="Custom field" formControlName="schedule_date_custom_field" [items]="dateCustomFields" i18n-hint hint="Custom field to use for date." [error]="error?.schedule_date_custom_field"></pngx-input-select>
+            <pngx-input-select
+              i18n-title
+              title="Custom field"
+              formControlName="schedule_date_custom_field"
+              [items]="dateCustomFields()"
+              i18n-hint
+              hint="Custom field to use for date."
+              [error]="error?.schedule_date_custom_field"
+            ></pngx-input-select>
           </div>
         }
       </div>
       <div class="row">
         <div class="col-4">
-          <pngx-input-check i18n-title title="Recurring" formControlName="schedule_is_recurring" i18n-hint hint="Trigger is recurring." [error]="error?.schedule_is_recurring"></pngx-input-check>
+          <pngx-input-check
+            i18n-title
+            title="Recurring"
+            formControlName="schedule_is_recurring"
+            i18n-hint
+            hint="Trigger is recurring."
+            [error]="error?.schedule_is_recurring"
+          ></pngx-input-check>
         </div>
         <div class="col-4">
           @if (formGroup.get('schedule_is_recurring').value === true) {
-            <pngx-input-number i18n-title title="Recurring interval days" formControlName="schedule_recurring_interval_days" i18n-hint hint="Repeat the trigger every n days." [showAdd]="false" [error]="error?.schedule_recurring_interval_days"></pngx-input-number>
+            <pngx-input-number
+              i18n-title
+              title="Recurring interval days"
+              formControlName="schedule_recurring_interval_days"
+              i18n-hint
+              hint="Repeat the trigger every n days."
+              [showAdd]="false"
+              [error]="error?.schedule_recurring_interval_days"
+            ></pngx-input-number>
           }
         </div>
       </div>
     }
-    <p class="small" i18n>Trigger for documents that match <em>all</em> filters specified below.</p>
+    <p class="small" i18n>
+      Trigger for documents that match <em>all</em> filters specified below.
+    </p>
     <div class="row">
       <div class="col">
-        <pngx-input-text i18n-title title="Filter filename" formControlName="filter_filename" horizontal="true" i18n-hint hint="Apply to documents that match this filename. Wildcards such as *.pdf or *invoice* are allowed. Case insensitive." [error]="error?.filter_filename"></pngx-input-text>
+        <pngx-input-text
+          i18n-title
+          title="Filter filename"
+          formControlName="filter_filename"
+          horizontal="true"
+          i18n-hint
+          hint="Apply to documents that match this filename. Wildcards such as *.pdf or *invoice* are allowed. Case insensitive."
+          [error]="error?.filter_filename"
+        ></pngx-input-text>
         @if (formGroup.get('type').value === WorkflowTriggerType.Consumption) {
-          <pngx-input-select i18n-title title="Filter sources" [items]="sourceOptions" horizontal="true" [multiple]="true" formControlName="sources" [error]="error?.sources"></pngx-input-select>
-          <pngx-input-text i18n-title title="Filter path" formControlName="filter_path" horizontal="true" i18n-hint hint="Apply to documents that match this path. Wildcards specified as * are allowed. Case-normalized." [error]="error?.filter_path"></pngx-input-text>
-          <pngx-input-select i18n-title title="Filter mail rule" [items]="mailRules" horizontal="true" [allowNull]="true" formControlName="filter_mailrule" i18n-hint hint="Apply to documents consumed via this mail rule." [error]="error?.filter_mailrule"></pngx-input-select>
+          <pngx-input-select
+            i18n-title
+            title="Filter sources"
+            [items]="sourceOptions"
+            horizontal="true"
+            [multiple]="true"
+            formControlName="sources"
+            [error]="error?.sources"
+          ></pngx-input-select>
+          <pngx-input-text
+            i18n-title
+            title="Filter path"
+            formControlName="filter_path"
+            horizontal="true"
+            i18n-hint
+            hint="Apply to documents that match this path. Wildcards specified as * are allowed. Case-normalized."
+            [error]="error?.filter_path"
+          ></pngx-input-text>
+          <pngx-input-select
+            i18n-title
+            title="Filter mail rule"
+            [items]="mailRules()"
+            horizontal="true"
+            [allowNull]="true"
+            formControlName="filter_mailrule"
+            i18n-hint
+            hint="Apply to documents consumed via this mail rule."
+            [error]="error?.filter_mailrule"
+          ></pngx-input-select>
         }
-        @if (formGroup.get('type').value === WorkflowTriggerType.DocumentAdded || formGroup.get('type').value === WorkflowTriggerType.DocumentUpdated || formGroup.get('type').value === WorkflowTriggerType.Scheduled) {
-          <pngx-input-select i18n-title title="Content matching algorithm" horizontal="true" [items]="getMatchingAlgorithms()" formControlName="matching_algorithm"></pngx-input-select>
+        @if (
+          formGroup.get('type').value === WorkflowTriggerType.DocumentAdded ||
+          formGroup.get('type').value === WorkflowTriggerType.DocumentUpdated ||
+          formGroup.get('type').value === WorkflowTriggerType.Scheduled
+        ) {
+          <pngx-input-select
+            i18n-title
+            title="Content matching algorithm"
+            horizontal="true"
+            [items]="getMatchingAlgorithms()"
+            formControlName="matching_algorithm"
+          ></pngx-input-select>
           @if (matchingPatternRequired(formGroup)) {
-            <pngx-input-text i18n-title title="Content matching pattern" horizontal="true" formControlName="match" [error]="error?.match"></pngx-input-text>
+            <pngx-input-text
+              i18n-title
+              title="Content matching pattern"
+              horizontal="true"
+              formControlName="match"
+              [error]="error?.match"
+            ></pngx-input-text>
           }
           @if (matchingPatternRequired(formGroup)) {
-            <pngx-input-check i18n-title title="Case insensitive" horizontal="true" formControlName="is_insensitive"></pngx-input-check>
+            <pngx-input-check
+              i18n-title
+              title="Case insensitive"
+              horizontal="true"
+              formControlName="is_insensitive"
+            ></pngx-input-check>
           }
         }
       </div>
     </div>
-    @if (formGroup.get('type').value === WorkflowTriggerType.DocumentAdded || formGroup.get('type').value === WorkflowTriggerType.DocumentUpdated || formGroup.get('type').value === WorkflowTriggerType.Scheduled) {
+    @if (
+      formGroup.get('type').value === WorkflowTriggerType.DocumentAdded ||
+      formGroup.get('type').value === WorkflowTriggerType.DocumentUpdated ||
+      formGroup.get('type').value === WorkflowTriggerType.Scheduled
+    ) {
       <div class="row mt-3">
         <div class="col">
           <div class="trigger-filters mb-3">
             <div class="d-flex align-items-center">
-              <label class="form-label mb-0" i18n>Advanced Filters</label>
+              <span class="form-label mb-0" i18n>Advanced Filters</span>
               <button
                 type="button"
                 class="btn btn-sm btn-outline-primary ms-auto"
                 (click)="addFilter(formGroup)"
                 [disabled]="!canAddFilter(formGroup)"
               >
-                <lucide-icon name="plus-circle" class="me-1"></lucide-icon><span i18n>Add filter</span>
+                <lucide-icon name="plus-circle" class="me-1"></lucide-icon
+                ><span i18n>Add filter</span>
               </button>
             </div>
             <ul class="mt-2 list-group filters" formArrayName="filters">
               @if (getFiltersFormArray(formGroup).length === 0) {
-                <p class="text-muted small" i18n>No advanced workflow filters defined.</p>
+                <p class="text-muted small" i18n>
+                  No advanced workflow filters defined.
+                </p>
               }
-              @for (filter of getFiltersFormArray(formGroup).controls; track filter; let filterIndex = $index) {
+              @for (
+                filter of getFiltersFormArray(formGroup).controls;
+                track filter;
+                let filterIndex = $index
+              ) {
                 <li [formGroupName]="filterIndex" class="list-group-item">
                   <div class="d-flex align-items-center gap-2">
                     <div class="w-25">
@@ -217,7 +417,9 @@
                       ) {
                         <pngx-custom-fields-query-dropdown
                           [selectionModel]="getCustomFieldQueryModel(filter)"
-                          (selectionModelChange)="onCustomFieldQuerySelectionChange(filter, $event)"
+                          (selectionModelChange)="
+                            onCustomFieldQuerySelectionChange(filter, $event)
+                          "
                           [useDropdown]="false"
                         ></pngx-custom-fields-query-dropdown>
                         @if (!isCustomFieldQueryValid(filter)) {
@@ -227,9 +429,13 @@
                         }
                       } @else {
                         <pngx-input-select
-                          [items]="getFilterSelectItems(filter.get('type').value)"
+                          [items]="
+                            getFilterSelectItems(filter.get('type').value)
+                          "
                           [allowNull]="true"
-                          [multiple]="isSelectMultiple(filter.get('type').value)"
+                          [multiple]="
+                            isSelectMultiple(filter.get('type').value)
+                          "
                           formControlName="values"
                         ></pngx-input-select>
                       }
@@ -239,7 +445,8 @@
                       class="btn btn-link text-danger p-0"
                       (click)="removeFilter(formGroup, filterIndex)"
                     >
-                      <lucide-icon name="trash"></lucide-icon><span class="ms-1" i18n>Delete</span>
+                      <lucide-icon name="trash"></lucide-icon
+                      ><span class="ms-1" i18n>Delete</span>
                     </button>
                   </div>
                 </li>
@@ -255,38 +462,104 @@
 <ng-template #actionForm let-formGroup="formGroup" let action="action">
   <div [formGroup]="formGroup">
     <input type="hidden" formControlName="id" />
-    <pngx-input-select i18n-title title="Action type" [horizontal]="true" [items]="actionTypeOptions" formControlName="type"></pngx-input-select>
-    @switch(formGroup.get('type').value) {
+    <pngx-input-select
+      i18n-title
+      title="Action type"
+      [horizontal]="true"
+      [items]="actionTypeOptions"
+      formControlName="type"
+    ></pngx-input-select>
+    @switch (formGroup.get('type').value) {
       @case (WorkflowActionType.Assignment) {
         <div class="row">
           <div class="col">
-            <pngx-input-text i18n-title title="Assign title" formControlName="assign_title" i18n-hint hint="Can include some placeholders, see <a target='_blank' href='https://docs.paperless-ngx.com/usage/#workflows'>documentation</a>." [error]="error?.actions?.[i]?.assign_title"></pngx-input-text>
-            <pngx-input-tags [allowCreate]="false" i18n-title title="Assign tags" formControlName="assign_tags"></pngx-input-tags>
-            <pngx-input-select i18n-title title="Assign document type" [items]="documentTypes" [allowNull]="true" formControlName="assign_document_type"></pngx-input-select>
-            <pngx-input-select i18n-title title="Assign correspondent" [items]="correspondents" [allowNull]="true" formControlName="assign_correspondent"></pngx-input-select>
-            <pngx-input-select i18n-title title="Assign storage path" [items]="storagePaths" [allowNull]="true" formControlName="assign_storage_path"></pngx-input-select>
-            <pngx-input-select i18n-title title="Assign custom fields" multiple="true" [items]="customFields" [allowNull]="true" formControlName="assign_custom_fields"></pngx-input-select>
-            <pngx-input-custom-fields-values formControlName="assign_custom_fields_values" [selectedFields]="formGroup.get('assign_custom_fields').value" (removeSelectedField)="removeSelectedCustomField($event, formGroup)"></pngx-input-custom-fields-values>
+            <pngx-input-text
+              i18n-title
+              title="Assign title"
+              formControlName="assign_title"
+              i18n-hint
+              hint="Can include some placeholders, see <a target='_blank' href='https://docs.paperless-ngx.com/usage/#workflows'>documentation</a>."
+              [error]="error?.actions?.[i]?.assign_title"
+            ></pngx-input-text>
+            <pngx-input-tags
+              [allowCreate]="false"
+              i18n-title
+              title="Assign tags"
+              formControlName="assign_tags"
+            ></pngx-input-tags>
+            <pngx-input-select
+              i18n-title
+              title="Assign document type"
+              [items]="documentTypes()"
+              [allowNull]="true"
+              formControlName="assign_document_type"
+            ></pngx-input-select>
+            <pngx-input-select
+              i18n-title
+              title="Assign correspondent"
+              [items]="correspondents()"
+              [allowNull]="true"
+              formControlName="assign_correspondent"
+            ></pngx-input-select>
+            <pngx-input-select
+              i18n-title
+              title="Assign storage path"
+              [items]="storagePaths()"
+              [allowNull]="true"
+              formControlName="assign_storage_path"
+            ></pngx-input-select>
+            <pngx-input-select
+              i18n-title
+              title="Assign custom fields"
+              multiple="true"
+              [items]="customFields()"
+              [allowNull]="true"
+              formControlName="assign_custom_fields"
+            ></pngx-input-select>
+            <pngx-input-custom-fields-values
+              formControlName="assign_custom_fields_values"
+              [selectedFields]="formGroup.get('assign_custom_fields').value"
+              (removeSelectedField)="
+                removeSelectedCustomField($event, formGroup)
+              "
+            ></pngx-input-custom-fields-values>
           </div>
           <div class="col">
-            <pngx-input-select i18n-title title="Assign owner" [items]="users" bindLabel="username" formControlName="assign_owner" [allowNull]="true"></pngx-input-select>
+            <pngx-input-select
+              i18n-title
+              title="Assign owner"
+              [items]="users"
+              bindLabel="username"
+              formControlName="assign_owner"
+              [allowNull]="true"
+            ></pngx-input-select>
             <div>
               <label class="form-label" i18n>Assign view permissions</label>
               <div class="mb-2">
                 <div class="row mb-1">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Users:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Users:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-user type="view" formControlName="assign_view_users"></pngx-permissions-user>
+                    <pngx-permissions-user
+                      type="view"
+                      formControlName="assign_view_users"
+                    ></pngx-permissions-user>
                   </div>
                 </div>
                 <div class="row">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Groups:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Groups:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-group type="view" formControlName="assign_view_groups"></pngx-permissions-group>
+                    <pngx-permissions-group
+                      type="view"
+                      formControlName="assign_view_groups"
+                    ></pngx-permissions-group>
                   </div>
                 </div>
               </div>
@@ -294,21 +567,33 @@
               <div>
                 <div class="row mb-1">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Users:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Users:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-user type="change" formControlName="assign_change_users"></pngx-permissions-user>
+                    <pngx-permissions-user
+                      type="change"
+                      formControlName="assign_change_users"
+                    ></pngx-permissions-user>
                   </div>
                 </div>
                 <div class="row">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Groups:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Groups:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-group type="change" formControlName="assign_change_groups"></pngx-permissions-group>
+                    <pngx-permissions-group
+                      type="change"
+                      formControlName="assign_change_groups"
+                    ></pngx-permissions-group>
                   </div>
                 </div>
-                <small class="form-text text-muted text-end d-block" i18n>Edit permissions also grant viewing permissions</small>
+                <small class="form-text text-muted text-end d-block" i18n
+                  >Edit permissions also grant viewing permissions</small
+                >
               </div>
             </div>
           </div>
@@ -318,61 +603,141 @@
         <div class="row">
           <div class="col">
             <h6 class="form-label" i18n>Remove tags</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_tags"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_tags"
+            ></pngx-input-switch>
             <div class="mt-n3">
-              <pngx-input-tags [allowCreate]="false" title="" formControlName="remove_tags"></pngx-input-tags>
+              <pngx-input-tags
+                [allowCreate]="false"
+                title=""
+                formControlName="remove_tags"
+              ></pngx-input-tags>
             </div>
 
             <h6 class="form-label" i18n>Remove correspondents</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_correspondents"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_correspondents"
+            ></pngx-input-switch>
             <div class="mt-n3">
-              <pngx-input-select i18n-title title="" multiple="true" [items]="correspondents" formControlName="remove_correspondents"></pngx-input-select>
+              <pngx-input-select
+                i18n-title
+                title=""
+                multiple="true"
+                [items]="correspondents()"
+                formControlName="remove_correspondents"
+              ></pngx-input-select>
             </div>
 
             <h6 class="form-label" i18n>Remove document types</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_document_types"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_document_types"
+            ></pngx-input-switch>
             <div class="mt-n3">
-              <pngx-input-select i18n-title title="" multiple="true" [items]="documentTypes" formControlName="remove_document_types"></pngx-input-select>
+              <pngx-input-select
+                i18n-title
+                title=""
+                multiple="true"
+                [items]="documentTypes()"
+                formControlName="remove_document_types"
+              ></pngx-input-select>
             </div>
 
             <h6 class="form-label" i18n>Remove storage paths</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_storage_paths"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_storage_paths"
+            ></pngx-input-switch>
             <div class="mt-n3">
-              <pngx-input-select i18n-title title="" multiple="true" [items]="storagePaths" formControlName="remove_storage_paths"></pngx-input-select>
+              <pngx-input-select
+                i18n-title
+                title=""
+                multiple="true"
+                [items]="storagePaths()"
+                formControlName="remove_storage_paths"
+              ></pngx-input-select>
             </div>
 
             <h6 class="form-label" i18n>Remove custom fields</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_custom_fields"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_custom_fields"
+            ></pngx-input-switch>
             <div class="mt-n3">
-              <pngx-input-select i18n-title title="" multiple="true" [items]="customFields" formControlName="remove_custom_fields"></pngx-input-select>
+              <pngx-input-select
+                i18n-title
+                title=""
+                multiple="true"
+                [items]="customFields()"
+                formControlName="remove_custom_fields"
+              ></pngx-input-select>
             </div>
           </div>
           <div class="col">
             <h6 class="form-label" i18n>Remove owners</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_owners"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_owners"
+            ></pngx-input-switch>
             <div class="mt-n3">
-              <pngx-input-select i18n-title title="" multiple="true" [items]="users" bindLabel="username" formControlName="remove_owners"></pngx-input-select>
+              <pngx-input-select
+                i18n-title
+                title=""
+                multiple="true"
+                [items]="users"
+                bindLabel="username"
+                formControlName="remove_owners"
+              ></pngx-input-select>
             </div>
 
             <h6 class="form-label" i18n>Remove permissions</h6>
-            <pngx-input-switch i18n-title title="Remove all" [horizontal]="true" formControlName="remove_all_permissions"></pngx-input-switch>
+            <pngx-input-switch
+              i18n-title
+              title="Remove all"
+              [horizontal]="true"
+              formControlName="remove_all_permissions"
+            ></pngx-input-switch>
             <div>
               <label class="form-label" i18n>View permissions</label>
               <div class="mb-2">
                 <div class="row mb-1">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Users:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Users:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-user type="view" formControlName="remove_view_users"></pngx-permissions-user>
+                    <pngx-permissions-user
+                      type="view"
+                      formControlName="remove_view_users"
+                    ></pngx-permissions-user>
                   </div>
                 </div>
                 <div class="row">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Groups:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Groups:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-group type="view" formControlName="remove_view_groups"></pngx-permissions-group>
+                    <pngx-permissions-group
+                      type="view"
+                      formControlName="remove_view_groups"
+                    ></pngx-permissions-group>
                   </div>
                 </div>
               </div>
@@ -380,21 +745,33 @@
               <div>
                 <div class="row mb-1">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Users:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Users:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-user type="change" formControlName="remove_change_users"></pngx-permissions-user>
+                    <pngx-permissions-user
+                      type="change"
+                      formControlName="remove_change_users"
+                    ></pngx-permissions-user>
                   </div>
                 </div>
                 <div class="row">
                   <div class="col-lg-3">
-                    <label class="form-label d-block my-2 text-nowrap" i18n>Groups:</label>
+                    <label class="form-label d-block my-2 text-nowrap" i18n
+                      >Groups:</label
+                    >
                   </div>
                   <div class="col-lg-9">
-                    <pngx-permissions-group type="change" formControlName="remove_change_groups"></pngx-permissions-group>
+                    <pngx-permissions-group
+                      type="change"
+                      formControlName="remove_change_groups"
+                    ></pngx-permissions-group>
                   </div>
                 </div>
-                <small class="form-text text-muted text-end d-block" i18n>Edit permissions also grant viewing permissions</small>
+                <small class="form-text text-muted text-end d-block" i18n
+                  >Edit permissions also grant viewing permissions</small
+                >
               </div>
             </div>
           </div>
@@ -404,10 +781,29 @@
         <div class="row" [formGroup]="formGroup.get('email')">
           <input type="hidden" formControlName="id" />
           <div class="col">
-            <pngx-input-text i18n-title title="Email subject" formControlName="subject" [error]="error?.actions?.[i]?.email?.subject"></pngx-input-text>
-            <pngx-input-textarea i18n-title title="Email body" formControlName="body" [error]="error?.actions?.[i]?.email?.body"></pngx-input-textarea>
-            <pngx-input-text i18n-title title="Email recipients" formControlName="to" [error]="error?.actions?.[i]?.email?.to"></pngx-input-text>
-            <pngx-input-switch i18n-title title="Attach document" formControlName="include_document"></pngx-input-switch>
+            <pngx-input-text
+              i18n-title
+              title="Email subject"
+              formControlName="subject"
+              [error]="error?.actions?.[i]?.email?.subject"
+            ></pngx-input-text>
+            <pngx-input-textarea
+              i18n-title
+              title="Email body"
+              formControlName="body"
+              [error]="error?.actions?.[i]?.email?.body"
+            ></pngx-input-textarea>
+            <pngx-input-text
+              i18n-title
+              title="Email recipients"
+              formControlName="to"
+              [error]="error?.actions?.[i]?.email?.to"
+            ></pngx-input-text>
+            <pngx-input-switch
+              i18n-title
+              title="Attach document"
+              formControlName="include_document"
+            ></pngx-input-switch>
           </div>
         </div>
       }
@@ -415,18 +811,53 @@
         <div class="row" [formGroup]="formGroup.get('webhook')">
           <input type="hidden" formControlName="id" />
           <div class="col">
-            <pngx-input-text i18n-title title="Webhook url" formControlName="url" [error]="error?.actions?.[i]?.url"></pngx-input-text>
+            <pngx-input-text
+              i18n-title
+              title="Webhook url"
+              formControlName="url"
+              [error]="error?.actions?.[i]?.url"
+            ></pngx-input-text>
             <div class="d-flex">
-              <pngx-input-switch i18n-title title="Use parameters for webhook body" formControlName="use_params" [horizontal]="true"></pngx-input-switch>
-              <pngx-input-switch i18n-title title="Send webhook payload as JSON" formControlName="as_json" [horizontal]="true" class="ms-5"></pngx-input-switch>
+              <pngx-input-switch
+                i18n-title
+                title="Use parameters for webhook body"
+                formControlName="use_params"
+                [horizontal]="true"
+              ></pngx-input-switch>
+              <pngx-input-switch
+                i18n-title
+                title="Send webhook payload as JSON"
+                formControlName="as_json"
+                [horizontal]="true"
+                class="ms-5"
+              ></pngx-input-switch>
             </div>
             @if (formGroup.get('webhook').value['use_params']) {
-              <pngx-input-entries i18n-title title="Webhook params" formControlName="params" [error]="error?.actions?.[i]?.params"></pngx-input-entries>
+              <pngx-input-entries
+                i18n-title
+                title="Webhook params"
+                formControlName="params"
+                [error]="error?.actions?.[i]?.params"
+              ></pngx-input-entries>
             } @else {
-              <pngx-input-textarea i18n-title title="Webhook body" formControlName="body" [error]="error?.actions?.[i]?.body"></pngx-input-textarea>
+              <pngx-input-textarea
+                i18n-title
+                title="Webhook body"
+                formControlName="body"
+                [error]="error?.actions?.[i]?.body"
+              ></pngx-input-textarea>
             }
-            <pngx-input-entries i18n-title title="Webhook headers" formControlName="headers" [error]="error?.actions?.[i]?.headers"></pngx-input-entries>
-            <pngx-input-switch i18n-title title="Include document" formControlName="include_document"></pngx-input-switch>
+            <pngx-input-entries
+              i18n-title
+              title="Webhook headers"
+              formControlName="headers"
+              [error]="error?.actions?.[i]?.headers"
+            ></pngx-input-entries>
+            <pngx-input-switch
+              i18n-title
+              title="Include document"
+              formControlName="include_document"
+            ></pngx-input-switch>
           </div>
         </div>
       }
@@ -434,7 +865,8 @@
         <div class="row">
           <div class="col">
             <p class="small" i18n>
-              One password per line. The workflow will try them in order until one succeeds.
+              One password per line. The workflow will try them in order until
+              one succeeds.
             </p>
             <pngx-input-textarea
               i18n-title
@@ -451,7 +883,66 @@
       @case (WorkflowActionType.MoveToTrash) {
         <div class="row">
           <div class="col">
-            <p class="text-muted small" i18n>The document will be moved to the trash at the end of the workflow run.</p>
+            <p class="text-muted small" i18n>
+              The document will be moved to the trash at the end of the workflow
+              run.
+            </p>
+          </div>
+        </div>
+      }
+      @case (WorkflowActionType.RemoteOcr) {
+        <div class="row">
+          <div class="col">
+            <p class="text-muted small" i18n>
+              The document will be sent to the configured remote OCR service.
+              May incur costs.
+            </p>
+          </div>
+        </div>
+      }
+      @case (WorkflowActionType.ApplyAiSuggestions) {
+        <div class="row">
+          <div class="col">
+            <p class="text-muted small" i18n>
+              The document will be sent to the configured AI service for
+              suggestions. Consider costs and privacy.
+            </p>
+            <p class="text-muted small" i18n>
+              This action runs in the background, so the suggestions may be
+              applied after the other actions of this workflow have finished.
+            </p>
+            <pngx-input-select
+              i18n-title
+              title="Apply suggestions for"
+              [items]="aiSuggestionFieldOptions"
+              [multiple]="true"
+              formControlName="ai_suggestion_fields"
+              [error]="error?.actions?.[i]?.ai_suggestion_fields"
+              hint="Suggestions for fields that are not selected are discarded."
+              i18n-hint
+            ></pngx-input-select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <pngx-input-switch
+              [horizontal]="true"
+              i18n-title
+              title="Create missing items"
+              formControlName="ai_create_missing"
+              hint="Create suggested tags, correspondents and document types that do not exist yet."
+              i18n-hint
+            ></pngx-input-switch>
+          </div>
+          <div class="col-md-6">
+            <pngx-input-switch
+              [horizontal]="true"
+              i18n-title
+              title="Overwrite existing values"
+              formControlName="ai_overwrite_existing"
+              hint="Apply suggestions even if the document already has a value. Tags are always added, never replaced."
+              i18n-hint
+            ></pngx-input-switch>
           </div>
         </div>
       }

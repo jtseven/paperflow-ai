@@ -1,5 +1,12 @@
+import json
+from pathlib import Path
+
 import pytest
+from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+from guardian.shortcuts import assign_perm
 from pytest_mock import MockerFixture
 
 from documents.models import CustomField
@@ -11,12 +18,25 @@ from documents.search._backend import TantivyBackend
 from documents.search._backend import WriteBatch
 from documents.search._backend import get_backend
 from documents.search._backend import reset_backend
+from documents.signals.handlers import add_to_index
 from documents.tests.factories import CorrespondentFactory
 from documents.tests.factories import DocumentFactory
 from documents.tests.factories import DocumentTypeFactory
 from documents.tests.factories import TagFactory
+from documents.tests.factories import UserFactory
 
 pytestmark = [pytest.mark.search, pytest.mark.django_db]
+
+# Extensions of actual Tantivy segment data files, as opposed to its own
+# bookkeeping files (meta.json, .managed.json, lock files).
+_SEGMENT_FILE_EXTENSIONS = (
+    ".fast",
+    ".fieldnorm",
+    ".idx",
+    ".pos",
+    ".store",
+    ".term",
+)
 
 
 class TestWriteBatch:
@@ -82,6 +102,191 @@ class TestWriteBatch:
         mocker.stopall()
         backend.add_or_update(doc)
         assert len(backend.search_ids("indexable", user=None)) == 1
+
+
+class TestAddOrUpdateIds:
+    """Test WriteBatch.add_or_update_ids(), the bulk id-based upsert path.
+
+    Unlike add_or_update() called once per document, this resolves viewer
+    permissions and effective (versioned) content in bulk against the ids as
+    a whole, so it must produce identical indexed output to the per-document
+    path while issuing a constant number of queries regardless of batch size.
+    """
+
+    def test_missing_id_is_skipped_not_errored(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        doc = Document.objects.create(
+            title="doc",
+            content="present",
+            checksum="EXIST1",
+            pk=1,
+        )
+        missing_pk = 999
+
+        with backend.batch_update() as batch:
+            batch.add_or_update_ids([doc.pk, missing_pk])
+
+        assert backend.search_ids("present", user=None) == [doc.pk]
+
+    def test_query_count_does_not_scale_with_batch_size(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        """Each query count must stay far below N, not merely match between
+        two runs -- an exact-equality assertion between two measurements is
+        at the mercy of incidental process-level caches (e.g. Django's
+        ContentType.objects.get_for_model) warming on whichever run happens
+        first, which makes counts differ by a query for reasons unrelated to
+        batch size. A generous fixed bound sidesteps that: the old
+        per-document path issued roughly 8 queries per document, so 50
+        documents under a bound this low proves the fix regardless of cache
+        state.
+        """
+        max_queries_for_any_batch_size = 15
+
+        small_docs = [
+            Document.objects.create(
+                title="doc",
+                content=f"unique{i}",
+                checksum=f"SMALL{i}",
+                pk=i,
+            )
+            for i in range(1, 3)
+        ]
+        with CaptureQueriesContext(connection) as ctx_small:
+            with backend.batch_update() as batch:
+                batch.add_or_update_ids([d.pk for d in small_docs])
+        assert len(ctx_small.captured_queries) <= max_queries_for_any_batch_size
+
+        large_docs = [
+            Document.objects.create(
+                title="doc",
+                content=f"unique{i}",
+                checksum=f"LARGE{i}",
+                pk=i,
+            )
+            for i in range(100, 150)
+        ]
+        with CaptureQueriesContext(connection) as ctx_large:
+            with backend.batch_update() as batch:
+                batch.add_or_update_ids([d.pk for d in large_docs])
+        assert len(ctx_large.captured_queries) <= max_queries_for_any_batch_size
+
+        for doc in large_docs:
+            assert backend.search_ids(f"unique{doc.pk}", user=None) == [doc.pk]
+
+    def test_resolves_direct_user_grant_in_bulk(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        owner = UserFactory()
+        user = UserFactory()
+        doc = Document.objects.create(
+            title="doc",
+            checksum="PERM1",
+            pk=1,
+            owner=owner,
+        )
+        assign_perm("view_document", user, doc)
+
+        with backend.batch_update() as batch:
+            batch.add_or_update_ids([doc.pk])
+
+        assert backend.search_ids("doc", user=user) == [doc.pk]
+        other = UserFactory()
+        assert backend.search_ids("doc", user=other) == []
+
+    def test_resolves_group_grant_in_bulk(self, backend: TantivyBackend) -> None:
+        owner = UserFactory()
+        group = Group.objects.create(name="reviewers")
+        user = UserFactory()
+        user.groups.add(group)
+        doc = Document.objects.create(
+            title="doc",
+            checksum="GPERM1",
+            pk=1,
+            owner=owner,
+        )
+        assign_perm("view_document", group, doc)
+
+        with backend.batch_update() as batch:
+            batch.add_or_update_ids([doc.pk])
+
+        assert backend.search_ids("doc", user=user) == [doc.pk]
+        other = UserFactory()
+        assert backend.search_ids("doc", user=other) == []
+
+    def test_indexes_notes_and_custom_fields(self, backend: TantivyBackend) -> None:
+        note_author = UserFactory(username="noter")
+        field = CustomField.objects.create(
+            name="Invoice Number",
+            data_type=CustomField.FieldDataType.STRING,
+        )
+        doc = Document.objects.create(title="doc", checksum="RICH1", pk=1)
+        Note.objects.create(document=doc, note="Reviewed", user=note_author)
+        CustomFieldInstance.objects.create(
+            document=doc,
+            field=field,
+            value_text="INV-42",
+        )
+
+        with backend.batch_update() as batch:
+            batch.add_or_update_ids([doc.pk])
+
+        assert backend.search_ids("notes.user:noter", user=None) == [doc.pk]
+        assert backend.search_ids("custom_fields.value:INV-42", user=None) == [
+            doc.pk,
+        ]
+
+    def test_uses_effective_content_for_versioned_documents(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        root = Document.objects.create(
+            title="Statement",
+            content="stale text",
+            checksum="ROOT1",
+            pk=1,
+        )
+        Document.objects.create(
+            title="Statement",
+            content="latest version text",
+            checksum="VER1",
+            pk=2,
+            root_document=root,
+            version_index=1,
+        )
+
+        with backend.batch_update() as batch:
+            batch.add_or_update_ids([root.pk])
+
+        assert backend.search_ids("latest", user=None) == [root.pk]
+        assert backend.search_ids("stale", user=None) == []
+
+    def test_reindexes_documents_already_in_the_index(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        """add_or_update_ids must upsert, matching add_or_update's behaviour."""
+        doc = Document.objects.create(
+            title="doc",
+            content="original",
+            checksum="UP1",
+            pk=1,
+        )
+        backend.add_or_update(doc)
+        assert backend.search_ids("original", user=None) == [doc.pk]
+
+        doc.content = "updated"
+        doc.save()
+
+        with backend.batch_update() as batch:
+            batch.add_or_update_ids([doc.pk])
+
+        assert backend.search_ids("original", user=None) == []
+        assert backend.search_ids("updated", user=None) == [doc.pk]
 
 
 class TestSearch:
@@ -160,10 +365,55 @@ class TestSearch:
         assert (
             len(backend.search_ids("sswo", user=None, search_mode=SearchMode.TEXT)) == 1
         )
-        assert (
-            len(backend.search_ids("sswo re", user=None, search_mode=SearchMode.TEXT))
-            == 1
+        for query in ["sswo re", "re sswo"]:
+            assert (
+                len(backend.search_ids(query, user=None, search_mode=SearchMode.TEXT))
+                == 1
+            ), query
+
+    def test_text_mode_matches_all_terms_without_requiring_adjacency(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        """Simple text mode should match all terms in any order or field."""
+        doc = Document.objects.create(
+            title="complete-medical-history",
+            content="Samsung Odyssey curved monitor",
+            checksum="TXT13",
+            pk=19,
         )
+        backend.add_or_update(doc)
+
+        for query in [
+            "complete history",
+            "history complete",
+            "Samsung curved",
+            "curved Samsung",
+        ]:
+            assert backend.search_ids(
+                query,
+                user=None,
+                search_mode=SearchMode.TEXT,
+            ) == [doc.pk], query
+
+    def test_text_mode_matches_terms_across_title_and_content(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        """Each simple-search term may match either title or content."""
+        doc = Document.objects.create(
+            title="Complete record",
+            content="Patient history",
+            checksum="TXT14",
+            pk=20,
+        )
+        backend.add_or_update(doc)
+
+        assert backend.search_ids(
+            "complete history",
+            user=None,
+            search_mode=SearchMode.TEXT,
+        ) == [doc.pk]
 
     def test_text_mode_does_not_match_on_partial_term_overlap(
         self,
@@ -183,11 +433,11 @@ class TestSearch:
             == 0
         )
 
-    def test_text_mode_anchors_later_query_tokens_to_token_starts(
+    def test_text_mode_anchors_numeric_tokens_regardless_of_query_order(
         self,
         backend: TantivyBackend,
     ) -> None:
-        """Multi-token simple search should not match later tokens in the middle of a word."""
+        """Numeric tokens must not match in the middle of a larger number."""
         exact_doc = Document.objects.create(
             title="Z-Berichte 6",
             content="monthly report",
@@ -210,13 +460,14 @@ class TestSearch:
         backend.add_or_update(prefix_doc)
         backend.add_or_update(false_positive)
 
-        result_ids = set(
-            backend.search_ids("Z-Berichte 6", user=None, search_mode=SearchMode.TEXT),
-        )
+        for query in ["Z-Berichte 6", "6 Z-Berichte"]:
+            result_ids = set(
+                backend.search_ids(query, user=None, search_mode=SearchMode.TEXT),
+            )
 
-        assert exact_doc.id in result_ids
-        assert prefix_doc.id in result_ids
-        assert false_positive.id not in result_ids
+            assert exact_doc.id in result_ids, query
+            assert prefix_doc.id in result_ids, query
+            assert false_positive.id not in result_ids, query
 
     def test_text_mode_ignores_queries_without_searchable_tokens(
         self,
@@ -260,6 +511,36 @@ class TestSearch:
             len(backend.search_ids("sswo gu", user=None, search_mode=SearchMode.TITLE))
             == 1
         )
+
+    @pytest.mark.parametrize(
+        ("search_mode", "query"),
+        [
+            pytest.param(SearchMode.TITLE, "12345", id="title_search"),
+            pytest.param(SearchMode.TEXT, "12345", id="text_search"),
+            pytest.param(SearchMode.QUERY, None, id="query_title_exact"),
+        ],
+    )
+    def test_search_modes_match_model_limit_title_tokens(
+        self,
+        backend: TantivyBackend,
+        search_mode: SearchMode,
+        query: str | None,
+    ) -> None:
+        """Search must keep filename-like title tokens up to the model limit."""
+        long_title = "1234567890" * 12 + "12345678"
+        doc = Document.objects.create(
+            title=long_title,
+            content="ordinary content",
+            checksum="TXT12",
+            pk=18,
+        )
+        backend.add_or_update(doc)
+
+        assert backend.search_ids(
+            query or f"title:{long_title}",
+            user=None,
+            search_mode=search_mode,
+        ) == [doc.pk]
 
     @pytest.mark.parametrize(
         ("mode", "title", "content", "hits", "misses"),
@@ -531,17 +812,47 @@ class TestRebuild:
     """Test index rebuilding functionality."""
 
     def test_with_iter_wrapper_called(self, backend: TantivyBackend) -> None:
-        """Index rebuild must pass documents through iter_wrapper for progress tracking."""
+        """Index rebuild must pass (document, viewer_ids) pairs through iter_wrapper."""
         seen = []
 
-        def wrapper(docs):
-            for doc in docs:
+        def wrapper(pairs):
+            for doc, viewer_ids in pairs:
                 seen.append(doc.pk)
-                yield doc
+                yield doc, viewer_ids
 
         Document.objects.create(title="Tracked", content="x", checksum="TW1", pk=30)
         backend.rebuild(Document.objects.all(), iter_wrapper=wrapper)
         assert 30 in seen
+
+    def test_includes_group_granted_viewers(self, backend: TantivyBackend) -> None:
+        """Rebuild must index viewer ids for group-only grants, not just direct ones.
+
+        The batched viewer-id lookup used during rebuild() must mirror
+        get_users_with_perms(with_group_users=True), which is the default
+        used by the non-batched per-document indexing path. Without it, a
+        user who can only see a document via group membership would lose
+        search access to it after any full reindex.
+        """
+        owner = UserFactory()
+        group_member = UserFactory()
+        group = Group.objects.create(name="viewers")
+        group_member.groups.add(group)
+
+        doc = DocumentFactory(
+            title="Group shared doc",
+            content="group secret keyword",
+            owner=owner,
+        )
+        assign_perm("view_document", group, doc)
+
+        backend.rebuild(Document.objects.all())
+
+        ids = backend.search_ids(
+            "group secret",
+            user=group_member,
+            search_mode=SearchMode.QUERY,
+        )
+        assert ids == [doc.pk]
 
 
 class TestAutocomplete:
@@ -781,6 +1092,23 @@ class TestFieldHandling:
             f"Expected 1, got {len(ids)}. Note content should be searchable via notes.note: prefix."
         )
 
+    def test_notes_without_user_are_indexed(self, backend: TantivyBackend) -> None:
+        """Notes whose user was deleted (SET_NULL) must not break indexing."""
+        doc = Document.objects.create(
+            title="Doc with orphaned note",
+            content="test",
+            checksum="NT2",
+            pk=81,
+        )
+        Note.objects.create(document=doc, note="Orphaned note", user=None)
+
+        backend.add_or_update(doc)
+
+        ids = backend.search_ids("notes.note:orphaned", user=None)
+        assert len(ids) == 1, (
+            f"Expected 1, got {len(ids)}. Notes without a user should still be indexed."
+        )
+
 
 class TestHighlightHits:
     """Test highlight_hits returns proper HTML strings, not raw Snippet objects."""
@@ -888,3 +1216,138 @@ class TestHighlightHits:
         hits = backend.highlight_hits("quick", [doc.pk])
 
         assert len(hits) == 0
+
+
+class TestVersionIndexing:
+    """
+    GIVEN:
+        - A root document whose new version has just been consumed, e.g. by
+          the password removal workflow action
+    WHEN:
+        - The consumption finished signal is handled
+    THEN:
+        - The root document is indexed with the new version's content, since
+          versions are not searchable on their own
+    """
+
+    def test_consumed_version_updates_root_entry(
+        self,
+        backend: TantivyBackend,
+        mocker: MockerFixture,
+    ) -> None:
+        root = Document.objects.create(
+            title="Statement",
+            content="",
+            checksum="VER1",
+            pk=90,
+        )
+        backend.add_or_update(root)
+        version = Document.objects.create(
+            title="Statement",
+            content="unprotected statement text",
+            checksum="VER2",
+            pk=91,
+            root_document=root,
+            version_index=1,
+        )
+        mocker.patch("documents.search.get_backend", return_value=backend)
+
+        add_to_index(sender=None, document=version)
+
+        assert backend.search_ids("unprotected", user=None) == [root.pk]
+
+
+class TestEffectiveContentIndexing:
+    """
+    GIVEN:
+        - A root document with a newer version
+    WHEN:
+        - The root document is indexed
+    THEN:
+        - The newest version's content is indexed, never the root's own
+          outdated text
+    """
+
+    def test_root_is_indexed_with_latest_version_content(
+        self,
+        backend: TantivyBackend,
+    ) -> None:
+        root = Document.objects.create(
+            title="Statement",
+            content="stale original text",
+            checksum="EFF1",
+            pk=95,
+        )
+        Document.objects.create(
+            title="Statement",
+            content="latest version text",
+            checksum="EFF2",
+            pk=96,
+            root_document=root,
+            version_index=1,
+        )
+
+        backend.add_or_update(root)
+
+        assert backend.search_ids("latest", user=None) == [root.pk]
+        assert backend.search_ids("stale", user=None) == []
+
+
+class TestIndexDirectoryGarbageCollection:
+    """Regression tests for Tantivy segment files leaking on disk when
+    multiple long-lived worker processes (Granian/Celery) take turns writing
+    to the same on-disk index (issue #13679)."""
+
+    def test_no_permanently_orphaned_segment_files_across_worker_processes(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Simulate two long-lived worker processes, each with its own
+        process-local ``TantivyBackend``/``Index`` opened once at process
+        start, alternating turns as the writer -- exactly how paperless runs
+        in production (several Granian + Celery worker processes).
+
+        Every segment file physically present on disk must still be tracked
+        in Tantivy's ``.managed.json`` bookkeeping; otherwise it can never be
+        garbage collected by anyone again and the index directory grows
+        without bound.
+        """
+        index_dir = tmp_path / "index"
+        index_dir.mkdir()
+
+        worker_a = TantivyBackend(path=index_dir)
+        worker_a.open()
+        worker_b = TantivyBackend(path=index_dir)
+        worker_b.open()
+        workers = [worker_a, worker_b]
+
+        docs = [
+            DocumentFactory.create(checksum=f"GC{i}", title=f"gc doc {i}")
+            for i in range(5)
+        ]
+
+        try:
+            # Alternate writers across many commits, repeatedly upserting the
+            # same documents so segments accumulate and get superseded,
+            # forcing the delete+add upsert pattern and eventual merges.
+            for i in range(30):
+                worker = workers[i % len(workers)]
+                doc = docs[i % len(docs)]
+                worker.add_or_update(doc)
+        finally:
+            worker_a.close()
+            worker_b.close()
+
+        managed_path = index_dir / ".managed.json"
+        managed = set(json.loads(managed_path.read_text()))
+        on_disk = {
+            p.name
+            for p in index_dir.iterdir()
+            if p.is_file() and p.suffix in _SEGMENT_FILE_EXTENSIONS
+        }
+        orphans = on_disk - managed
+
+        assert not orphans, (
+            "Segment files present on disk but absent from Tantivy's "
+            f".managed.json bookkeeping (permanently un-collectible): {orphans}"
+        )

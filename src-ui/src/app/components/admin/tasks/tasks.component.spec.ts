@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
 import { Router } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import { NgbModal, NgbModalRef, NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
@@ -362,7 +363,7 @@ describe('TasksComponent', () => {
     )
 
     req.flush({ count: 2, results: [tasks[0], tasks[1]] })
-    expect(component.totalTasks).toBe(2)
+    expect(component.totalTasks()).toBe(2)
   })
 
   it('should apply task type and trigger source filters to the server-side task query', () => {
@@ -435,8 +436,8 @@ describe('TasksComponent', () => {
       .flush(pageTwoTasks)
 
     expect(component.page).toBe(2)
-    expect(component.totalTasks).toBe(30)
-    expect(component.pagedTasks).toEqual([tasks[0]])
+    expect(component.totalTasks()).toBe(30)
+    expect(component.pagedTasks()).toEqual([tasks[0]])
   })
 
   it('should not replace section counts with current-page counts', () => {
@@ -576,7 +577,7 @@ describe('TasksComponent', () => {
 
     expect(dismissSpy).toHaveBeenCalledWith(new Set([tasks[0].id, tasks[1].id]))
     expect(toastSpy).toHaveBeenCalledWith('Error dismissing tasks', error)
-    expect(modal.componentInstance.buttonsEnabled).toBe(true)
+    expect(modal.componentInstance.buttonsEnabled()).toBe(true)
     expect(component.selectedTasks.size).toBe(0)
   })
 
@@ -642,7 +643,7 @@ describe('TasksComponent', () => {
 
     expect(dismissSpy).toHaveBeenCalled()
     expect(toastSpy).toHaveBeenCalledWith('Error dismissing tasks', error)
-    expect(modal.componentInstance.buttonsEnabled).toBe(true)
+    expect(modal.componentInstance.buttonsEnabled()).toBe(true)
   })
 
   it('should dismiss the currently visible scoped and filtered tasks', () => {

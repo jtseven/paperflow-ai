@@ -11,7 +11,7 @@
 #   - Login/signup flow works end-to-end through the proxy
 #
 # Backend Python changes are picked up automatically via --reload.
-# To wipe the frontend node_modules cache: docker volume rm paperless_frontend_nm
+# Frontend dependencies are kept in a project-scoped named volume.
 services:
   broker:
     # Disable RDB persistence in dev — the redisdata volume may have wrong
@@ -20,7 +20,7 @@ services:
     command: redis-server --save "" --appendonly no
   webserver:
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./src:/usr/src/paperless/src
     environment:
@@ -34,7 +34,7 @@ services:
     environment:
       BACKEND_HOST: webserver # Docker service name; override with localhost for local ng serve
     ports:
-      - "4200:4200"
+      - "127.0.0.1:4200:4200"
     volumes:
       - ./src-ui:/app
       - frontend_nm:/app/node_modules

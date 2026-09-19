@@ -4,6 +4,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { By } from '@angular/platform-browser'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import { NgbAlertModule } from '@ng-bootstrap/ng-bootstrap'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { provideMarkdown } from 'ngx-markdown'
@@ -120,10 +121,10 @@ describe('DashboardComponent', () => {
     }).compileComponents()
 
     settingsService = TestBed.inject(SettingsService)
-    settingsService.currentUser = {
+    settingsService.currentUser.set({
       first_name: 'Foo',
       last_name: 'Bar',
-    }
+    })
     jest.spyOn(settingsService, 'get').mockImplementation((key) => {
       if (key === SETTINGS_KEYS.DASHBOARD_VIEWS_SORT_ORDER) return [0, 2, 3]
     })
@@ -137,9 +138,9 @@ describe('DashboardComponent', () => {
 
   it('should show a welcome message', () => {
     expect(component.subtitle).toEqual(`Hello Foo, welcome to Paperflow AI`)
-    settingsService.currentUser = {
+    settingsService.currentUser.set({
       id: 1,
-    }
+    })
     expect(component.subtitle).toEqual(`Welcome to Paperflow AI`)
   })
 
@@ -164,11 +165,11 @@ describe('DashboardComponent', () => {
   })
 
   it('should disable global dropzone on start drag + drop, re-enable after', () => {
-    expect(settingsService.globalDropzoneEnabled).toBeTruthy()
+    expect(settingsService.globalDropzoneEnabled()).toBeTruthy()
     component.onDragStart(null)
-    expect(settingsService.globalDropzoneEnabled).toBeFalsy()
+    expect(settingsService.globalDropzoneEnabled()).toBeFalsy()
     component.onDragEnd(null)
-    expect(settingsService.globalDropzoneEnabled).toBeTruthy()
+    expect(settingsService.globalDropzoneEnabled()).toBeTruthy()
   })
 
   it('should update saved view sorting on drag + drop, show info', () => {

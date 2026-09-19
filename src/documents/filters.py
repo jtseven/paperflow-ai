@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldError
 from django.db.models import Case
 from django.db.models import CharField
 from django.db.models import Count
@@ -25,6 +24,7 @@ from django.db.models import Sum
 from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Cast
+from django.db.models.functions import NullIf
 from django.utils.translation import gettext_lazy as _
 from django_filters import DateFilter
 from django_filters.rest_framework import BooleanFilter
@@ -37,8 +37,8 @@ from drf_spectacular.utils import extend_schema_field
 from guardian.utils import get_group_obj_perms_model
 from guardian.utils import get_user_obj_perms_model
 from rest_framework import serializers
+from rest_framework.filters import BaseFilterBackend
 from rest_framework.filters import OrderingFilter
-from rest_framework_guardian.filters import ObjectPermissionsFilter
 
 from documents.models import Correspondent
 from documents.models import CustomField
@@ -50,6 +50,9 @@ from documents.models import ShareLink
 from documents.models import ShareLinkBundle
 from documents.models import StoragePath
 from documents.models import Tag
+from documents.permissions import permitted_document_ids
+from documents.permissions import permitted_object_ids
+from documents.versioning import annotate_effective_content
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -161,7 +164,9 @@ class ObjectFilter(Filter):
 class InboxFilter(Filter):
     def filter(self, qs, value):
         if value == "true":
-            return qs.filter(tags__is_inbox_tag=True)
+            # A document can have more than one tag flagged as an inbox tag
+            # (nothing enforces uniqueness), so this join can multiply rows.
+            return qs.filter(tags__is_inbox_tag=True).distinct()
         elif value == "false":
             return qs.exclude(tags__is_inbox_tag=True)
         else:
@@ -177,14 +182,9 @@ class TitleContentFilter(Filter):
             logger.warning(
                 "Deprecated document filter parameter 'title_content' used; use `text` instead.",
             )
-            try:
-                return qs.filter(
-                    Q(title__icontains=value) | Q(effective_content__icontains=value),
-                )
-            except FieldError:
-                return qs.filter(
-                    Q(title__icontains=value) | Q(content__icontains=value),
-                )
+            return annotate_effective_content(qs).filter(
+                Q(title__icontains=value) | Q(effective_content__icontains=value),
+            )
         else:
             return qs
 
@@ -195,14 +195,9 @@ class EffectiveContentFilter(Filter):
         value = value.strip() if isinstance(value, str) else value
         if not value:
             return qs
-        try:
-            return qs.filter(
-                **{f"effective_content__{self.lookup_expr}": value},
-            )
-        except FieldError:
-            return qs.filter(
-                **{f"content__{self.lookup_expr}": value},
-            )
+        return annotate_effective_content(qs).filter(
+            **{f"effective_content__{self.lookup_expr}": value},
+        )
 
 
 @extend_schema_field(serializers.BooleanField)
@@ -268,6 +263,10 @@ class CustomFieldsFilter(Filter):
                     for _, option in enumerate(options):
                         if option.get("label").lower().find(value.lower()) != -1:
                             option_ids.extend([option.get("id")])
+            # A document with multiple custom field instances can match more
+            # than one of these OR-ed branches (or the same branch via
+            # different fields), each via its own join to custom_fields --
+            # dedupe explicitly rather than relying on the caller to.
             return (
                 qs.filter(custom_fields__field__name__icontains=value)
                 | qs.filter(custom_fields__value_text__icontains=value)
@@ -280,7 +279,7 @@ class CustomFieldsFilter(Filter):
                 | qs.filter(custom_fields__value_document_ids__icontains=value)
                 | qs.filter(custom_fields__value_select__in=option_ids)
                 | qs.filter(custom_fields__value_long_text__icontains=value)
-            )
+            ).distinct()
         else:
             return qs
 
@@ -717,9 +716,13 @@ class CustomFieldQueryParser:
             )
 
         # First we look up reverse links from the requested documents.
+        # Scoped to this specific field (not just any document link field) and
+        # excluding unset instances, which have a null value_document_ids and
+        # are equivalent to having no reverse link at all.
         links = CustomFieldInstance.objects.filter(
             document_id__in=value,
-            field__data_type=CustomField.FieldDataType.DOCUMENTLINK,
+            field=custom_field,
+            value_document_ids__isnull=False,
         )
 
         # Check if any of the requested IDs are missing.
@@ -771,10 +774,23 @@ class CustomFieldQueryFilter(Filter):
         )
         q, annotations = parser.parse(value)
 
-        return qs.annotate(**annotations).filter(q)
+        # The Count(...) annotations above require a GROUP BY/HAVING to evaluate.
+        # Applying them directly to `qs` mixes that HAVING with `qs`'s existing
+        # joins (e.g. repeated tag joins from tags__id__all, the object-permission
+        # OR-filter), which some backends (e.g. MariaDB) fail to plan correctly,
+        # raising "Unknown column ... in 'HAVING'". Evaluating the annotation on
+        # an isolated queryset keeps the GROUP BY/HAVING self-contained.
+        matching_ids = Document.objects.annotate(**annotations).filter(q).values("pk")
+        return qs.filter(pk__in=matching_ids)
 
 
 class DocumentFilterSet(FilterSet):
+    has_duplicates = BooleanFilter(method="filter_has_duplicates")
+
+    def __init__(self, *args: Any, user: Any = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._user = user
+
     is_tagged = BooleanFilter(
         label="Is tagged",
         field_name="tags",
@@ -833,6 +849,38 @@ class DocumentFilterSet(FilterSet):
     shared_by__id = SharedByUser()
 
     mime_type = MimeTypeFilter()
+
+    def filter_has_duplicates(self, queryset, name, value):
+        if value is None:
+            return queryset
+
+        user = (
+            self._user
+            if self._user is not None
+            else getattr(self.request, "user", None)
+        )
+        queryset = queryset.alias(
+            nonempty_archive_checksum=NullIf("archive_checksum", Value("")),
+        )
+
+        visible_root_documents = Document.global_objects.filter(
+            root_document__isnull=True,
+            pk__in=permitted_document_ids(
+                user,
+                include_deleted=True,
+            ),
+        ).exclude(pk=OuterRef("pk"))
+        # see serialisers._get_viewable_duplicates().
+        matching_duplicates = visible_root_documents.filter(
+            Q(checksum=OuterRef("checksum"))
+            | Q(checksum=OuterRef("nonempty_archive_checksum"))
+            | Q(archive_checksum=OuterRef("checksum"))
+            | Q(archive_checksum=OuterRef("nonempty_archive_checksum")),
+        )
+
+        return queryset.alias(
+            has_visible_duplicates=Exists(matching_duplicates),
+        ).filter(has_visible_duplicates=value)
 
     # Backwards compatibility
     created__date__gt = DateFilter(field_name="created", lookup_expr="gt")
@@ -1009,32 +1057,41 @@ class PaperlessTaskFilterSet(FilterSet):
         return queryset.exclude(status__in=PaperlessTask.COMPLETE_STATUSES)
 
 
-class ObjectOwnedOrGrantedPermissionsFilter(ObjectPermissionsFilter):
+class PermittedObjectsFilter(BaseFilterBackend):
     """
-    A filter backend that limits results to those where the requesting user
-    has read object level permissions, owns the objects, or objects without
-    an owner (for backwards compat)
+    Filters a queryset down to objects the requesting user owns, are
+    unowned, or (when ``include_granted`` is True) has an explicit
+    user/group guardian permission on. Backed by ``permitted_object_ids``
+    -- a single ``id__in`` subquery, not a join -- so it can't produce
+    duplicate rows even when the base queryset already carries independent
+    joins (e.g. multi-value ``tags__id__all`` filtering), and stays
+    index-friendly at scale instead of falling back to guardian's
+    varchar-cast join.
+
+    Set ``include_granted = False`` on a subclass for endpoints that
+    intentionally only show owned/unowned objects regardless of explicit
+    shares (e.g. ``TrashView``).
     """
+
+    include_granted: bool = True
+    perm_codename: str | None = None
 
     def filter_queryset(self, request, queryset, view):
-        objects_with_perms = super().filter_queryset(request, queryset, view)
-        objects_owned = queryset.filter(owner=request.user)
-        objects_unowned = queryset.filter(owner__isnull=True)
-        return objects_with_perms | objects_owned | objects_unowned
-
-
-class ObjectOwnedPermissionsFilter(ObjectPermissionsFilter):
-    """
-    A filter backend that limits results to those where the requesting user
-    owns the objects or objects without an owner (for backwards compat)
-    """
-
-    def filter_queryset(self, request, queryset, view):
+        # Before the superuser and owner-only paths, neither of which consults
+        # permitted_object_ids. Scoped to authenticated users so anonymous
+        # access (AnonymousUser.is_active is False) keeps its existing
+        # unowned-only behaviour.
+        if request.user.is_authenticated and not request.user.is_active:
+            return queryset.none()
         if request.user.is_superuser:
             return queryset
-        objects_owned = queryset.filter(owner=request.user)
-        objects_unowned = queryset.filter(owner__isnull=True)
-        return objects_owned | objects_unowned
+        if not self.include_granted:
+            return queryset.filter(Q(owner=request.user) | Q(owner__isnull=True))
+        model = queryset.model
+        perm = self.perm_codename or f"view_{model._meta.model_name}"
+        return queryset.filter(
+            id__in=permitted_object_ids(request.user, model, perm),
+        )
 
 
 class DocumentsOrderingFilter(OrderingFilter):

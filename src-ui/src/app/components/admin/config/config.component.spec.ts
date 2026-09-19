@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
@@ -9,6 +10,8 @@ import { NgSelectModule } from '@ng-select/ng-select'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import {
+  ConfigCategory,
+  ConfigSection,
   OutputTypeConfig,
   PaperlessConfigOptions,
 } from 'src/app/data/paperless-config'
@@ -162,29 +165,46 @@ describe('ConfigComponent', () => {
     expect(component.configForm.get('barcodes_enabled').value).toBeNull()
   })
 
-  it('marks unset fields with a default as inherited and formats the value', () => {
-    const llmModel = PaperlessConfigOptions.find((o) => o.key === 'llm_model')
-    const aiEnabled = PaperlessConfigOptions.find((o) => o.key === 'ai_enabled')
-    component.defaults = { llm_model: 'env-model', ai_enabled: true }
+  it('should identify externally configured options', () => {
+    component.externallyConfiguredVariables = new Set([
+      'PAPERLESS_OCR_LANGUAGE',
+    ])
 
-    component.configForm.get('llm_model').setValue(null)
-    expect(component.isInherited(llmModel)).toBeTruthy()
-    expect(component.inheritedDisplay(llmModel)).toBe('env-model')
-
-    // Boolean defaults render as a label.
-    component.configForm.get('ai_enabled').setValue(null)
-    expect(component.inheritedDisplay(aiEnabled)).toBe('Enabled')
-
-    // Once overridden in the UI, the field is no longer inherited.
-    component.configForm.get('llm_model').setValue('ui-model')
-    expect(component.isInherited(llmModel)).toBeFalsy()
+    expect(
+      component.isExternallyConfigured('PAPERLESS_OCR_LANGUAGE')
+    ).toBeTruthy()
+    expect(
+      component.isExternallyConfigured('PAPERLESS_OCR_OUTPUT_TYPE')
+    ).toBeFalsy()
   })
 
-  it('does not mark fields without a default as inherited', () => {
-    const llmModel = PaperlessConfigOptions.find((o) => o.key === 'llm_model')
-    component.defaults = {}
+  it('shows inherited values without marking them as stored overrides', () => {
+    const option = PaperlessConfigOptions.find((o) => o.key === 'llm_model')
+    component.defaults = { llm_model: 'inherited-model' }
     component.configForm.get('llm_model').setValue(null)
-    expect(component.isInherited(llmModel)).toBeFalsy()
-    expect(component.inheritedDisplay(llmModel)).toBe('')
+    expect(component.isInherited(option)).toBeTruthy()
+    expect(component.inheritedDisplay(option)).toBe('inherited-model')
+    component.configForm.get('llm_model').setValue('custom-model')
+    expect(component.isInherited(option)).toBeFalsy()
+  })
+
+  it('should group options into sections within a category, or not', () => {
+    const sections = component.getCategorySections(ConfigCategory.OCR)
+    expect(sections).toEqual([null, ConfigSection.RemoteOCR])
+    expect(
+      component
+        .getCategoryOptions(ConfigCategory.OCR)
+        .map((option) => option.key)
+    ).toContain('output_type')
+    expect(
+      component
+        .getCategoryOptions(ConfigCategory.OCR, ConfigSection.RemoteOCR)
+        .map((option) => option.key)
+    ).toEqual([
+      'remote_ocr_engine',
+      'remote_ocr_api_key',
+      'remote_ocr_endpoint',
+      'remote_ocr_mode',
+    ])
   })
 })

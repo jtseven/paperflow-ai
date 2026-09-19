@@ -1,16 +1,19 @@
-"""Semantic (embedding-based) document search over the LanceDB vector store.
+"""Semantic (embedding-based) document search over the sqlite-vec vector store.
 
 The same vector index that powers chat is reused here to rank documents by
 meaning rather than keywords, so a query like "bike order" can surface a German
-"Fahrradbestellung". Retrieval is global; the calling view is responsible for
-intersecting the results with the documents the user is allowed to view.
+"Fahrradbestellung". Retrieval is scoped to permitted documents before ranking; the calling view
+checks permissions again before returning documents.
 """
 
 import logging
 
 from paperless.config import AIConfig
 from paperless_ai.chat import snippet_from_node
+from paperless_ai.db import db_connection_released
+from paperless_ai.indexing import document_id_filters
 from paperless_ai.indexing import load_or_build_index
+from paperless_ai.indexing import read_store
 
 logger = logging.getLogger("paperless_ai.search")
 
@@ -31,7 +34,12 @@ class SemanticSearchResult:
         self.snippet = snippet
 
 
-def semantic_search(query_str: str, limit: int = 10) -> list[SemanticSearchResult]:
+def semantic_search(
+    query_str: str,
+    limit: int = 10,
+    *,
+    document_ids,
+) -> list[SemanticSearchResult]:
     """Return up to ``limit`` documents ranked by embedding similarity.
 
     Results are de-duplicated by document (a document may match through several
@@ -42,13 +50,18 @@ def semantic_search(query_str: str, limit: int = 10) -> list[SemanticSearchResul
     from llama_index.core.retrievers import VectorIndexRetriever
 
     config = AIConfig()
-    index = load_or_build_index(config)
-    retriever = VectorIndexRetriever(
-        index=index,
-        similarity_top_k=max(limit, 1) * SEMANTIC_OVERFETCH,
-    )
-
-    nodes = retriever.retrieve(query_str)
+    if limit <= 0:
+        return []
+    filters = document_id_filters(str(pk) for pk in document_ids)
+    with read_store() as store:
+        index = load_or_build_index(config, store)
+        retriever = VectorIndexRetriever(
+            index=index,
+            similarity_top_k=limit * SEMANTIC_OVERFETCH,
+            filters=filters,
+        )
+        with db_connection_released():
+            nodes = retriever.retrieve(query_str)
 
     results: list[SemanticSearchResult] = []
     seen: set[int] = set()

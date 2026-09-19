@@ -1,12 +1,19 @@
 import { AsyncPipe } from '@angular/common'
-import { Component, OnDestroy, OnInit, inject } from '@angular/core'
+import {
+  Component,
+  computed,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+} from '@angular/core'
 import {
   FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms'
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
+import { NgbModal, NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap'
 import { dirtyCheck } from '@ngneat/dirty-check-forms'
 import { LucideAngularModule } from 'lucide-angular'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
@@ -14,10 +21,15 @@ import { BehaviorSubject, Observable, of, switchMap, takeUntil } from 'rxjs'
 import { PermissionsDialogComponent } from 'src/app/components/common/permissions-dialog/permissions-dialog.component'
 import { DisplayMode } from 'src/app/data/document'
 import { SavedView } from 'src/app/data/saved-view'
+import {
+  DEFAULT_SAVED_VIEW_ICON,
+  SAVED_VIEW_ICONS,
+} from 'src/app/data/saved-view-icons'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import {
   PermissionAction,
   PermissionsService,
+  PermissionType,
 } from 'src/app/services/permissions.service'
 import { SavedViewService } from 'src/app/services/rest/saved-view.service'
 import { SettingsService } from 'src/app/services/settings.service'
@@ -25,6 +37,7 @@ import { ToastService } from 'src/app/services/toast.service'
 import { ConfirmButtonComponent } from '../../common/confirm-button/confirm-button.component'
 import { DragDropSelectComponent } from '../../common/input/drag-drop-select/drag-drop-select.component'
 import { NumberComponent } from '../../common/input/number/number.component'
+import { SelectComponent } from '../../common/input/select/select.component'
 import { TextComponent } from '../../common/input/text/text.component'
 import { PageHeaderComponent } from '../../common/page-header/page-header.component'
 import { LoadingComponentWithPermissions } from '../../loading-component/loading.component'
@@ -36,12 +49,14 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
     PageHeaderComponent,
     ConfirmButtonComponent,
     NumberComponent,
+    SelectComponent,
     TextComponent,
     IfPermissionsDirective,
     DragDropSelectComponent,
     FormsModule,
     ReactiveFormsModule,
     AsyncPipe,
+    NgbPaginationModule,
     NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
@@ -57,8 +72,17 @@ export class SavedViewsComponent
   private readonly modalService = inject(NgbModal)
 
   DisplayMode = DisplayMode
+  readonly savedViewIcons = SAVED_VIEW_ICONS
 
-  public savedViews: SavedView[]
+  readonly savedViews = signal<SavedView[]>(undefined)
+  readonly page = signal(1)
+  public readonly pageSize = 25
+  // All views are loaded at init, so paging is only for display
+  readonly pagedSavedViews = computed(() => {
+    const start = (this.page() - 1) * this.pageSize
+    return this.savedViews()?.slice(start, start + this.pageSize)
+  })
+
   private savedViewsGroup = new FormGroup({})
   public savedViewsForm: FormGroup = new FormGroup({
     savedViews: this.savedViewsGroup,
@@ -68,12 +92,14 @@ export class SavedViewsComponent
   public isDirty$: Observable<boolean>
 
   get displayFields() {
-    return this.settings.allDisplayFields
+    return this.settings.allDisplayFields()
   }
 
   constructor() {
     super()
-    this.settings.organizingSidebarSavedViews = true
+    if (this.canSaveSettings) {
+      this.settings.organizingSidebarSavedViews.set(true)
+    }
   }
 
   ngOnInit(): void {
@@ -81,32 +107,37 @@ export class SavedViewsComponent
   }
 
   private reloadViews(): void {
-    this.loading = true
+    this.loading.set(true)
     this.savedViewService
-      .list(null, null, null, false, { full_perms: true })
+      .list(1, 100000, null, false, { full_perms: true })
       .subscribe((r) => {
-        this.savedViews = r.results
+        this.savedViews.set(r.results)
+        const pageCount = Math.ceil(r.results.length / this.pageSize)
+        this.page.update((page) => Math.min(page, Math.max(1, pageCount)))
         this.initialize()
       })
   }
 
   ngOnDestroy(): void {
-    this.settings.organizingSidebarSavedViews = false
+    if (this.canSaveSettings) {
+      this.settings.organizingSidebarSavedViews.set(false)
+    }
     super.ngOnDestroy()
   }
 
   private initialize() {
-    this.loading = false
+    this.loading.set(false)
     this.emptyGroup(this.savedViewsGroup)
 
     let storeData = {
       savedViews: {},
     }
 
-    for (let view of this.savedViews) {
+    for (let view of this.savedViews()) {
       storeData.savedViews[view.id.toString()] = {
         id: view.id,
         name: view.name,
+        icon: view.icon ?? DEFAULT_SAVED_VIEW_ICON,
         show_on_dashboard: view.show_on_dashboard,
         show_in_sidebar: view.show_in_sidebar,
         page_size: view.page_size,
@@ -119,6 +150,7 @@ export class SavedViewsComponent
         new FormGroup({
           id: new FormControl({ value: null, disabled: !canEdit }),
           name: new FormControl({ value: null, disabled: !canEdit }),
+          icon: new FormControl({ value: null, disabled: !canEdit }),
           show_on_dashboard: new FormControl({
             value: null,
             disabled: false,
@@ -150,7 +182,9 @@ export class SavedViewsComponent
   public deleteSavedView(savedView: SavedView) {
     this.savedViewService.delete(savedView).subscribe(() => {
       this.savedViewsGroup.removeControl(savedView.id.toString())
-      this.savedViews.splice(this.savedViews.indexOf(savedView), 1)
+      this.savedViews.update((savedViews) =>
+        savedViews.filter((view) => view !== savedView)
+      )
       this.toastService.showInfo(
         $localize`Saved view "${savedView.name}" deleted.`
       )
@@ -195,6 +229,7 @@ export class SavedViewsComponent
 
       const modelFieldsChanged =
         group.get('name')?.dirty ||
+        group.get('icon')?.dirty ||
         group.get('page_size')?.dirty ||
         group.get('display_mode')?.dirty ||
         group.get('display_fields')?.dirty
@@ -216,7 +251,7 @@ export class SavedViewsComponent
         switchMap(() => this.savedViewService.patchMany(changed))
       )
     }
-    if (visibilityChanged) {
+    if (visibilityChanged && this.canSaveSettings) {
       saveOperation = saveOperation.pipe(
         switchMap(() =>
           this.settings.updateSavedViewsVisibility(
@@ -250,16 +285,31 @@ export class SavedViewsComponent
     return this.permissionsService.currentUserOwnsObject(view)
   }
 
+  public get canSaveSettings(): boolean {
+    return (
+      this.permissionsService.currentUserCan(
+        PermissionAction.Change,
+        PermissionType.UISettings
+      ) &&
+      this.permissionsService.currentUserCan(
+        PermissionAction.Add,
+        PermissionType.UISettings
+      )
+    )
+  }
+
   public editPermissions(savedView: SavedView): void {
     const modal = this.modalService.open(PermissionsDialogComponent, {
       backdrop: 'static',
     })
     const dialog = modal.componentInstance as PermissionsDialogComponent
     dialog.object = savedView
-    dialog.note = $localize`Note: Sharing saved views does not share the underlying documents.`
+    dialog.note.set(
+      $localize`Note: Sharing saved views does not share the underlying documents.`
+    )
 
     modal.componentInstance.confirmClicked.subscribe(({ permissions }) => {
-      modal.componentInstance.buttonsEnabled = false
+      modal.componentInstance.buttonsEnabled.set(false)
       const view = {
         id: savedView.id,
         owner: permissions.owner,

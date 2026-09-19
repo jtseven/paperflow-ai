@@ -1,96 +1,179 @@
 from __future__ import annotations
 
-from datetime import UTC
-from datetime import date
-from datetime import datetime
-from datetime import timedelta
+import functools
+import logging
+import unicodedata
+from functools import cache
 from typing import TYPE_CHECKING
 from typing import Final
 
 import regex
 import tantivy
-from dateutil.relativedelta import relativedelta
+import whoosh_compat as wc
 from django.conf import settings
+from whoosh_compat.emitters.tantivy_ import emit as tantivy_emit
+from whoosh_compat.errors import Cause
+from whoosh_compat.errors import Diagnostic
+from whoosh_compat.errors import DiagnosticKind
+from whoosh_compat.errors import QueryError
 
+from documents.search._errors import InvalidDateQuery
+from documents.search._errors import InvalidNumberQuery
+from documents.search._errors import MultipleSearchQueryErrors
+from documents.search._errors import SearchQueryError
+from documents.search._registry import get_field_registry
+from documents.search._tokenizer import _bigram_analyzer
+from documents.search._tokenizer import paperless_text_analyzer
 from documents.search._tokenizer import simple_search_tokens
 
 if TYPE_CHECKING:
     from datetime import tzinfo
 
-    from django.contrib.auth.base_user import AbstractBaseUser
+logger = logging.getLogger("paperless.search")
 
-# Maximum seconds any single regex substitution may run.
-# Prevents ReDoS on adversarial user-supplied query strings.
+# Maximum seconds any single regex substitution over user-supplied query text
+# may run. The one remaining use is a character class, which cannot backtrack,
+# so the bound is an upper limit on that substitution's cost, not the ReDoS
+# guard it was originally written as.
 _REGEX_TIMEOUT: Final[float] = 1.0
 
-_DATE_ONLY_FIELDS = frozenset({"created"})
-
-_TODAY: Final[str] = "today"
-_YESTERDAY: Final[str] = "yesterday"
-_PREVIOUS_WEEK: Final[str] = "previous week"
-_THIS_MONTH: Final[str] = "this month"
-_PREVIOUS_MONTH: Final[str] = "previous month"
-_THIS_YEAR: Final[str] = "this year"
-_PREVIOUS_YEAR: Final[str] = "previous year"
-_PREVIOUS_QUARTER: Final[str] = "previous quarter"
-
-_DATE_KEYWORDS = frozenset(
-    {
-        _TODAY,
-        _YESTERDAY,
-        _PREVIOUS_WEEK,
-        _THIS_MONTH,
-        _PREVIOUS_MONTH,
-        _THIS_YEAR,
-        _PREVIOUS_YEAR,
-        _PREVIOUS_QUARTER,
-    },
-)
-
-_DATE_KEYWORD_PATTERN = "|".join(
-    sorted((regex.escape(k) for k in _DATE_KEYWORDS), key=len, reverse=True),
-)
-
-_FIELD_DATE_RE = regex.compile(
-    rf"""(?<!\w)(?P<field>created|modified|added)\s*:\s*(?:
-    (?P<quote>["'])(?P<quoted>{_DATE_KEYWORD_PATTERN})(?P=quote)
-    |
-    (?P<bare>{_DATE_KEYWORD_PATTERN})(?![\w-])
-)""",
-    regex.IGNORECASE | regex.VERBOSE,
-)
-_COMPACT_DATE_RE = regex.compile(r"\b(\d{14})\b")
-_RELATIVE_RANGE_RE = regex.compile(
-    r"\[now([+-]\d+[dhm])?\s+TO\s+now([+-]\d+[dhm])?\]",
-    regex.IGNORECASE,
-)
-# Whoosh-style relative date range: e.g. [-1 week to now], [-7 days to now]
-_WHOOSH_REL_RANGE_RE = regex.compile(
-    r"\[-(?P<n>\d+)\s+(?P<unit>second|minute|hour|day|week|month|year)s?\s+to\s+now\]",
-    regex.IGNORECASE,
-)
-# Whoosh-style 8-digit date: field:YYYYMMDD — field-aware so timezone can be applied correctly.
-# Scoped to date fields only; numeric fields (asn, id, page_count, ...) must not be rewritten.
-_DATE8_RE = regex.compile(
-    r"(?<!\w)(?P<field>created|modified|added):(?P<date8>\d{8})\b",
-)
-_YEAR_RANGE_RE = regex.compile(
-    r"(?<!\w)(?P<field>created|modified|added):\[(?P<y1>\d{4})\s+TO\s+(?P<y2>\d{4})\]",
-    regex.IGNORECASE,
-)
-# Tantivy syntax error: " - " and " + " with spaces on both sides are invalid because
-# the NOT/MUST operators require no space between the operator and the term.
-# In natural-language queries (e.g., "H52.1 - Kurzsichtigkeit"), the dash is a separator.
-_SPACED_OPERATOR_RE = regex.compile(r"\s+[-+]\s+")
-_TRAILING_OPERATOR_RE = regex.compile(r"\s+[-+]+\s*$")
 # Matches CJK/Hangul characters so queries can be routed to bigram fields.
 # Uses Unicode properties to cover all blocks including Extension B+ planes.
-_CJK_RE: Final = regex.compile(r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]+")
+# The marks that sit inside a Japanese word are listed explicitly, because
+# their Unicode script is Common and the script classes therefore miss
+# them: the katakana prolonged sound mark ー (U+30FC) and its halfwidth form
+# ｰ (U+FF70), the closing mark 〆 (U+3006), and the halfwidth voiced and
+# semi-voiced sound marks ﾞ (U+FF9E) and ﾟ (U+FF9F). Without them a word
+# splits into one-character runs, which have no bigrams: コーヒー becomes
+# コ + ヒ, and halfwidth ﾊﾟﾝ becomes ﾊ + ﾝ, leaving nothing to index or
+# search at all.
+#
+# The combining marks U+3099/U+309A are deliberately absent: everything
+# entering the index and every query string is put through
+# normalize_search_text first, so decomposed kana is composed away before
+# this pattern ever sees it. The halfwidth marks are not, and cannot be:
+# unlike パ (U+30D1), halfwidth katakana has no precomposed voiced form, so
+# NFC leaves ﾊ + ﾟ as two codepoints where it folds か + U+3099 into が.
+_CJK_RE: Final = regex.compile(
+    r"[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}ーｰ〆ﾞﾟ]+",
+)
+
+
+def normalize_search_text(text: str) -> str:
+    """Put text into the one Unicode normal form the index is built in.
+
+    Both the indexed text and the query string go through this, because a
+    bigram is a pair of codepoints: NFD がっこう is four where NFC is three,
+    so an unnormalized document never matches a normalized query.
+
+    NFC, not NFKC: folding ﾊﾟﾝ to パン would be a search-behavior decision
+    rather than an encoding one.
+    """
+    return unicodedata.normalize("NFC", text)
+
+
+def _user_facing_emit_message(d: Diagnostic) -> str:
+    """A user-safe message for an emit-time QueryError's Diagnostic.
+
+    Built from the Diagnostic's structured fields (kind, field), never from
+    d.message: whoosh-compat documents that as developer/log output with no
+    stability guarantee, and PATTERN_TOO_COMPLEX embeds the raw backend
+    error text in it. SCHEMA_FIELD_MISSING never reaches here: _map_emit_error
+    re-raises it before calling this function, the same as INTERNAL.
+    """
+    field = str(d.field) if d.field is not None else None
+    if d.kind is DiagnosticKind.EXISTS_REQUIRES_FAST:
+        return f"Existence searches (field:*) are not supported for field {field!r}."
+    if d.kind is DiagnosticKind.TEXT_RANGE:
+        return f"Range searches are not supported for field {field!r}."
+    if d.kind is DiagnosticKind.PATTERN_TOO_COMPLEX:
+        return f"The wildcard pattern for field {field!r} is too complex."
+    logger.warning(
+        "Unmapped emit diagnostic %s: %s",
+        d.kind,
+        d.message,
+    )  # pragma: no cover
+    return "The search query could not be executed."  # pragma: no cover
+
+
+def _map_emit_error(e: QueryError) -> SearchQueryError:
+    """Route an emit-time QueryError by its Diagnostic's Cause.
+
+    INVALID_INPUT/UNSUPPORTED are user-input errors, exactly like a parse
+    diagnostic, and map to a 400. INTERNAL means a defect in whoosh-compat
+    or in our own AST handling, never the user's query, so the QueryError is
+    re-raised rather than converted, reaching the generic 500 handler instead
+    of blaming the query. MISCONFIGURED other than EXISTS_REQUIRES_FAST is
+    treated the same way as INTERNAL: the registry and the index schema
+    disagree, which only an operator can fix, and the exact same query would
+    succeed on its own once the index is rebuilt. That makes it a transient
+    server-side condition, not a permanently bad request, so it is logged as
+    an error and re-raised rather than converted to a 400: telling the
+    client their query is invalid would be wrong, it would work once the
+    index catches up, and a 400 also hides the condition from monitoring
+    that only watches 5xx rates.
+
+    EXISTS_REQUIRES_FAST is the one MISCONFIGURED kind that is not a
+    disagreement. whoosh-compat derives it from the registry's own FieldSpec
+    (kind plus fast) without ever consulting the index schema, so it fires
+    whenever a non-fast field of a kind that cannot answer "exists" is asked
+    to: for us that is only the JSON fields, which field_descriptors() builds
+    non-fast on purpose. "notes:*" and the five other spellings of it are
+    ordinary user error that no operator action can clear, so they get the
+    400 without the alert.
+    """
+    d = e.diagnostic
+    if d.cause is Cause.INTERNAL:
+        raise e
+    if (
+        d.cause is Cause.MISCONFIGURED
+        and d.kind is not DiagnosticKind.EXISTS_REQUIRES_FAST
+    ):
+        logger.error(
+            "Search index misconfiguration for field %s (%s): %s",
+            d.field,
+            d.kind.name,
+            d.message,
+        )
+        raise e
+    return SearchQueryError(_user_facing_emit_message(d))
 
 
 def _has_cjk(text: str) -> bool:
     """Return True if text contains any CJK characters."""
     return bool(_CJK_RE.search(text))
+
+
+def extract_cjk_text(text: str) -> str:
+    """Join the CJK runs in ``text`` for indexing into bigram (char-ngram) fields.
+
+    Mirrors the query side, which extracts the CJK runs of whatever it is
+    about to search for (the raw string in simple modes, each CJK term's
+    own text in query mode): only CJK runs are ever searched against
+    the bigram fields, so only CJK runs are worth indexing there. Latin text
+    fed to a character-bigram field is never matched and only bloats the
+    index and slows indexing/merge. Returns "" when there is no CJK text.
+    """
+    return " ".join(_CJK_RE.findall(text))
+
+
+def _parse_cjk_text(
+    index: tantivy.Index,
+    cjk_text: str,
+    fields: list[str],
+) -> tantivy.Query | None:
+    """Parse a plain CJK run string against ``fields``, or None if it won't parse."""
+    try:
+        return index.parse_query(cjk_text, fields)
+    except Exception:
+        # Broad on purpose: cjk_text isn't filtered to a guaranteed-safe
+        # token set, so the exact failure mode tantivy could raise here
+        # isn't pinned down.
+        logger.debug(
+            "Skipping CJK search clause: could not parse CJK text: %r",
+            cjk_text,
+        )
+        return None
 
 
 def _build_cjk_query(
@@ -100,478 +183,346 @@ def _build_cjk_query(
 ) -> tantivy.Query | None:
     """Build a bigram-field query from the CJK runs in ``raw_query``.
 
-    Only the CJK character runs are extracted and parsed; ASCII field prefixes,
-    boolean operators and date keywords are discarded. This keeps the CJK clause
-    plain-text and consistent across query/simple modes (no leaked ``field:``
-    semantics, no parse failures from spaced ``-``/``+``), and avoids feeding
-    Latin tokens into the character-bigram matcher (which would produce spurious
-    matches against unrelated Latin text). Returns None when there is no CJK
-    text or the parse fails.
+    For the simple (TEXT/TITLE) modes, whose input is plain text and carries
+    no query grammar to respect. Only the CJK character runs are extracted, so
+    a stray ``field:`` prefix or ``-``/``+`` in the input can neither leak
+    field semantics nor fail the parse, and no Latin token reaches the
+    character-bigram matcher (where it would produce spurious matches against
+    unrelated Latin text). Returns None when there is no CJK text or the parse
+    fails.
     """
-    cjk_text = " ".join(_CJK_RE.findall(raw_query))
+    cjk_text = extract_cjk_text(raw_query)
     if not cjk_text:
         return None
-    try:
-        return index.parse_query(cjk_text, fields)
-    except Exception:
-        return None
+    return _parse_cjk_text(index, cjk_text, fields)
 
 
-def _fmt(dt: datetime) -> str:
-    """Format a datetime as an ISO 8601 UTC string for use in Tantivy range queries."""
-    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _iso_range(lo: datetime, hi: datetime) -> str:
-    """Format a [lo TO hi] range string in ISO 8601 for Tantivy query syntax."""
-    return f"[{_fmt(lo)} TO {_fmt(hi)}]"
-
-
-def _date_only_range(keyword: str, tz: tzinfo) -> str:
-    """
-    For `created` (DateField): use the local calendar date, converted to
-    midnight UTC boundaries. No offset arithmetic — date only.
-    """
-
-    today = datetime.now(tz).date()
-
-    def _quarter_start(d: date) -> date:
-        return date(d.year, ((d.month - 1) // 3) * 3 + 1, 1)
-
-    if keyword == _TODAY:
-        lo = datetime(today.year, today.month, today.day, tzinfo=UTC)
-        return _iso_range(lo, lo + timedelta(days=1))
-    if keyword == _YESTERDAY:
-        y = today - timedelta(days=1)
-        lo = datetime(y.year, y.month, y.day, tzinfo=UTC)
-        hi = datetime(today.year, today.month, today.day, tzinfo=UTC)
-        return _iso_range(lo, hi)
-    if keyword == _PREVIOUS_WEEK:
-        this_mon = today - timedelta(days=today.weekday())
-        last_mon = this_mon - timedelta(weeks=1)
-        lo = datetime(last_mon.year, last_mon.month, last_mon.day, tzinfo=UTC)
-        hi = datetime(this_mon.year, this_mon.month, this_mon.day, tzinfo=UTC)
-        return _iso_range(lo, hi)
-    if keyword == _THIS_MONTH:
-        lo = datetime(today.year, today.month, 1, tzinfo=UTC)
-        if today.month == 12:
-            hi = datetime(today.year + 1, 1, 1, tzinfo=UTC)
-        else:
-            hi = datetime(today.year, today.month + 1, 1, tzinfo=UTC)
-        return _iso_range(lo, hi)
-    if keyword == _PREVIOUS_MONTH:
-        if today.month == 1:
-            lo = datetime(today.year - 1, 12, 1, tzinfo=UTC)
-        else:
-            lo = datetime(today.year, today.month - 1, 1, tzinfo=UTC)
-        hi = datetime(today.year, today.month, 1, tzinfo=UTC)
-        return _iso_range(lo, hi)
-    if keyword == _THIS_YEAR:
-        lo = datetime(today.year, 1, 1, tzinfo=UTC)
-        return _iso_range(lo, datetime(today.year + 1, 1, 1, tzinfo=UTC))
-    if keyword == _PREVIOUS_YEAR:
-        lo = datetime(today.year - 1, 1, 1, tzinfo=UTC)
-        return _iso_range(lo, datetime(today.year, 1, 1, tzinfo=UTC))
-    if keyword == _PREVIOUS_QUARTER:
-        this_quarter = _quarter_start(today)
-        last_quarter = this_quarter - relativedelta(months=3)
-        lo = datetime(
-            last_quarter.year,
-            last_quarter.month,
-            last_quarter.day,
-            tzinfo=UTC,
-        )
-        hi = datetime(
-            this_quarter.year,
-            this_quarter.month,
-            this_quarter.day,
-            tzinfo=UTC,
-        )
-        return _iso_range(lo, hi)
-    raise ValueError(f"Unknown keyword: {keyword}")
-
-
-def _datetime_range(keyword: str, tz: tzinfo) -> str:
-    """
-    For `added` / `modified` (DateTimeField, stored as UTC): convert local day
-    boundaries to UTC — full offset arithmetic required.
-    """
-
-    now_local = datetime.now(tz)
-    today = now_local.date()
-
-    def _midnight(d: date) -> datetime:
-        return datetime(d.year, d.month, d.day, tzinfo=tz).astimezone(UTC)
-
-    def _quarter_start(d: date) -> date:
-        return date(d.year, ((d.month - 1) // 3) * 3 + 1, 1)
-
-    if keyword == _TODAY:
-        return _iso_range(_midnight(today), _midnight(today + timedelta(days=1)))
-    if keyword == _YESTERDAY:
-        y = today - timedelta(days=1)
-        return _iso_range(_midnight(y), _midnight(today))
-    if keyword == _PREVIOUS_WEEK:
-        this_mon = today - timedelta(days=today.weekday())
-        last_mon = this_mon - timedelta(weeks=1)
-        return _iso_range(_midnight(last_mon), _midnight(this_mon))
-    if keyword == _THIS_MONTH:
-        first = today.replace(day=1)
-        if today.month == 12:
-            next_first = date(today.year + 1, 1, 1)
-        else:
-            next_first = date(today.year, today.month + 1, 1)
-        return _iso_range(_midnight(first), _midnight(next_first))
-    if keyword == _PREVIOUS_MONTH:
-        this_first = today.replace(day=1)
-        if today.month == 1:
-            last_first = date(today.year - 1, 12, 1)
-        else:
-            last_first = date(today.year, today.month - 1, 1)
-        return _iso_range(_midnight(last_first), _midnight(this_first))
-    if keyword == _THIS_YEAR:
-        return _iso_range(
-            _midnight(date(today.year, 1, 1)),
-            _midnight(date(today.year + 1, 1, 1)),
-        )
-    if keyword == _PREVIOUS_YEAR:
-        return _iso_range(
-            _midnight(date(today.year - 1, 1, 1)),
-            _midnight(date(today.year, 1, 1)),
-        )
-    if keyword == _PREVIOUS_QUARTER:
-        this_quarter = _quarter_start(today)
-        last_quarter = this_quarter - relativedelta(months=3)
-        return _iso_range(_midnight(last_quarter), _midnight(this_quarter))
-    raise ValueError(f"Unknown keyword: {keyword}")
-
-
-def _rewrite_compact_date(query: str) -> str:
-    """Rewrite Whoosh compact date tokens (14-digit YYYYMMDDHHmmss) to ISO 8601."""
-
-    def _sub(m: regex.Match[str]) -> str:
-        raw = m.group(1)
-        try:
-            dt = datetime(
-                int(raw[0:4]),
-                int(raw[4:6]),
-                int(raw[6:8]),
-                int(raw[8:10]),
-                int(raw[10:12]),
-                int(raw[12:14]),
-                tzinfo=UTC,
-            )
-            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            return str(m.group(0))
-
-    try:
-        return _COMPACT_DATE_RE.sub(_sub, query, timeout=_REGEX_TIMEOUT)
-    except TimeoutError:  # pragma: no cover
-        raise ValueError(
-            "Query too complex to process (compact date rewrite timed out)",
-        )
-
-
-def _rewrite_relative_range(query: str) -> str:
-    """Rewrite Whoosh relative ranges ([now-7d TO now]) to concrete ISO 8601 UTC boundaries."""
-
-    def _sub(m: regex.Match[str]) -> str:
-        now = datetime.now(UTC)
-
-        def _offset(s: str | None) -> timedelta:
-            if not s:
-                return timedelta(0)
-            sign = 1 if s[0] == "+" else -1
-            n, unit = int(s[1:-1]), s[-1]
-            return (
-                sign
-                * {
-                    "d": timedelta(days=n),
-                    "h": timedelta(hours=n),
-                    "m": timedelta(minutes=n),
-                }[unit]
-            )
-
-        lo, hi = now + _offset(m.group(1)), now + _offset(m.group(2))
-        if lo > hi:
-            lo, hi = hi, lo
-        return f"[{_fmt(lo)} TO {_fmt(hi)}]"
-
-    try:
-        return _RELATIVE_RANGE_RE.sub(_sub, query, timeout=_REGEX_TIMEOUT)
-    except TimeoutError:  # pragma: no cover
-        raise ValueError(
-            "Query too complex to process (relative range rewrite timed out)",
-        )
-
-
-def _rewrite_whoosh_relative_range(query: str) -> str:
-    """Rewrite Whoosh-style relative date ranges ([-N unit to now]) to ISO 8601.
-
-    Supports: second, minute, hour, day, week, month, year (singular and plural).
-    Example: ``added:[-1 week to now]`` → ``added:[2025-01-01T… TO 2025-01-08T…]``
-    """
-    now = datetime.now(UTC)
-
-    def _sub(m: regex.Match[str]) -> str:
-        n = int(m.group("n"))
-        unit = m.group("unit").lower()
-        delta_map: dict[str, timedelta | relativedelta] = {
-            "second": timedelta(seconds=n),
-            "minute": timedelta(minutes=n),
-            "hour": timedelta(hours=n),
-            "day": timedelta(days=n),
-            "week": timedelta(weeks=n),
-            "month": relativedelta(months=n),
-            "year": relativedelta(years=n),
-        }
-        lo = now - delta_map[unit]
-        return f"[{_fmt(lo)} TO {_fmt(now)}]"
-
-    try:
-        return _WHOOSH_REL_RANGE_RE.sub(_sub, query, timeout=_REGEX_TIMEOUT)
-    except TimeoutError:  # pragma: no cover
-        raise ValueError(
-            "Query too complex to process (Whoosh relative range rewrite timed out)",
-        )
-
-
-def _rewrite_8digit_date(query: str, tz: tzinfo) -> str:
-    """Rewrite field:YYYYMMDD date tokens to an ISO 8601 day range.
-
-    Runs after ``_rewrite_compact_date`` so 14-digit timestamps are already
-    converted and won't spuriously match here.
-
-    For DateField fields (e.g. ``created``) uses UTC midnight boundaries.
-    For DateTimeField fields (e.g. ``added``, ``modified``) uses local TZ
-    midnight boundaries converted to UTC — matching the ``_datetime_range``
-    behaviour for keyword dates.
-    """
-
-    def _sub(m: regex.Match[str]) -> str:
-        field = m.group("field")
-        raw = m.group("date8")
-        try:
-            year, month, day = int(raw[0:4]), int(raw[4:6]), int(raw[6:8])
-            d = date(year, month, day)
-            if field in _DATE_ONLY_FIELDS:
-                lo = datetime(d.year, d.month, d.day, tzinfo=UTC)
-                hi = lo + timedelta(days=1)
-            else:
-                # DateTimeField: use local-timezone midnight → UTC
-                lo = datetime(d.year, d.month, d.day, tzinfo=tz).astimezone(UTC)
-                hi = datetime(
-                    (d + timedelta(days=1)).year,
-                    (d + timedelta(days=1)).month,
-                    (d + timedelta(days=1)).day,
-                    tzinfo=tz,
-                ).astimezone(UTC)
-            return f"{field}:[{_fmt(lo)} TO {_fmt(hi)}]"
-        except ValueError:
-            return m.group(0)
-
-    try:
-        return _DATE8_RE.sub(_sub, query, timeout=_REGEX_TIMEOUT)
-    except TimeoutError:  # pragma: no cover
-        raise ValueError(
-            "Query too complex to process (8-digit date rewrite timed out)",
-        )
-
-
-def _rewrite_year_range(query: str) -> str:
-    """Rewrite Whoosh-style year-only date ranges to ISO 8601 UTC boundaries.
-
-    Converts ``field:[YYYY TO YYYY]`` to a full ISO 8601 datetime range.
-    The upper bound is the start of the year after the end year (exclusive),
-    matching the Whoosh convention of treating year-only ranges as full-year spans.
-    """
-
-    def _sub(m: regex.Match[str]) -> str:
-        field = m.group("field")
-        y1, y2 = int(m.group("y1")), int(m.group("y2"))
-        # Whoosh swaps a reversed range when both years are explicit
-        # (whoosh.util.times.timespan.disambiguated); match that so a backwards
-        # range spans the intended years instead of matching nothing.
-        lo_year, hi_year = min(y1, y2), max(y1, y2)
-        lo = datetime(lo_year, 1, 1, tzinfo=UTC)
-        hi = datetime(hi_year + 1, 1, 1, tzinfo=UTC)
-        return f"{field}:[{_fmt(lo)} TO {_fmt(hi)}]"
-
-    try:
-        return _YEAR_RANGE_RE.sub(_sub, query, timeout=_REGEX_TIMEOUT)
-    except TimeoutError:  # pragma: no cover
-        raise ValueError("Query too complex to process (year range rewrite timed out)")
-
-
-def rewrite_natural_date_keywords(query: str, tz: tzinfo) -> str:
-    """
-    Rewrite natural date syntax to ISO 8601 format for Tantivy compatibility.
-
-    Performs the first stage of query preprocessing, converting various date
-    formats and keywords to ISO 8601 datetime ranges that Tantivy can parse:
-    - Compact 14-digit dates (YYYYMMDDHHmmss)
-    - Whoosh relative ranges ([-7 days to now], [now-1h TO now+2h])
-    - 8-digit dates with field awareness (created:20240115)
-    - Natural keywords (field:today, field:"previous quarter", etc.)
-
-    Args:
-        query: Raw user query string
-        tz: Timezone for converting local date boundaries to UTC
-
-    Returns:
-        Query with date syntax rewritten to ISO 8601 ranges
-
-    Note:
-        Bare keywords without field prefixes pass through unchanged.
-    """
-    query = _rewrite_compact_date(query)
-    query = _rewrite_whoosh_relative_range(query)
-    query = _rewrite_year_range(query)
-    query = _rewrite_8digit_date(query, tz)
-    query = _rewrite_relative_range(query)
-
-    def _replace(m: regex.Match[str]) -> str:
-        field = m.group("field")
-        keyword = (m.group("quoted") or m.group("bare")).lower()
-        if field in _DATE_ONLY_FIELDS:
-            return f"{field}:{_date_only_range(keyword, tz)}"
-        return f"{field}:{_datetime_range(keyword, tz)}"
-
-    try:
-        return _FIELD_DATE_RE.sub(_replace, query, timeout=_REGEX_TIMEOUT)
-    except TimeoutError:  # pragma: no cover
-        raise ValueError(
-            "Query too complex to process (date keyword rewrite timed out)",
-        )
-
-
-def normalize_query(query: str) -> str:
-    """
-    Normalize query syntax for better search behavior.
-
-    Expands comma-separated field values to explicit AND clauses and
-    collapses excessive whitespace for cleaner parsing:
-    - tag:foo,bar → tag:foo AND tag:bar
-    - multiple spaces → single spaces
-
-    Args:
-        query: Query string after date rewriting
-
-    Returns:
-        Normalized query string ready for Tantivy parsing
-    """
-
-    def _expand(m: regex.Match[str]) -> str:
-        field = m.group(1)
-        values = [v.strip() for v in m.group(2).split(",") if v.strip()]
-        return " AND ".join(f"{field}:{v}" for v in values)
-
-    try:
-        query = regex.sub(
-            r"(\w+):([^\s\[\]]+(?:,[^\s\[\]]+)+)",
-            _expand,
-            query,
-            timeout=_REGEX_TIMEOUT,
-        )
-        query = regex.sub(r" {2,}", " ", query, timeout=_REGEX_TIMEOUT).strip()
-        # Strip trailing dangling operators before Tantivy sees them.
-        query = _TRAILING_OPERATOR_RE.sub("", query, timeout=_REGEX_TIMEOUT).strip()
-        # Replace " - " / " + " with a space: Tantivy requires no space between
-        # the operator and its operand (-term / +term), so spaces on both sides
-        # means this is a natural-language separator, not a query operator.
-        query = _SPACED_OPERATOR_RE.sub(" ", query, timeout=_REGEX_TIMEOUT).strip()
-        return query
-    except TimeoutError:  # pragma: no cover
-        raise ValueError("Query too complex to process (normalization timed out)")
-
-
-def build_permission_filter(
-    schema: tantivy.Schema,
-    user: AbstractBaseUser,
-) -> tantivy.Query:
-    """
-    Build a query filter for user document permissions.
-
-    Creates a query that matches only documents visible to the specified user
-    according to paperless-ngx permission rules:
-    - Public documents (no owner) are visible to all users
-    - Private documents are visible to their owner
-    - Documents explicitly shared with the user are visible
-
-    Args:
-        schema: Tantivy schema for field validation
-        user: User to check permissions for
-
-    Returns:
-        Tantivy query that filters results to visible documents
-    """
-    owner_any = tantivy.Query.exists_query("owner_id")
-    no_owner = tantivy.Query.boolean_query(
-        [
-            (tantivy.Occur.Must, tantivy.Query.all_query()),
-            (tantivy.Occur.MustNot, owner_any),
-        ],
-    )
-    owned = tantivy.Query.term_query(schema, "owner_id", user.pk)
-    shared = tantivy.Query.term_query(schema, "viewer_id", user.pk)
-    return tantivy.Query.disjunction_max_query([no_owner, owned, shared])
-
-
-DEFAULT_SEARCH_FIELDS = [
+_DEFAULT_SEARCH_FIELDS: Final[list[str]] = [
     "title",
     "content",
     "correspondent",
     "document_type",
     "tag",
 ]
-SIMPLE_SEARCH_FIELDS = ["simple_title", "simple_content"]
-TITLE_SEARCH_FIELDS = ["simple_title"]
-_CJK_ALL_FIELDS: Final[list[str]] = [
-    "bigram_content",
-    "bigram_title",
-    "bigram_correspondent",
-    "bigram_document_type",
-    "bigram_tag",
-]
+_SIMPLE_SEARCH_FIELDS: Final[list[str]] = ["simple_title", "simple_content"]
+_TITLE_SEARCH_FIELDS: Final[list[str]] = ["simple_title"]
+# The bigram (character-ngram) companion of each default search field.
+_CJK_BIGRAM_FIELDS: Final[dict[str, str]] = {
+    field: f"bigram_{field}" for field in _DEFAULT_SEARCH_FIELDS
+}
 _CJK_CONTENT_FIELDS: Final[list[str]] = ["bigram_content"]
 _CJK_TITLE_FIELDS: Final[list[str]] = ["bigram_title"]
 _FIELD_BOOSTS = {"title": 2.0}
 _SIMPLE_FIELD_BOOSTS = {"simple_title": 2.0}
 
 
-def _simple_query_tokens(raw_query: str) -> list[str]:
-    # Tokenize and fold via the same analyzer used to index simple_title /
-    # simple_content, so query terms fold identically to the indexed terms
-    # (single source of truth for ASCII folding).
-    return simple_search_tokens(raw_query)
+@cache
+def _get_emit_field_registry(language: str | None) -> wc.FieldRegistry:
+    """The parse registry plus the CJK bigram fields, for analyzing and
+    emitting a query whose leaves _widen_leaf has widened. Cached per
+    language, on the same trigger get_field_registry() rebuilds on.
+
+    Never used to parse: the bigram fields are internal (absent from
+    PUBLIC_FIELDS), and queries are still parsed against
+    get_field_registry(), so ``bigram_content:...`` never becomes query
+    syntax.
+
+    The bigram specs set ``multitoken=Multitoken.AND`` explicitly. A
+    widened leaf's bigram side always sits inside the widening Or, so under
+    Multitoken.DEFAULT a run's bigrams would inherit that Or, and 東京都
+    would match a document containing only 京都.
+    """
+    bigram_analyze = _bigram_analyzer().analyze
+    return wc.FieldRegistry(
+        [
+            *get_field_registry(language),
+            *(
+                wc.FieldSpec(
+                    bigram_field,
+                    wc.FieldKind.TEXT,
+                    analyzer=bigram_analyze,
+                    multitoken=wc.Multitoken.AND,
+                )
+                for bigram_field in _CJK_BIGRAM_FIELDS.values()
+            ),
+        ],
+    )
 
 
-def _build_simple_field_query(
-    index: tantivy.Index,
-    field: str,
-    tokens: list[str],
-) -> tantivy.Query:
-    patterns = []
-    for idx, token in enumerate(tokens):
-        escaped = regex.escape(token)
-        # For multi-token substring search, only the first token can begin mid-word.
-        # Later tokens follow a whitespace boundary in the original query, so anchor
-        # them to the start of the next indexed token to reduce false positives like
-        # matching "Z-Berichte 16" for the query "Z-Berichte 6".
-        if idx == 0:
-            patterns.append(f".*{escaped}.*")
+# Splits text exactly where the content analyzer's simple tokenizer does,
+# with none of its filters, so each piece is the raw text of one token the
+# index could hold. No remove_long either: a long CJK run must still reach
+# the bigram side.
+_TOKEN_SPLITTER: Final = tantivy.TextAnalyzerBuilder(tantivy.Tokenizer.simple()).build()
+
+
+def _collapse(
+    node_cls: type[wc.ast.Node],
+    children: list[wc.ast.Node],
+    span: dict[str, int | None],
+) -> wc.ast.Node:
+    """Return the single child as it is, or wrap several in node_cls."""
+    if len(children) == 1:
+        return children[0]
+    return node_cls(children=tuple(children), **span)
+
+
+def _leaf_span(leaf: wc.ast.Term | wc.ast.Phrase) -> dict[str, int | None]:
+    """The startchar/endchar kwargs a leaf's alternatives are built with,
+    so a rewritten leaf still points at the same span of the original
+    query text."""
+    return {"startchar": leaf.startchar, "endchar": leaf.endchar}
+
+
+def _cjk_alternative(leaf: wc.ast.Term | wc.ast.Phrase) -> wc.ast.Node | None:
+    """Build the bigram alternative for a CJK leaf, or None if it gets none.
+
+    The content analyzer keeps an unspaced CJK run as one token, so only
+    the bigram fields can find a CJK term inside running text.
+
+    The alternative is built from the leaf's own text, split where the
+    content analyzer would split it. What each kind of piece contributes,
+    and how the pieces combine, is commented at the step that decides it.
+    None means there was nothing to build one from.
+    """
+    if leaf.field is None or leaf.field.name not in _CJK_BIGRAM_FIELDS:
+        return None
+    text = str(leaf.text)
+    if not _has_cjk(text):
+        return None
+    span = _leaf_span(leaf)
+    bigram_field = wc.FieldRef(_CJK_BIGRAM_FIELDS[leaf.field.name])
+    cjk_terms: list[wc.ast.Node] = []
+    latin_terms: list[wc.ast.Node] = []
+    for token in _TOKEN_SPLITTER.analyze(text):
+        runs = _CJK_RE.findall(token)
+        if runs:
+            # One bigram Term per run, never a joined string, which would
+            # produce bigrams spanning the join. A run's own bigrams stay
+            # jointly required through multitoken=AND on the bigram
+            # FieldSpec (see _get_emit_field_registry), which no enclosing
+            # group can loosen. A one-character run has no bigram at all
+            # and analyzes away to nothing.
+            cjk_terms.extend(
+                wc.ast.Term(field=bigram_field, text=run, **span) for run in runs
+            )
         else:
-            patterns.append(f"{escaped}.*")
-    if len(patterns) == 1:
-        query = tantivy.Query.regex_query(index.schema, field, patterns[0])
-    else:
-        query = tantivy.Query.regex_phrase_query(index.schema, field, patterns)
+            # Latin the analyzer split off on its own. Latin glued to CJK
+            # inside one token (東京report) never reaches here, and must
+            # not: the index holds it only inside that whole unspaced
+            # token, so requiring it would lose documents the run finds.
+            latin_terms.append(wc.ast.Term(field=leaf.field, text=token, **span))
+    # A Term's runs are alternatives to each other, the way the separate
+    # bigram clause treated them. A Phrase's are required together: quoting
+    # asks for more than the bare words, and the parser's default group is
+    # And, so an Or here would make "東京都 大阪府" match strictly more
+    # than 東京都 大阪府 does. And is also the tightest thing available,
+    # since the bigram analyzer puts every token at position 0 and no
+    # alternative built from it can enforce adjacency.
+    cjk_group = wc.ast.And if isinstance(leaf, wc.ast.Phrase) else wc.ast.Or
+    pieces: list[wc.ast.Node] = []
+    if cjk_terms:
+        pieces.append(_collapse(cjk_group, cjk_terms, span))
+    pieces.extend(latin_terms)
+    if not pieces:
+        # A few hundred codepoints match _CJK_RE but yield no token at all
+        # from the simple tokenizer (CJK radicals, circled and squared
+        # forms), leaving nothing to widen with. The caller then leaves the
+        # leaf as it is, and it analyzes to the same nothing it does today.
+        return None
+    # Separated latin is required alongside the CJK side, which is what
+    # stops "invoice NOT 東京-report" from excluding every 東京 document.
+    return _collapse(wc.ast.And, pieces, span)
 
-    boost = _SIMPLE_FIELD_BOOSTS.get(field, 1.0)
-    if boost > 1.0:
-        return tantivy.Query.boost_query(query, boost)
-    return query
+
+# The index analyzer minus stemming: the same word boundaries and the same
+# drops (remove_long, characters the simple tokenizer discards). The field's
+# pattern_normalizer does the one stemming step.
+_FUZZY_WORD_SPLITTER: Final = paperless_text_analyzer(None)
+
+
+def _fuzzy_alternative(leaf: wc.ast.Term | wc.ast.Phrase) -> wc.ast.Node | None:
+    """Build the near-match alternative for a leaf, or None if it gets none.
+
+    Each of the leaf's words becomes a Fuzzy leaf on the leaf's own field.
+    A Term's words are OR'd, which is the per-word recall the old clause
+    had and what lets ``COVID-19`` match on one half. A Phrase's are
+    AND-ed: quoting asks for more than the bare words, so an Or there
+    would make a quoted phrase match strictly more than the same words
+    unquoted. Adjacency is out of reach either way, so requiring every
+    word is the floor.
+
+    Words come from the index analyzer minus its stemmer, so a leaf gets a
+    fuzzy side exactly when its exact side has tokens. A regex split would
+    keep words the index never holds (``__``, or a word past remove_long),
+    whose exact side analyzes to nothing, leaving a required fuzzy clause
+    that can never match.
+
+    Words of one character are skipped: with prefix matching, a
+    one-character fuzzy term matches every term in the field.
+
+    CJK words are skipped entirely. The content analyzer keeps an unspaced
+    CJK run as one token, so a prefix Fuzzy over it matches any run within
+    one edit of its start: ``東京`` would match a document holding only
+    ``京都の観光案内``, the very thing the bigram fields' multitoken=AND
+    exists to prevent (see _get_emit_field_registry). A two-character CJK
+    word is as broad here as the one-character word the length guard
+    already rejects, and _cjk_alternative supplies the in-run recall
+    anyway, so there is nothing to gain and precision to lose.
+
+    Fuzzy text goes through the field's pattern_normalizer rather than its
+    analyzer, and the splitter's output is already lowercased and folded,
+    so the word is stemmed exactly once.
+    """
+    words = [
+        word
+        for word in _FUZZY_WORD_SPLITTER.analyze(str(leaf.text))
+        if len(word) > 1 and not _has_cjk(word)
+    ]
+    if not words:
+        return None
+    span = _leaf_span(leaf)
+    group = wc.ast.And if isinstance(leaf, wc.ast.Phrase) else wc.ast.Or
+    leaves: list[wc.ast.Node] = [
+        wc.ast.Fuzzy(field=leaf.field, text=word, distance=1, prefix=True, **span)
+        for word in words
+    ]
+    return _collapse(group, leaves, span)
+
+
+def _widen_leaf(
+    leaf: wc.ast.Term | wc.ast.Phrase,
+    *,
+    fuzzy: bool,
+    negated: frozenset[int],
+) -> wc.ast.Node:
+    """``rewrite_leaf`` hook for emit(): widen a leaf on a default search
+    field to ``Or(leaf, alternatives...)`` where it sits, and leave every
+    other leaf as it is.
+
+    Widening in place, rather than OR-ing a separate clause in at the top,
+    keeps every AND, NOT, REQUIRE, boost, field restriction and positive
+    filter around the leaf applying to its widened match too.
+
+    A leaf can gain a CJK alternative, a fuzzy one, or both. A negated
+    leaf keeps its CJK alternative, because NOT X should exclude exactly
+    what X matches, but gets no fuzzy one: with prefix matching, NOT tax
+    would otherwise exclude "taxi" and "taxonomy". Negated leaves are
+    identified by identity through the pre-scan, since the hook cannot see
+    a leaf's context.
+
+    analyze() only offers Term and Phrase leaves, so Prefix and Wildcard
+    patterns are never widened.
+    """
+    if leaf.field is None or leaf.field.name not in _DEFAULT_SEARCH_FIELDS:
+        return leaf
+    span = _leaf_span(leaf)
+    alternatives: list[wc.ast.Node] = []
+    cjk = _cjk_alternative(leaf)
+    if cjk is not None:
+        alternatives.append(cjk)
+    if fuzzy and id(leaf) not in negated:
+        near = _fuzzy_alternative(leaf)
+        if near is not None:
+            alternatives.append(wc.ast.Boosted(child=near, boost=0.1, **span))
+    if not alternatives:
+        return leaf
+    # The leaf itself, not a copy: analyze() then keeps it combined the way
+    # its enclosing group says rather than the way this Or would, and a long
+    # run its analyzer drops to nothing leaves just the alternative.
+    return wc.ast.Or(children=(leaf, *alternatives), **span)
+
+
+def _negated_leaf_ids(node: wc.ast.Node) -> frozenset[int]:
+    """Return the id() of every Term and Phrase under a negation.
+
+    A negated leaf keeps its CJK alternative but gets no fuzzy one, and
+    the hook cannot see a leaf's context, so the tree is walked once here
+    and the hook compares by identity. analyze() guarantees it is handed
+    the input tree's own leaf objects, which is what makes identity work.
+
+    Negative positions are Not.child and AndNot.negative, and nothing
+    else in the node set. Leaves are collected at any depth and under any
+    number of negations: over-collecting costs a widening, while missing
+    a negated leaf would let NOT tax exclude "taxi".
+
+    Iterative, and total over node types: this runs outside emit()'s
+    error conversion, so an exception here would reach the generic 500
+    handler.
+    """
+    negated: set[int] = set()
+    stack: list[tuple[wc.ast.Node, bool]] = [(node, False)]
+    while stack:
+        current, under_negation = stack.pop()
+        if isinstance(current, (wc.ast.Term, wc.ast.Phrase)):
+            if under_negation:
+                negated.add(id(current))
+        elif isinstance(current, wc.ast.Not):
+            stack.append((current.child, True))
+        elif isinstance(current, wc.ast.AndNot):
+            stack.append((current.positive, under_negation))
+            stack.append((current.negative, True))
+        elif isinstance(current, wc.ast.AndMaybe):
+            stack.append((current.required, under_negation))
+            stack.append((current.optional, under_negation))
+        elif isinstance(current, wc.ast.Require):
+            stack.append((current.scored, under_negation))
+            stack.append((current.filter_only, under_negation))
+        elif isinstance(current, wc.ast.Boosted):
+            stack.append((current.child, under_negation))
+        elif isinstance(current, (wc.ast.And, wc.ast.Or)):
+            stack.extend((child, under_negation) for child in current.children)
+    return frozenset(negated)
+
+
+# Weight of the tiebreak clause that restores relevance ordering among
+# near-miss results. The widened tree is const-scored so the threshold
+# cannot cut a near-miss by the BM25 spread of the query's correctly
+# spelled words; this small share of its real score orders them again.
+# A BM25 spread above 0.1/_FUZZY_TIEBREAK can still cut one.
+_FUZZY_TIEBREAK: Final[float] = 0.01
+
+
+def _any_of(clauses: list[tuple[tantivy.Occur, tantivy.Query]]) -> tantivy.Query:
+    """Collapse a clause list: none -> empty, one -> itself (no wasted
+    single-clause boolean_query wrapping), many -> boolean_query(clauses)."""
+    if not clauses:
+        return tantivy.Query.empty_query()
+    if len(clauses) == 1:
+        return clauses[0][1]
+    return tantivy.Query.boolean_query(clauses)
+
+
+def _build_simple_token_query(
+    index: tantivy.Index,
+    fields: list[str],
+    token: str,
+    *,
+    allow_infix: bool,
+) -> tantivy.Query:
+    escaped = regex.escape(token)
+    # The simple analyzer keeps punctuation inside whitespace-delimited terms.
+    # Boundary-constrained query tokens may therefore begin either at the indexed
+    # term boundary or after punctuation within a term (for example,
+    # ``medical-history``). This avoids matching a numeric token such as ``6``
+    # in the middle of ``16``.
+    pattern = (
+        f".*{escaped}.*"
+        if allow_infix
+        else (
+            f"({escaped}.*|"
+            rf".*[\x20-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]{escaped}.*)"
+        )
+    )
+    field_queries: list[tuple[tantivy.Occur, tantivy.Query]] = []
+    for field in fields:
+        query = tantivy.Query.regex_query(index.schema, field, pattern)
+        boost = _SIMPLE_FIELD_BOOSTS.get(field, 1.0)
+        if boost > 1.0:
+            query = tantivy.Query.boost_query(query, boost)
+        field_queries.append((tantivy.Occur.Should, query))
+
+    return _any_of(field_queries)
 
 
 def parse_user_query(
@@ -580,70 +531,144 @@ def parse_user_query(
     tz: tzinfo,
 ) -> tantivy.Query:
     """
-    Parse user query through the complete preprocessing pipeline.
+    Parse user query through whoosh-compat, then widen its leaves and emit,
+    once or twice depending on whether fuzzy matching is on.
 
-    Transforms the raw user query through multiple stages:
-    1. Date keyword rewriting (today → ISO 8601 ranges)
-    2. Query normalization (comma expansion, whitespace cleanup)
-    3. Tantivy parsing with field boosts
-    4. Optional fuzzy query blending (if ADVANCED_FUZZY_SEARCH_THRESHOLD set)
-
-    Args:
-        index: Tantivy index with registered tokenizers
-        raw_query: Original user query string
-        tz: Timezone for date boundary calculations
-
-    Returns:
-        Parsed Tantivy query ready for execution
-
-    Note:
-        When ADVANCED_FUZZY_SEARCH_THRESHOLD is configured, adds a low-priority
-        fuzzy query as a Should clause (0.1 boost) to catch approximate matches
-        while keeping exact matches ranked higher. The threshold value is applied
-        as a post-search score filter, not during query construction.
+    1. wc.parse() against the shared FieldRegistry (whoosh grammar -> AST).
+       Bare notes:/custom_fields: prefixes resolve to their default subpath
+       (notes.note:/custom_fields.value:) directly in the registry, via
+       each JSON field's SubpathSpec(default=True).
+    2. Any diagnostics (bad dates/numbers) map to SearchQueryError subclasses
+       and raise, the view returns HTTP 400 with every offending field
+       listed, not just the first.
+    3. With fuzzy off, the AST is emitted once. If the query has CJK text,
+       emit()'s rewrite_leaf hook (_widen_leaf) rewrites each CJK term in
+       the AST to also match its bigram field, in place, so the rest of
+       the query constrains the bigram match too. With fuzzy on, the AST
+       is emitted twice through the same hook: once with fuzzy=True for
+       the widened tree used as a filter, and once with fuzzy=False for a
+       normally scored tree, and the two are blended into a boolean query
+       (see the comment above the blend for why). Either way the tree is
+       analyzed and emitted against _get_emit_field_registry() whenever
+       CJK or fuzzy widening applies, which adds the bigram fields; the
+       query itself was parsed without them.
+       emit() turns the AST into a tantivy.Query directly (no string
+       round-trip). A QueryError is routed by its Diagnostic's Cause
+       (_map_emit_error): a construct that parses but can't execute against
+       tantivy (e.g. a text-field range) is a 400, a registry/schema
+       mismatch is logged and re-raised, and an INTERNAL defect is
+       re-raised.
     """
-
-    query_str = rewrite_natural_date_keywords(raw_query, tz)
-    query_str = normalize_query(query_str)
-
-    exact = index.parse_query(
-        query_str,
-        DEFAULT_SEARCH_FIELDS,
+    registry = get_field_registry(settings.SEARCH_LANGUAGE)
+    result = wc.parse(
+        raw_query,
+        registry=registry,
+        default_fields=_DEFAULT_SEARCH_FIELDS,
         field_boosts=_FIELD_BOOSTS,
+        tz=tz,
     )
+    if result.diagnostics:
+        raise _diagnostics_to_error(result.diagnostics)
 
-    # The standard analyzer keeps a whitespace-free CJK run as a single token,
-    # so substring queries can't match content/title (and long runs are dropped
-    # by remove_long). Route CJK queries to the bigram fields, whose ngram
-    # tokenizer indexes overlapping 2-grams for substring matching.
-    cjk_query = (
-        _build_cjk_query(index, raw_query, _CJK_ALL_FIELDS)
-        if _has_cjk(raw_query)
-        else None
+    fuzzy_on = settings.ADVANCED_FUZZY_SEARCH_THRESHOLD is not None
+    cjk = _has_cjk(raw_query)
+    emit_registry = (
+        _get_emit_field_registry(settings.SEARCH_LANGUAGE)
+        if cjk or fuzzy_on
+        else registry
     )
+    negated = _negated_leaf_ids(result.ast) if fuzzy_on else frozenset()
 
-    clauses: list[tuple[tantivy.Occur, tantivy.Query]] = [
-        (tantivy.Occur.Should, exact),
-    ]
-
-    threshold = settings.ADVANCED_FUZZY_SEARCH_THRESHOLD
-    if threshold is not None:
-        fuzzy = index.parse_query(
-            query_str,
-            DEFAULT_SEARCH_FIELDS,
-            field_boosts=_FIELD_BOOSTS,
-            # (prefix=True, distance=1, transposition_cost_one=True) — edit-distance fuzziness
-            fuzzy_fields={f: (True, 1, True) for f in DEFAULT_SEARCH_FIELDS},
+    def emit_widened(*, fuzzy: bool) -> tantivy.Query:
+        hook = (
+            functools.partial(_widen_leaf, fuzzy=fuzzy, negated=negated)
+            if cjk or fuzzy
+            else None
         )
-        # 0.1 boost keeps fuzzy hits ranked below exact matches (intentional)
-        clauses.append((tantivy.Occur.Should, tantivy.Query.boost_query(fuzzy, 0.1)))
+        return tantivy_emit(
+            result.ast,
+            index=index,
+            registry=emit_registry,
+            rewrite_leaf=hook,
+        )
 
-    if cjk_query is not None:
-        clauses.append((tantivy.Occur.Should, cjk_query))
+    try:
+        if not fuzzy_on:
+            return emit_widened(fuzzy=False)
+        widened = emit_widened(fuzzy=True)
+        scored = emit_widened(fuzzy=False)
+    except QueryError as e:
+        raise _map_emit_error(e) from e
 
-    if len(clauses) == 1:
-        return exact
-    return tantivy.Query.boolean_query(clauses)
+    # The widened tree supplies the matched set at a flat score, so a
+    # near-miss is not ranked by how well the query's correctly spelled
+    # words matched. The CJK-only tree adds real scoring back for what
+    # matched exactly, and the last clause reintroduces the widened tree's
+    # own scoring at a small weight so near-misses still rank among
+    # themselves. const_score_query discards every boost inside it, the
+    # title field's 2.0 included, so a title match earns its boost through
+    # the second and third clauses rather than the first.
+    return tantivy.Query.boolean_query(
+        [
+            (tantivy.Occur.Must, tantivy.Query.const_score_query(widened, 0.1)),
+            (tantivy.Occur.Should, scored),
+            (
+                tantivy.Occur.Should,
+                tantivy.Query.boost_query(widened, _FUZZY_TIEBREAK),
+            ),
+        ],
+    )
+
+
+# The three whoosh-compat kinds for a wildcard on a field that cannot
+# carry one. d.field_kind supplies the discriminator, so naming the field's
+# type needs no second trip through the registry.
+_PATTERN_ON_KINDS: Final = frozenset(
+    {
+        DiagnosticKind.PATTERN_ON_NUMERIC,
+        DiagnosticKind.PATTERN_ON_BOOLEAN_EXISTS,
+        DiagnosticKind.PATTERN_ON_SUBPATH,
+    },
+)
+
+
+def _diagnostics_to_error(diagnostics: tuple[Diagnostic, ...]) -> SearchQueryError:
+    errors = [_single_diagnostic_to_error(d) for d in diagnostics]
+    return errors[0] if len(errors) == 1 else MultipleSearchQueryErrors(errors)
+
+
+def _single_diagnostic_to_error(d: Diagnostic) -> SearchQueryError:
+    # d.field is a FieldRef, not a str: str(d.field) gives the canonical
+    # dotted name (an aliased query, e.g. type:, reports document_type).
+    field_name = str(d.field) if d.field is not None else None
+    if d.kind is DiagnosticKind.BAD_DATE:
+        return InvalidDateQuery(field_name, d.raw_value)
+    if d.kind is DiagnosticKind.BAD_NUMBER:
+        return InvalidNumberQuery(field_name, d.raw_value)
+    if d.kind is DiagnosticKind.TOO_DEEP:
+        return SearchQueryError("The search query is nested too deeply.")
+    if d.kind in _PATTERN_ON_KINDS:
+        kind_label = f" ({d.field_kind.name.lower()})" if d.field_kind else ""
+        return SearchQueryError(
+            f"Wildcard patterns are not supported for field "
+            f"{field_name!r}{kind_label}.",
+        )
+    if d.kind is DiagnosticKind.SINGLE_CHAR_BRACKET_RANGE:
+        field_label = f" for field {field_name!r}" if field_name else ""
+        return SearchQueryError(
+            f"{d.raw_value!r} looks like a bracket range{field_label}, but "
+            "'[' is not a wildcard character on its own. Combine it with a "
+            "wildcard, e.g. a trailing '*', or double-quote the value to "
+            "search it as literal text.",
+        )
+    logger.warning(
+        "Unmapped parse diagnostic %s: %s",
+        d.kind,
+        d.message,
+    )  # pragma: no cover
+    return SearchQueryError(
+        "The search query could not be executed.",
+    )  # pragma: no cover
 
 
 def parse_simple_query(
@@ -661,25 +686,37 @@ def parse_simple_query(
     CJK substrings the simple analyzer can't (long whitespace-free runs are
     dropped by remove_long).
     """
-    tokens = _simple_query_tokens(raw_query)
+    tokens = simple_search_tokens(raw_query)
 
     clauses: list[tuple[tantivy.Occur, tantivy.Query]] = []
     if tokens:
-        clauses = [
-            (tantivy.Occur.Should, _build_simple_field_query(index, field, tokens))
-            for field in fields
+        # Match every query token, regardless of its position in the document.
+        # Each token may occur in any of the requested fields, so text mode also
+        # finds documents whose matches are split between title and content.
+        token_queries = [
+            (
+                tantivy.Occur.Must,
+                _build_simple_token_query(
+                    index,
+                    fields,
+                    token,
+                    # Preserve historical infix matching for single-token
+                    # searches. In multi-token searches, constrain numeric
+                    # tokens to boundaries to avoid partial-number overlap.
+                    # This depends on token content, not query order.
+                    allow_infix=len(tokens) == 1 or not token.isdecimal(),
+                ),
+            )
+            for token in tokens
         ]
+        clauses.append((tantivy.Occur.Should, _any_of(token_queries)))
 
     if cjk_fields and _has_cjk(raw_query):
         cjk_q = _build_cjk_query(index, raw_query, cjk_fields)
         if cjk_q is not None:
             clauses.append((tantivy.Occur.Should, cjk_q))
 
-    if not clauses:
-        return tantivy.Query.empty_query()
-    if len(clauses) == 1:
-        return clauses[0][1]
-    return tantivy.Query.boolean_query(clauses)
+    return _any_of(clauses)
 
 
 def parse_simple_text_highlight_query(
@@ -694,13 +731,21 @@ def parse_simple_text_highlight_query(
 
     # Strip Tantivy operator chars before tokenizing: this is a plain-text
     # highlight query, not a structured boolean query, so +/- are separators.
-    tokens = _simple_query_tokens(
+    tokens = simple_search_tokens(
         regex.sub(r"[-+]", " ", raw_query, timeout=_REGEX_TIMEOUT),
     )
     if not tokens:
         return tantivy.Query.empty_query()
 
-    return index.parse_query(" ".join(tokens), ["content"])
+    # Quote each token as its own phrase, escaping backslashes and embedded
+    # quotes. simple search tokens can carry arbitrary Tantivy syntax
+    # characters (`"`, `:`, `(`, `[`, `/`, ...) that the query-string parser
+    # would otherwise interpret as query grammar rather than literal text.
+    quoted_tokens = [
+        '"' + token.replace("\\", "\\\\").replace('"', '\\"') + '"' for token in tokens
+    ]
+
+    return index.parse_query(" ".join(quoted_tokens), ["content"])
 
 
 def parse_simple_text_query(
@@ -714,7 +759,7 @@ def parse_simple_text_query(
     return parse_simple_query(
         index,
         raw_query,
-        SIMPLE_SEARCH_FIELDS,
+        _SIMPLE_SEARCH_FIELDS,
         cjk_fields=_CJK_CONTENT_FIELDS,
     )
 
@@ -730,6 +775,6 @@ def parse_simple_title_query(
     return parse_simple_query(
         index,
         raw_query,
-        TITLE_SEARCH_FIELDS,
+        _TITLE_SEARCH_FIELDS,
         cjk_fields=_CJK_TITLE_FIELDS,
     )

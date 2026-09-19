@@ -3,17 +3,23 @@ import {
   HttpTestingController,
   provideHttpClientTesting,
 } from '@angular/common/http/testing'
-import { fakeAsync, TestBed, tick } from '@angular/core/testing'
+import { TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { CookieService } from 'ngx-cookie-service'
 import { of, Subscription } from 'rxjs'
 import { environment } from 'src/environments/environment'
 import { CustomFieldDataType } from '../data/custom-field'
 import { DEFAULT_DISPLAY_FIELDS, DisplayField } from '../data/document'
+import { RemoteOCRModeConfig } from '../data/paperless-config'
 import { SavedView } from '../data/saved-view'
-import { SETTINGS_KEYS, UiSettings } from '../data/ui-settings'
+import {
+  HideableSidebarItemID,
+  SETTINGS_KEYS,
+  UiSettings,
+} from '../data/ui-settings'
 import { PermissionsService } from './permissions.service'
 import { CustomFieldsService } from './rest/custom-fields.service'
 import { SettingsService } from './settings.service'
@@ -122,7 +128,8 @@ describe('SettingsService', () => {
     expect(req.request.method).toEqual('GET')
   })
 
-  it('should catch error and show toast on retrieve ui_settings error', fakeAsync(() => {
+  it('should catch error and show toast on retrieve ui_settings error', () => {
+    jest.useFakeTimers()
     const toastSpy = jest.spyOn(toastService, 'showError')
     // A 401/403 means "not authenticated" and redirects to the login page
     // instead of toasting; a generic server error surfaces the toast.
@@ -132,9 +139,10 @@ describe('SettingsService', () => {
         { detail: 'Internal server error.' },
         { status: 500, statusText: 'Server Error' }
       )
-    tick(500)
+    jest.advanceTimersByTime(500)
     expect(toastSpy).toHaveBeenCalled()
-  }))
+    jest.useRealTimers()
+  })
 
   it('calls ui_settings api endpoint with POST on store', () => {
     let req = httpTestingController.expectOne(
@@ -207,6 +215,77 @@ describe('SettingsService', () => {
     ).toBeFalsy()
     expect(settingsService.get(SETTINGS_KEYS.DOCUMENT_LIST_SIZE)).toEqual(25)
     expect(settingsService.get(SETTINGS_KEYS.THEME_COLOR)).toEqual('#000000')
+  })
+
+  it('provides stable signals that update when settings change', () => {
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}ui_settings/`
+    )
+    req.flush(ui_settings)
+
+    const notesEnabled = settingsService.getSignal<boolean>(
+      SETTINGS_KEYS.NOTES_ENABLED
+    )
+
+    expect(notesEnabled()).toBeTruthy()
+    expect(
+      settingsService.getSignal<boolean>(SETTINGS_KEYS.NOTES_ENABLED)
+    ).toBe(notesEnabled)
+
+    settingsService.set(SETTINGS_KEYS.NOTES_ENABLED, false)
+
+    expect(notesEnabled()).toBeFalsy()
+  })
+
+  it('updates sidebar item visibility', () => {
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}ui_settings/`)
+      .flush(ui_settings)
+
+    expect(
+      settingsService.sidebarItemIsHidden(HideableSidebarItemID.Workflows)
+    ).toBe(false)
+
+    settingsService.updateSidebarItemVisibility(
+      HideableSidebarItemID.Workflows,
+      false
+    )
+
+    expect(
+      settingsService.sidebarItemIsHidden(HideableSidebarItemID.Workflows)
+    ).toBe(true)
+    expect(settingsService.get(SETTINGS_KEYS.SIDEBAR_HIDDEN_ITEMS)).toEqual([])
+
+    settingsService.updateSidebarItemVisibility(
+      HideableSidebarItemID.Workflows,
+      true
+    )
+
+    expect(
+      settingsService.sidebarItemIsHidden(HideableSidebarItemID.Workflows)
+    ).toBe(false)
+  })
+
+  it('updates setting signals when settings are reinitialized', () => {
+    let req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}ui_settings/`
+    )
+    req.flush(ui_settings)
+    const appTitle = settingsService.getSignal<string>(SETTINGS_KEYS.APP_TITLE)
+
+    settingsService.initializeSettings().subscribe()
+    req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}ui_settings/`
+    )
+    req.flush({
+      ...ui_settings,
+      settings: {
+        ...ui_settings.settings,
+        app_title: 'Updated title',
+      },
+    })
+
+    expect(appTitle()).toBe('Updated title')
   })
 
   it('sets django cookie for languages', () => {
@@ -394,22 +473,22 @@ describe('SettingsService', () => {
     req.flush(ui_settings)
     settingsService.initializeDisplayFields()
     expect(
-      settingsService.allDisplayFields.includes(DEFAULT_DISPLAY_FIELDS[0])
+      settingsService.allDisplayFields().includes(DEFAULT_DISPLAY_FIELDS[0])
     ).toBeTruthy() // title
     expect(
-      settingsService.allDisplayFields.includes(DEFAULT_DISPLAY_FIELDS[4])
+      settingsService.allDisplayFields().includes(DEFAULT_DISPLAY_FIELDS[4])
     ).toBeFalsy() // correspondent
 
     settingsService.set(SETTINGS_KEYS.NOTES_ENABLED, false)
     settingsService.initializeDisplayFields()
     expect(
-      settingsService.allDisplayFields.includes(DEFAULT_DISPLAY_FIELDS[8])
+      settingsService.allDisplayFields().includes(DEFAULT_DISPLAY_FIELDS[8])
     ).toBeFalsy() // notes
 
     jest.spyOn(permissionService, 'currentUserCan').mockReturnValue(true)
     settingsService.initializeDisplayFields()
     expect(
-      settingsService.allDisplayFields.includes(DEFAULT_DISPLAY_FIELDS[4])
+      settingsService.allDisplayFields().includes(DEFAULT_DISPLAY_FIELDS[4])
     ).toBeTruthy() // correspondent
   })
 
@@ -424,12 +503,36 @@ describe('SettingsService', () => {
     )
     settingsService.initializeDisplayFields()
     expect(
-      settingsService.allDisplayFields.includes(DEFAULT_DISPLAY_FIELDS[0])
+      settingsService.allDisplayFields().includes(DEFAULT_DISPLAY_FIELDS[0])
     ).toBeTruthy()
     expect(
-      settingsService.allDisplayFields.find(
-        (f) => f.id === `${DisplayField.CUSTOM_FIELD}${customFields[0].id}`
-      ).name
+      settingsService
+        .allDisplayFields()
+        .find(
+          (f) => f.id === `${DisplayField.CUSTOM_FIELD}${customFields[0].id}`
+        ).name
     ).toEqual(customFields[0].name)
+  })
+  it('should offer remote OCR only when configured and selective', () => {
+    settingsService.set(SETTINGS_KEYS.REMOTE_OCR_CONFIGURED, false)
+    settingsService.set(
+      SETTINGS_KEYS.REMOTE_OCR_MODE,
+      RemoteOCRModeConfig.WORKFLOW_ONLY
+    )
+    expect(settingsService.remoteOCRIsSelectable).toBeFalsy()
+
+    // configured, but already handling every document
+    settingsService.set(SETTINGS_KEYS.REMOTE_OCR_CONFIGURED, true)
+    settingsService.set(
+      SETTINGS_KEYS.REMOTE_OCR_MODE,
+      RemoteOCRModeConfig.ALWAYS
+    )
+    expect(settingsService.remoteOCRIsSelectable).toBeFalsy()
+
+    settingsService.set(
+      SETTINGS_KEYS.REMOTE_OCR_MODE,
+      RemoteOCRModeConfig.WORKFLOW_ONLY
+    )
+    expect(settingsService.remoteOCRIsSelectable).toBeTruthy()
   })
 })

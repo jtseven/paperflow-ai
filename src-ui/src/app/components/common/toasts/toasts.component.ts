@@ -1,11 +1,12 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core'
+import { Component, inject } from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
 import {
   NgbAccordionModule,
   NgbProgressbarModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
-import { Subscription } from 'rxjs'
+import { map, merge, Subject } from 'rxjs'
 import { Toast, ToastService } from 'src/app/services/toast.service'
 import { ToastComponent } from '../toast/toast.component'
 
@@ -21,25 +22,21 @@ import { ToastComponent } from '../toast/toast.component'
     LucideAngularModule,
   ],
 })
-export class ToastsComponent implements OnInit, OnDestroy {
+export class ToastsComponent {
   toastService = inject(ToastService)
 
-  private subscription: Subscription
+  private readonly closedToast = new Subject<void>()
 
-  public toasts: Toast[] = [] // array to force change detection
-
-  ngOnDestroy(): void {
-    this.subscription?.unsubscribe()
-  }
-
-  ngOnInit(): void {
-    this.subscription = this.toastService.showToast.subscribe((toast) => {
-      this.toasts = toast ? [toast] : []
-    })
-  }
+  readonly toasts = toSignal(
+    merge(
+      this.toastService.showToast.pipe(map((toast) => (toast ? [toast] : []))),
+      this.closedToast.pipe(map(() => [] as Toast[]))
+    ),
+    { initialValue: [] as Toast[] }
+  )
 
   closeToast() {
-    this.toastService.closeToast(this.toasts[0])
-    this.toasts = []
+    this.toastService.closeToast(this.toasts()[0])
+    this.closedToast.next()
   }
 }

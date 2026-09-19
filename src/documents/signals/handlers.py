@@ -15,6 +15,7 @@ from celery.signals import task_postrun
 from celery.signals import task_prerun
 from celery.signals import task_revoked
 from celery.signals import worker_process_init
+from celery.signals import worker_process_shutdown
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import User
@@ -31,6 +32,7 @@ from rest_framework import serializers
 from documents import matching
 from documents.caching import clear_document_caches
 from documents.caching import invalidate_llm_suggestions_cache
+from documents.caching import invalidate_suggestions_cache
 from documents.data_models import ConsumableDocument
 from documents.file_handling import create_source_path_directory
 from documents.file_handling import delete_empty_directories
@@ -739,9 +741,9 @@ def cleanup_custom_field_deletion(sender, instance: CustomField, **kwargs) -> No
 @receiver(models.signals.post_save, sender=Document)
 def update_llm_suggestions_cache(sender, instance, **kwargs):
     """
-    Invalidate the LLM suggestions cache when a document is saved.
+    Invalidate suggestions caches when a document is saved.
     """
-    # Invalidate the cache for the document
+    invalidate_suggestions_cache(instance.pk)
     invalidate_llm_suggestions_cache(instance.pk)
 
 
@@ -793,10 +795,12 @@ def cleanup_user_deletion(sender, instance: User | Group, **kwargs) -> None:
 def add_to_index(sender, document, **kwargs) -> None:
     from documents.search import get_backend
 
-    get_backend().add_or_update(
-        document,
-        effective_content=document.get_effective_content(),
-    )
+    # A newly consumed version is not searchable on its own, its content
+    # becomes the effective_content of the root document
+    if document.root_document_id:
+        document = document.root_document
+
+    get_backend().add_or_update(document)
 
 
 def run_workflows_added(
@@ -970,6 +974,39 @@ def run_workflows(
                     )
                 elif action.type == WorkflowAction.WorkflowActionType.MOVE_TO_TRASH:
                     has_move_to_trash_action = True
+                elif action.type == WorkflowAction.WorkflowActionType.REMOTE_OCR:
+                    if use_overrides and overrides:
+                        overrides.remote_ocr = True
+                    else:
+                        # If a workflow has a consumption trigger *and* another type,
+                        # the document has already been parsed by the time the other one fires
+                        logger.debug(
+                            "Remote OCR action only applies to consumption "
+                            "triggers, ignoring",
+                            extra={"group": logging_group},
+                        )
+                elif (
+                    action.type
+                    == WorkflowAction.WorkflowActionType.APPLY_AI_SUGGESTIONS
+                ):
+                    if use_overrides:
+                        # The document has not been parsed yet, so there is no
+                        # content for the LLM to make suggestions from
+                        logger.debug(
+                            "Apply AI suggestions action does not apply to "
+                            "consumption triggers, ignoring",
+                            extra={"group": logging_group},
+                        )
+                    else:
+                        # Queued rather than run sync
+                        from documents.tasks import apply_ai_suggestions
+
+                        # kwargs so the PaperlessTask record can note the
+                        # document, see _extract_input_data
+                        apply_ai_suggestions.delay_on_commit(
+                            action_id=action.pk,
+                            document_id=document.pk,
+                        )
 
             if not use_overrides:
                 # limit title to 128 characters
@@ -1025,6 +1062,7 @@ TRACKED_TASKS: dict[str, PaperlessTask.TaskType] = {
     "documents.tasks.update_document_content_maybe_archive_file": PaperlessTask.TaskType.REPROCESS_DOCUMENT,
     "documents.tasks.build_share_link_bundle": PaperlessTask.TaskType.BUILD_SHARE_LINK,
     "documents.bulk_edit.delete": PaperlessTask.TaskType.BULK_DELETE,
+    "documents.tasks.apply_ai_suggestions": PaperlessTask.TaskType.APPLY_AI_SUGGESTIONS,
 }
 
 _CELERY_STATE_TO_STATUS: dict[str, PaperlessTask.Status] = {
@@ -1076,6 +1114,12 @@ def _extract_input_data(
         account_ids = task_kwargs.get("account_ids")
         if account_ids is not None:
             return {"account_ids": account_ids}
+        return {}
+
+    if task_type == PaperlessTask.TaskType.APPLY_AI_SUGGESTIONS:
+        document_id = task_kwargs.get("document_id")
+        if document_id is not None:
+            return {"document_id": document_id}
         return {}
 
     return {}
@@ -1133,6 +1177,11 @@ def before_task_publish_handler(
         return
 
     try:
+        # Close stale connections without disrupting a transaction publishing a task
+        for connection in connections.all(initialized_only=True):
+            if not connection.in_atomic_block:
+                connection.close_if_unusable_or_obsolete()
+
         _, task_kwargs, _ = body
         task_id = headers["id"]
 
@@ -1140,13 +1189,18 @@ def before_task_publish_handler(
         trigger_source = _determine_trigger_source(headers)
         owner_id = _extract_owner_id(task_type, task_kwargs)
 
-        PaperlessTask.objects.create(
+        # A retried task is republished with the same task_id, so this fires
+        # again for it; get_or_create keeps the original PENDING record
+        # instead of raising a duplicate-key IntegrityError on the retry.
+        PaperlessTask.objects.get_or_create(
             task_id=task_id,
-            task_type=task_type,
-            trigger_source=trigger_source,
-            status=PaperlessTask.Status.PENDING,
-            input_data=input_data,
-            owner_id=owner_id,
+            defaults={
+                "task_type": task_type,
+                "trigger_source": trigger_source,
+                "status": PaperlessTask.Status.PENDING,
+                "input_data": input_data,
+                "owner_id": owner_id,
+            },
         )
     except Exception:  # pragma: no cover
         logger.exception("Creating PaperlessTask failed")
@@ -1263,7 +1317,17 @@ def task_failure_handler(
             "error_message": str(exception) if exception else "Unknown error",
         }
         if traceback:
-            tb_str = "".join(_tb.format_tb(traceback))
+            # billiard/celery pass a pre-formatted string instead of a real
+            # traceback object when the worker process itself died (e.g.
+            # WorkerLostError from a SIGILL) since there's no live traceback
+            # to walk in that case.
+            tb_str = (
+                traceback
+                if isinstance(traceback, str)
+                else "".join(
+                    _tb.format_tb(traceback),
+                )
+            )
             result_data["traceback"] = tb_str[:5000]
 
         now = timezone.now()
@@ -1333,6 +1397,20 @@ def close_connection_pool_on_worker_init(**kwargs) -> None:
     initializes connection pools then forks.
 
     Closing these pools after forking ensures child processes have a valid connection.
+    """
+    for conn in connections.all(initialized_only=True):
+        if conn.alias == "default" and hasattr(conn, "pool") and conn.pool:
+            conn.close_pool()
+
+
+@worker_process_shutdown.connect
+def close_connection_pool_on_worker_shutdown(**kwargs) -> None:  # pragma: no cover
+    """
+    Close the DB connection pool when a Celery child process exits.
+
+    With CELERY_WORKER_MAX_TASKS_PER_CHILD=1 each child is replaced after a
+    single task. Without closing the pool on shutdown, its connections linger
+    on the server until TCP keepalive reaps them, accumulating over time.
     """
     for conn in connections.all(initialized_only=True):
         if conn.alias == "default" and hasattr(conn, "pool") and conn.pool:

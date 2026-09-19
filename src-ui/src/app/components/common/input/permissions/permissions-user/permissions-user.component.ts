@@ -1,13 +1,15 @@
 import { Component, forwardRef, inject } from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
 import {
   FormsModule,
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
 } from '@angular/forms'
 import { NgSelectComponent } from '@ng-select/ng-select'
-import { first } from 'rxjs/operators'
+import { catchError, map, of } from 'rxjs'
 import { User } from 'src/app/data/user'
 import { UserService } from 'src/app/services/rest/user.service'
+import { ToastService } from 'src/app/services/toast.service'
 import { AbstractInputComponent } from '../../abstract-input'
 
 @Component({
@@ -24,15 +26,16 @@ import { AbstractInputComponent } from '../../abstract-input'
   imports: [NgSelectComponent, FormsModule, ReactiveFormsModule],
 })
 export class PermissionsUserComponent extends AbstractInputComponent<User[]> {
-  users: User[]
-
-  constructor() {
-    const userService = inject(UserService)
-
-    super()
-    userService
-      .listAll()
-      .pipe(first())
-      .subscribe((result) => (this.users = result.results))
-  }
+  private readonly userService = inject(UserService)
+  private readonly toastService = inject(ToastService)
+  readonly users = toSignal(
+    this.userService.listAll().pipe(
+      map((result) => result.results),
+      catchError((error) => {
+        this.toastService.showError($localize`Error retrieving users`, error)
+        return of([])
+      })
+    ),
+    { initialValue: undefined as User[] }
+  )
 }

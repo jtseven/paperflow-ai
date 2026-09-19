@@ -6,6 +6,7 @@ import {
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
 } from '@angular/forms'
+import { jest } from '@jest/globals'
 import { of } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
@@ -52,10 +53,10 @@ describe('CustomFieldsValuesComponent', () => {
   })
 
   it('should set selectedFields and map values correctly', () => {
-    component.value = { 1: 'value1' }
-    component.selectedFields = [1, 2]
-    expect(component.selectedFields).toEqual([1, 2])
-    expect(component.value).toEqual({ 1: 'value1', 2: null })
+    component.value = { 1: 'value1', 3: 0, 4: false }
+    component.selectedFields = [1, 2, 3, 4]
+    expect(component.selectedFields).toEqual([1, 2, 3, 4])
+    expect(component.value).toEqual({ 1: 'value1', 2: null, 3: 0, 4: false })
   })
 
   it('should return the correct custom field by id', () => {

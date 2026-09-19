@@ -1,4 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core'
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+} from '@angular/core'
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import { NavigationEnd, Router } from '@angular/router'
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
@@ -21,6 +28,8 @@ export class ChatComponent implements OnInit {
   public documentId?: number
 
   private router: Router = inject(Router)
+  private destroyRef = inject(DestroyRef)
+  private cdr = inject(ChangeDetectorRef)
 
   public get placeholder(): string {
     return this.documentId
@@ -33,7 +42,8 @@ export class ChatComponent implements OnInit {
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),
-        map((event) => (event as NavigationEnd).url)
+        map((event) => (event as NavigationEnd).url),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe((url) => {
         this.updateDocumentId(url)
@@ -43,5 +53,6 @@ export class ChatComponent implements OnInit {
   private updateDocumentId(url: string): void {
     const docIdRe = url.match(/^\/documents\/(\d+)/)
     this.documentId = docIdRe ? +docIdRe[1] : undefined
+    this.cdr.markForCheck()
   }
 }

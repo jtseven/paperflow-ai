@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing'
 import { BrowserModule, DomSanitizer } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 import { SafeUrlPipe } from './safeurl.pipe'
 
 describe('SafeUrlPipe', () => {

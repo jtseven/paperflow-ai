@@ -2,10 +2,12 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
+import { jest } from '@jest/globals'
 import { NgbActiveModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { of } from 'rxjs'
+import { of, throwError } from 'rxjs'
 import { UserService } from 'src/app/services/rest/user.service'
+import { ToastService } from 'src/app/services/toast.service'
 import { PermissionsFormComponent } from '../input/permissions/permissions-form/permissions-form.component'
 import { PermissionsGroupComponent } from '../input/permissions/permissions-group/permissions-group.component'
 import { PermissionsUserComponent } from '../input/permissions/permissions-user/permissions-user.component'
@@ -77,6 +79,23 @@ describe('PermissionsDialogComponent', () => {
     fixture.detectChanges()
   })
 
+  it('should use an empty user list when retrieval fails', () => {
+    const toastSpy = jest.spyOn(TestBed.inject(ToastService), 'showError')
+    jest
+      .spyOn(TestBed.inject(UserService), 'listAll')
+      .mockReturnValue(throwError(() => new Error('Forbidden')))
+
+    const failedFixture = TestBed.createComponent(PermissionsDialogComponent)
+    const failedComponent = failedFixture.componentInstance
+
+    expect(failedComponent.users()).toEqual([])
+    expect(() => failedFixture.detectChanges()).not.toThrow()
+    expect(toastSpy).toHaveBeenCalledWith(
+      'Error retrieving users',
+      expect.any(Error)
+    )
+  })
+
   it('should return permissions', () => {
     expect(component.permissions).toEqual({
       owner: null,
@@ -109,7 +128,7 @@ describe('PermissionsDialogComponent', () => {
       permissions: set_permissions.set_permissions,
     }
     component.object = obj
-    expect(component.title).toEqual(`Edit permissions for ${obj.name}`)
+    expect(component.title()).toEqual(`Edit permissions for ${obj.name}`)
     expect(component.permissions).toEqual(set_permissions)
   })
 

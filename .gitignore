@@ -126,3 +126,10 @@ celerybeat-schedule*
 
 # Git worktree local folder
 .worktrees
+
+# Local deployment overrides and credentials
+.env.*
+!.env.example
+/docker-compose.override.yml
+/docker-compose.local.yml
+/compose.override.yaml

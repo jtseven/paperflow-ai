@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing'
 import { EventManager } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 
 import { DOCUMENT } from '@angular/core'
 import { NgbModal, NgbModalModule } from '@ng-bootstrap/ng-bootstrap'

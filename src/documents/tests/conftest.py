@@ -10,7 +10,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from guardian.shortcuts import clear_ct_cache
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import Settings
 from rest_framework.test import APIClient
 
 from documents.tests.factories import DocumentFactory
@@ -100,7 +100,7 @@ def sample_doc(
 @pytest.fixture()
 def _search_index(
     tmp_path: Path,
-    settings: SettingsWrapper,
+    settings: Settings,
 ) -> Generator[None, None, None]:
     """Create a temp index directory and point INDEX_DIR at it.
 
@@ -118,7 +118,7 @@ def _search_index(
 
 
 @pytest.fixture()
-def settings_timezone(settings: SettingsWrapper) -> zoneinfo.ZoneInfo:
+def settings_timezone(settings: Settings) -> zoneinfo.ZoneInfo:
     return zoneinfo.ZoneInfo(settings.TIME_ZONE)
 
 
@@ -182,3 +182,15 @@ def faker_session_locale():
 @pytest.fixture(scope="session", autouse=True)
 def faker_seed():
     return 12345
+
+
+@pytest.fixture
+def indexed_document(_search_index: None) -> "Document":
+    """One searchable document, for tests about what the search endpoint
+    returns rather than about what it finds.
+    """
+    from documents.search import get_backend
+
+    doc = DocumentFactory.create(title="quarterly invoice", content="acme corp")
+    get_backend().add_or_update(doc)
+    return doc

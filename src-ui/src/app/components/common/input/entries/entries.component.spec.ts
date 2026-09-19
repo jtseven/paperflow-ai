@@ -4,6 +4,7 @@ import {
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
 } from '@angular/forms'
+import { jest } from '@jest/globals'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { EntriesComponent } from './entries.component'
 

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import { of } from 'rxjs'
 import { routes } from 'src/app/app-routing.module'
 import { FilterRule } from 'src/app/data/filter-rule'

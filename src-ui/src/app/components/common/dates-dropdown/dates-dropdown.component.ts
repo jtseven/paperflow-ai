@@ -1,3 +1,4 @@
+import { _IdGenerator } from '@angular/cdk/a11y'
 import { NgClass, NgTemplateOutlet } from '@angular/common'
 import {
   Component,
@@ -70,6 +71,10 @@ export enum RelativeDate {
 })
 export class DatesDropdownComponent implements OnInit, OnDestroy {
   public popperOptions = pngxPopperOptions
+  private readonly idGenerator = inject(_IdGenerator)
+  public readonly dropdownMenuId = this.idGenerator.getId(
+    'pngx-dates-dropdown-'
+  )
 
   constructor() {
     const settings = inject(SettingsService)

@@ -5,6 +5,7 @@ import {
   OnDestroy,
   OnInit,
   QueryList,
+  signal,
   ViewChild,
   ViewChildren,
 } from '@angular/core'
@@ -122,6 +123,8 @@ export class DocumentListComponent
   settingsService = inject(SettingsService)
   private hotKeyService = inject(HotKeyService)
   permissionService = inject(PermissionsService)
+  private readonly notesEnabledSetting =
+    this.settingsService.getSignal<boolean>(SETTINGS_KEYS.NOTES_ENABLED)
 
   DisplayField = DisplayField
   DisplayMode = DisplayMode
@@ -151,7 +154,7 @@ export class DocumentListComponent
     )
   }
 
-  unmodifiedFilterRules: FilterRule[] = []
+  readonly unmodifiedFilterRules = signal<FilterRule[]>([])
   private unmodifiedSavedView: SavedView
   private activeSavedView: SavedView | null = null
 
@@ -257,7 +260,7 @@ export class DocumentListComponent
   }
 
   public getDisplayCustomFieldTitle(field: string) {
-    return this.settingsService.allDisplayFields.find((f) => f.id === field)
+    return this.settingsService.allDisplayFields().find((f) => f.id === field)
       ?.name
   }
 
@@ -301,7 +304,7 @@ export class DocumentListComponent
           this.savedViewService.setDocumentCount(view, this.list.collectionSize)
         })
         this.updateDisplayCustomFields()
-        this.unmodifiedFilterRules = view.filter_rules
+        this.unmodifiedFilterRules.set(view.filter_rules)
       })
 
     this.route.queryParamMap
@@ -318,7 +321,7 @@ export class DocumentListComponent
           this.activeSavedView = null
           this.list.activateSavedView(null)
           this.list.loadFromQueryParams(queryParams)
-          this.unmodifiedFilterRules = []
+          this.unmodifiedFilterRules.set([])
         }
       })
 
@@ -417,7 +420,7 @@ export class DocumentListComponent
             this.toastService.showInfo(
               $localize`View "${this.list.activeSavedViewTitle}" saved successfully.`
             )
-            this.unmodifiedFilterRules = this.list.filterRules
+            this.unmodifiedFilterRules.set(this.list.filterRules)
           },
           error: (err) => {
             this.toastService.showError(
@@ -451,11 +454,14 @@ export class DocumentListComponent
     let modal = this.modalService.open(SaveViewConfigDialogComponent, {
       backdrop: 'static',
     })
-    modal.componentInstance.defaultName = this.filterEditor.generateFilterName()
+    modal.componentInstance.setDefaultName(
+      this.filterEditor.generateFilterName()
+    )
     modal.componentInstance.saveClicked.pipe(first()).subscribe((formValue) => {
-      modal.componentInstance.buttonsEnabled = false
+      modal.componentInstance.buttonsEnabled.set(false)
       let savedView: SavedView = {
         name: formValue.name,
+        icon: formValue.icon,
         filter_rules: this.list.filterRules,
         sort_reverse: this.list.sortReverse,
         sort_field: this.list.sortField,
@@ -504,8 +510,8 @@ export class DocumentListComponent
             if (error.filter_rules) {
               error.filter_rules = error.filter_rules.map((r) => r.value)
             }
-            modal.componentInstance.error = error
-            modal.componentInstance.buttonsEnabled = true
+            modal.componentInstance.error.set(error)
+            modal.componentInstance.buttonsEnabled.set(true)
           },
         })
     })
@@ -572,7 +578,7 @@ export class DocumentListComponent
   }
 
   get notesEnabled(): boolean {
-    return this.settingsService.get(SETTINGS_KEYS.NOTES_ENABLED)
+    return this.notesEnabledSetting()
   }
 
   resetFilters() {

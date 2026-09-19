@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
@@ -94,7 +95,7 @@ describe('CustomFieldsComponent', () => {
     toastService = TestBed.inject(ToastService)
     listViewService = TestBed.inject(DocumentListViewService)
     settingsService = TestBed.inject(SettingsService)
-    settingsService.currentUser = { id: 0, username: 'test' }
+    settingsService.currentUser.set({ id: 0, username: 'test' })
 
     fixture = TestBed.createComponent(CustomFieldsComponent)
     component = fixture.componentInstance

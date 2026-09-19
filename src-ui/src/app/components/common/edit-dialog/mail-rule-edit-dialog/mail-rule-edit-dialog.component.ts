@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
 import {
   FormControl,
   FormGroup,
   FormsModule,
   ReactiveFormsModule,
 } from '@angular/forms'
-import { first } from 'rxjs'
+import { catchError, map, of } from 'rxjs'
 import { EditDialogComponent } from 'src/app/components/common/edit-dialog/edit-dialog.component'
 import { Correspondent } from 'src/app/data/correspondent'
 import { DocumentType } from 'src/app/data/document-type'
@@ -25,6 +26,7 @@ import { MailAccountService } from 'src/app/services/rest/mail-account.service'
 import { MailRuleService } from 'src/app/services/rest/mail-rule.service'
 import { UserService } from 'src/app/services/rest/user.service'
 import { SettingsService } from 'src/app/services/settings.service'
+import { ToastService } from 'src/app/services/toast.service'
 import { CheckComponent } from '../../input/check/check.component'
 import { NumberComponent } from '../../input/number/number.component'
 import { SelectComponent } from '../../input/select/select.component'
@@ -154,37 +156,56 @@ const METADATA_CORRESPONDENT_OPTIONS = [
   ],
 })
 export class MailRuleEditDialogComponent extends EditDialogComponent<MailRule> {
-  private accountService: MailAccountService
-  private correspondentService: CorrespondentService
-  private documentTypeService: DocumentTypeService
+  private readonly accountService = inject(MailAccountService)
+  private readonly correspondentService = inject(CorrespondentService)
+  private readonly documentTypeService = inject(DocumentTypeService)
+  private readonly toastService = inject(ToastService)
 
-  accounts: MailAccount[]
-  correspondents: Correspondent[]
-  documentTypes: DocumentType[]
+  readonly accounts = toSignal(
+    this.accountService.listAll().pipe(
+      map((result) => result.results),
+      catchError((error) => {
+        this.toastService.showError(
+          $localize`Error retrieving mail accounts`,
+          error
+        )
+        return of([])
+      })
+    ),
+    { initialValue: undefined as MailAccount[] }
+  )
+  readonly correspondents = toSignal(
+    this.correspondentService.listAll().pipe(
+      map((result) => result.results),
+      catchError((error) => {
+        this.toastService.showError(
+          $localize`Error retrieving correspondents`,
+          error
+        )
+        return of([])
+      })
+    ),
+    { initialValue: undefined as Correspondent[] }
+  )
+  readonly documentTypes = toSignal(
+    this.documentTypeService.listAll().pipe(
+      map((result) => result.results),
+      catchError((error) => {
+        this.toastService.showError(
+          $localize`Error retrieving document types`,
+          error
+        )
+        return of([])
+      })
+    ),
+    { initialValue: undefined as DocumentType[] }
+  )
 
   constructor() {
     super()
     this.service = inject(MailRuleService)
-    this.accountService = inject(MailAccountService)
-    this.correspondentService = inject(CorrespondentService)
-    this.documentTypeService = inject(DocumentTypeService)
     this.userService = inject(UserService)
     this.settingsService = inject(SettingsService)
-
-    this.accountService
-      .listAll()
-      .pipe(first())
-      .subscribe((result) => (this.accounts = result.results))
-
-    this.correspondentService
-      .listAll()
-      .pipe(first())
-      .subscribe((result) => (this.correspondents = result.results))
-
-    this.documentTypeService
-      .listAll()
-      .pipe(first())
-      .subscribe((result) => (this.documentTypes = result.results))
   }
 
   getCreateTitle() {

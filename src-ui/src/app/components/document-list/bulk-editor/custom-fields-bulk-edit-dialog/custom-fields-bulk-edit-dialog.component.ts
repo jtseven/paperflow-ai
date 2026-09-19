@@ -83,8 +83,14 @@ export class CustomFieldsBulkEditDialogComponent {
 
   public selection: DocumentSelectionQuery = { documents: [] }
 
+  public selectionCount: number
+
   public get documents(): number[] {
-    return this.selection.documents
+    return this.selection.documents ?? []
+  }
+
+  public get documentCount(): number {
+    return this.selectionCount ?? this.documents.length
   }
 
   initForm() {

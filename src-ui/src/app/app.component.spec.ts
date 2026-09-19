@@ -1,12 +1,8 @@
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
-import {
-  ComponentFixture,
-  fakeAsync,
-  TestBed,
-  tick,
-} from '@angular/core/testing'
+import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { Router, RouterModule } from '@angular/router'
+import { jest } from '@jest/globals'
 import { NgbModalModule } from '@ng-bootstrap/ng-bootstrap'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import {
@@ -72,7 +68,8 @@ describe('AppComponent', () => {
     component = fixture.componentInstance
   })
 
-  it('should initialize the tour service & toggle class on body for styling', fakeAsync(() => {
+  it('should initialize the tour service & toggle class on body for styling', () => {
+    jest.useFakeTimers()
     jest.spyOn(console, 'warn').mockImplementation(() => {})
     fixture.detectChanges()
     const tourSpy = jest.spyOn(tourService, 'initialize')
@@ -81,9 +78,10 @@ describe('AppComponent', () => {
     tourService.start()
     expect(document.body.classList).toContain('tour-active')
     tourService.end()
-    tick(500)
+    jest.advanceTimersByTime(500)
     expect(document.body.classList).not.toContain('tour-active')
-  }))
+    jest.useRealTimers()
+  })
 
   it('should display toast on document consumed with link if user has access', () => {
     const navigateSpy = jest.spyOn(router, 'navigate')

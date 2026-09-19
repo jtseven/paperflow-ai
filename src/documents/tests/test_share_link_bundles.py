@@ -6,8 +6,10 @@ from pathlib import Path
 from unittest import mock
 
 from django.conf import settings
+from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.utils import timezone
+from guardian.shortcuts import assign_perm
 from rest_framework import serializers
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -48,6 +50,37 @@ class ShareLinkBundleAPITests(DirectoriesMixin, APITestCase):
         delay_mock.assert_called_once()
         self.assertEqual(delay_mock.call_args.kwargs["kwargs"]["bundle_id"], bundle.pk)
 
+    @mock.patch("documents.views.build_share_link_bundle.apply_async")
+    def test_create_bundle_requires_global_document_view_permission(
+        self,
+        delay_mock,
+    ) -> None:
+        owner = User.objects.create_user(username="document_owner")
+        requester = User.objects.create_user(username="bundle_creator")
+        requester.user_permissions.add(
+            Permission.objects.get(codename="add_sharelinkbundle"),
+        )
+        document = DocumentFactory.create(owner=owner)
+        assign_perm("view_document", requester, document)
+        self.client.force_authenticate(requester)
+        payload = {
+            "document_ids": [document.pk],
+            "file_version": ShareLink.FileVersion.ARCHIVE,
+            "expiration_days": 7,
+        }
+
+        response = self.client.post(self.ENDPOINT, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        requester.user_permissions.add(
+            Permission.objects.get(codename="view_document"),
+        )
+        requester = User.objects.get(pk=requester.pk)
+        self.client.force_authenticate(requester)
+        response = self.client.post(self.ENDPOINT, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        delay_mock.assert_called_once()
+
     def test_create_bundle_rejects_missing_documents(self) -> None:
         payload = {
             "document_ids": [9999],
@@ -60,7 +93,7 @@ class ShareLinkBundleAPITests(DirectoriesMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("document_ids", response.data)
 
-    @mock.patch("documents.views.has_perms_owner_aware", return_value=False)
+    @mock.patch("documents.views.permitted_document_ids", return_value=set())
     def test_create_bundle_rejects_insufficient_permissions(self, perms_mock) -> None:
         payload = {
             "document_ids": [self.document.pk],
@@ -191,6 +224,50 @@ class ShareLinkBundleAPITests(DirectoriesMixin, APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
         self.assertIn("sharelink_notfound=1", response["Location"])
+
+    def test_share_link_missing_file_redirects(self) -> None:
+        """
+        GIVEN:
+            - A share link whose document file is missing from disk
+        WHEN:
+            - The public share link is requested anonymously
+        THEN:
+            - The user is redirected to login instead of a 500 error
+        """
+        doc = DocumentFactory.create(filename="missing-original.pdf")
+        share_link = ShareLink.objects.create(
+            slug="missingfilelink",
+            document=doc,
+            file_version=ShareLink.FileVersion.ORIGINAL,
+        )
+
+        self.client.logout()
+        response = self.client.get(f"/share/{share_link.slug}/")
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertIn("sharelink_notfound=1", response["Location"])
+
+    def test_download_ready_bundle_missing_file_returns_503(self) -> None:
+        """
+        GIVEN:
+            - A READY bundle whose zip file is missing from disk
+        WHEN:
+            - The public share link is requested anonymously
+        THEN:
+            - A 503 is returned instead of a 500 error
+        """
+        bundle = ShareLinkBundle.objects.create(
+            slug="missingbundlefile",
+            file_version=ShareLink.FileVersion.ARCHIVE,
+            status=ShareLinkBundle.Status.READY,
+            file_path="bundles/gone.zip",
+        )
+        bundle.documents.set([self.document])
+
+        self.client.logout()
+        response = self.client.get(f"/share/{bundle.slug}/")
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class ShareLinkBundleTaskTests(DirectoriesMixin, APITestCase):

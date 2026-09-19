@@ -18,15 +18,17 @@ from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from documents.filters import ObjectOwnedOrGrantedPermissionsFilter
+from documents.filters import PermittedObjectsFilter
 from documents.models import PaperlessTask
 from documents.permissions import PaperlessObjectPermissions
 from documents.permissions import has_perms_owner_aware
+from documents.permissions import permitted_object_ids
 from documents.views import PassUserMixin
 from paperless.views import StandardPagination
 from paperless_mail.filters import ProcessedMailFilterSet
@@ -41,6 +43,15 @@ from paperless_mail.serialisers import MailAccountSerializer
 from paperless_mail.serialisers import MailRuleSerializer
 from paperless_mail.serialisers import ProcessedMailSerializer
 from paperless_mail.tasks import process_mail_accounts
+
+
+class DeleteProcessedMailPermissions(BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.has_perm("paperless_mail.delete_processedmail"),
+        )
 
 
 @extend_schema_view(
@@ -75,7 +86,7 @@ class MailAccountViewSet(PassUserMixin, ModelViewSet[MailAccount]):
     serializer_class = MailAccountSerializer
     pagination_class = StandardPagination
     permission_classes = (IsAuthenticated, PaperlessObjectPermissions)
-    filter_backends = (ObjectOwnedOrGrantedPermissionsFilter,)
+    filter_backends = (PermittedObjectsFilter,)
 
     def get_permissions(self):
         if self.action == "test":
@@ -105,7 +116,9 @@ class MailAccountViewSet(PassUserMixin, ModelViewSet[MailAccount]):
             except (TypeError, ValueError, MailAccount.DoesNotExist):
                 return HttpResponseForbidden("Insufficient permissions")
 
-            if not has_perms_owner_aware(
+            if not request.user.has_perms(
+                ["paperless_mail.change_mailaccount"],
+            ) or not has_perms_owner_aware(
                 request.user,
                 "change_mailaccount",
                 existing_account,
@@ -197,13 +210,17 @@ class ProcessedMailViewSet(PassUserMixin, ReadOnlyModelViewSet[ProcessedMail]):
     filter_backends = (
         DjangoFilterBackend,
         OrderingFilter,
-        ObjectOwnedOrGrantedPermissionsFilter,
+        PermittedObjectsFilter,
     )
     filterset_class = ProcessedMailFilterSet
 
     queryset = ProcessedMail.objects.all().order_by("-processed")
 
-    @action(methods=["post"], detail=False)
+    @action(
+        methods=["post"],
+        detail=False,
+        permission_classes=[IsAuthenticated, DeleteProcessedMailPermissions],
+    )
     def bulk_delete(self, request):
         mail_ids = request.data.get("mail_ids", [])
         if not isinstance(mail_ids, list) or not all(
@@ -211,10 +228,17 @@ class ProcessedMailViewSet(PassUserMixin, ReadOnlyModelViewSet[ProcessedMail]):
         ):
             return HttpResponseBadRequest("mail_ids must be a list of integers")
         mails = ProcessedMail.objects.filter(id__in=mail_ids)
-        for mail in mails:
-            if not has_perms_owner_aware(request.user, "delete_processedmail", mail):
-                return HttpResponseForbidden("Insufficient permissions")
-            mail.delete()
+        # Check every id up front so an unpermitted one rejects the whole
+        # request rather than deleting the mails ahead of it first.
+        if mails.exclude(
+            pk__in=permitted_object_ids(
+                request.user,
+                ProcessedMail,
+                "delete_processedmail",
+            ),
+        ).exists():
+            return HttpResponseForbidden("Insufficient permissions")
+        mails.delete()
         return Response({"result": "OK", "deleted_mail_ids": mail_ids})
 
 
@@ -225,7 +249,7 @@ class MailRuleViewSet(PassUserMixin, ModelViewSet[MailRule]):
     serializer_class = MailRuleSerializer
     pagination_class = StandardPagination
     permission_classes = (IsAuthenticated, PaperlessObjectPermissions)
-    filter_backends = (ObjectOwnedOrGrantedPermissionsFilter,)
+    filter_backends = (PermittedObjectsFilter,)
 
 
 @extend_schema_view(

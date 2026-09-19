@@ -1,5 +1,15 @@
 @if (customLogo) {
-    <img src="{{customLogo}}" [class]="getClasses()" [attr.style]="'height:'+height" />
+  <img
+    src="{{ customLogo }}"
+    [class]="getClasses()"
+    [attr.style]="'height:' + height()"
+  />
 } @else {
-    <img [src]="defaultLogo" [class]="getClasses()" alt="Paperflow AI" i18n-alt [attr.style]="'height:'+height" />
+  <img
+    [src]="defaultLogo"
+    [class]="getClasses()"
+    alt="Paperflow AI"
+    i18n-alt
+    [attr.style]="'height:' + height()"
+  />
 }

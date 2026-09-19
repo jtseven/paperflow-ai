@@ -7,8 +7,8 @@ import pytest
 import tantivy
 
 from documents.search._tokenizer import _bigram_analyzer
-from documents.search._tokenizer import _paperless_text
 from documents.search._tokenizer import _simple_search_analyzer
+from documents.search._tokenizer import paperless_text_analyzer
 from documents.search._tokenizer import register_tokenizers
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class TestTokenizers:
         sb.add_text_field("content", stored=True, tokenizer_name="paperless_text")
         schema = sb.build()
         idx = tantivy.Index(schema, path=None)
-        idx.register_tokenizer("paperless_text", _paperless_text(""))
+        idx.register_tokenizer("paperless_text", paperless_text_analyzer(""))
         return idx
 
     @pytest.fixture
@@ -96,6 +96,25 @@ class TestTokenizers:
             simple_search_index.schema,
             "simple_content",
             ".*sswo.*",
+        )
+        assert simple_search_index.searcher().search(q, limit=5).count == 1
+
+    def test_simple_search_analyzer_supports_model_limit_token_substrings(
+        self,
+        simple_search_index: tantivy.Index,
+    ) -> None:
+        """Simple substring search keeps tokens up to Document.title's model limit."""
+        long_token = "abcdefghij" * 12 + "abcdefgh"
+        writer = simple_search_index.writer()
+        doc = tantivy.Document()
+        doc.add_text("simple_content", long_token)
+        writer.add_document(doc)
+        writer.commit()
+        simple_search_index.reload()
+        q = tantivy.Query.regex_query(
+            simple_search_index.schema,
+            "simple_content",
+            ".*cdefg.*",
         )
         assert simple_search_index.searcher().search(q, limit=5).count == 1
 

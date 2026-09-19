@@ -1,23 +1,18 @@
 from __future__ import annotations
 
+import hashlib
 import logging
-import pickle
+import uuid
 from binascii import hexlify
-from collections import OrderedDict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Final
 
-from django.conf import settings
 from django.core.cache import cache
-from django.core.cache import caches
 
 from documents.models import Document
 
 if TYPE_CHECKING:
-    from django.core.cache.backends.base import BaseCache
-
     from documents.classifier import DocumentClassifier
 
 logger = logging.getLogger("paperless.caching")
@@ -41,85 +36,24 @@ class SuggestionCacheData:
 CLASSIFIER_VERSION_KEY: Final[str] = "classifier_version"
 CLASSIFIER_HASH_KEY: Final[str] = "classifier_hash"
 CLASSIFIER_MODIFIED_KEY: Final[str] = "classifier_modified"
-LLM_CACHE_CLASSIFIER_VERSION: Final[int] = 1000  # Marker distinguishing LLM suggestions
+# Marker distinguishing LLM suggestions from classifier-generated ones (whose
+# FORMAT_VERSION lives in a much lower range - see DocumentClassifier). Bump
+# this whenever cached suggestions must not be reused, including changes to
+# their shape or interpretation, so a previous release's result cannot leak
+# incompatible or obsolete behavior into the new one:
+#   1000 - initial LLM suggestions cache (flat lists of resolved object ids
+#          per taxonomy field)
+#   1001 - suggestions reshaped to {"existing_ids": [...], "new_names":
+#          [...]} per taxonomy field (#13676)
+#   1002 - names are always generated and optional candidate mappings are
+#          validated separately, so candidate-anchored 1001 results are stale
+LLM_CACHE_CLASSIFIER_VERSION: Final[int] = 1002
 
 CACHE_1_MINUTE: Final[int] = 60
 CACHE_5_MINUTES: Final[int] = 5 * CACHE_1_MINUTE
 CACHE_50_MINUTES: Final[int] = 50 * CACHE_1_MINUTE
-
-read_cache = caches["read-cache"]
-
-
-class LRUCache:
-    def __init__(self, capacity: int = 128):
-        self._data = OrderedDict()
-        self.capacity = capacity
-
-    def get(self, key, default=None) -> Any | None:
-        if key in self._data:
-            self._data.move_to_end(key)
-            return self._data[key]
-        return default
-
-    def set(self, key, value) -> None:
-        self._data[key] = value
-        self._data.move_to_end(key)
-        while len(self._data) > self.capacity:
-            self._data.popitem(last=False)
-
-
-class StoredLRUCache(LRUCache):
-    """
-    LRU cache that can persist its entire contents as a single entry in a backend cache.
-
-    Useful for sharing a cache across multiple workers or processes.
-
-    Workflow:
-        1. Load the cache state from the backend using `load()`.
-        2. Use `get()` and `set()` locally as usual.
-        3. Persist changes back to the backend using `save()`.
-    """
-
-    def __init__(
-        self,
-        backend_key: str,
-        capacity: int = 128,
-        backend: BaseCache = read_cache,
-        backend_ttl=settings.CACHALOT_TIMEOUT,
-    ):
-        if backend_key is None:
-            raise ValueError("backend_key is mandatory")
-        super().__init__(capacity)
-        self._backend_key = backend_key
-        self._backend = backend
-        self.backend_ttl = backend_ttl
-
-    def load(self) -> None:
-        """
-        Load the whole cache content from backend storage.
-
-        If no valid cached data exists in the backend, the local cache is cleared.
-        """
-        serialized_data = self._backend.get(self._backend_key)
-        try:
-            self._data = (
-                pickle.loads(serialized_data) if serialized_data else OrderedDict()
-            )
-        except pickle.PickleError:
-            logger.warning(
-                "Cache exists in backend but could not be read (possibly invalid format)",
-            )
-
-    def save(self) -> None:
-        """Save the entire local cache to the backend as a serialized object.
-
-        The backend entry will expire after the configured TTL.
-        """
-        self._backend.set(
-            self._backend_key,
-            pickle.dumps(self._data),
-            self.backend_ttl,
-        )
+# Deliberately longer than any entry it names
+LLM_CACHE_GENERATION_TIMEOUT: Final[int] = 2 * CACHE_50_MINUTES
 
 
 def get_suggestion_cache_key(document_id: int) -> str:
@@ -197,14 +131,46 @@ def refresh_suggestions_cache(
     cache.touch(doc_key, timeout)
 
 
+def invalidate_suggestions_cache(document_id: int) -> None:
+    """Invalidate classifier-generated suggestions for a document."""
+    cache.delete(get_suggestion_cache_key(document_id))
+
+
+def _llm_generation_key(document_id: int) -> str:
+    return f"{get_suggestion_cache_key(document_id)}_llm_generation"
+
+
+def _llm_variant_key(document_id: int, backend: str) -> str:
+    """Cache key for one LLM configuration and permission scope.
+
+    ``backend`` identifies the variant - model, endpoint, output language and
+    requesting user.
+
+    Generating the token on first use lets invalidate_llm_suggestions_cache()
+    be no-op for documents that never had AI suggestions.
+    """
+    generation_key = _llm_generation_key(document_id)
+    generation = cache.get_or_set(
+        generation_key,
+        lambda: uuid.uuid4().hex,
+        timeout=LLM_CACHE_GENERATION_TIMEOUT,
+    )
+    cache.touch(generation_key, LLM_CACHE_GENERATION_TIMEOUT)
+    backend_hash = hashlib.sha256(backend.encode()).hexdigest()[:16]
+    return f"{get_suggestion_cache_key(document_id)}_llm_{generation}_{backend_hash}"
+
+
 def get_llm_suggestion_cache(
     document_id: int,
     backend: str,
 ) -> SuggestionCacheData | None:
-    doc_key = get_suggestion_cache_key(document_id)
-    data: SuggestionCacheData = cache.get(doc_key)
+    data: SuggestionCacheData = cache.get(_llm_variant_key(document_id, backend))
 
-    if data and data.classifier_hash == backend:
+    if (
+        data
+        and data.classifier_version == LLM_CACHE_CLASSIFIER_VERSION
+        and data.classifier_hash == backend
+    ):
         return data
 
     return None
@@ -221,9 +187,8 @@ def set_llm_suggestions_cache(
     Cache LLM-generated suggestions using a backend-specific identifier
     (e.g. 'openai-like:gpt-4').
     """
-    doc_key = get_suggestion_cache_key(document_id)
     cache.set(
-        doc_key,
+        _llm_variant_key(document_id, backend),
         SuggestionCacheData(
             classifier_version=LLM_CACHE_CLASSIFIER_VERSION,
             classifier_hash=backend,
@@ -233,17 +198,31 @@ def set_llm_suggestions_cache(
     )
 
 
+def refresh_llm_suggestions_cache(
+    document_id: int,
+    backend: str,
+    *,
+    timeout: int = CACHE_50_MINUTES,
+) -> None:
+    """
+    Refreshes the expiration of one cached LLM suggestion variant.
+    """
+    cache.touch(_llm_variant_key(document_id, backend), timeout)
+
+
 def invalidate_llm_suggestions_cache(
     document_id: int,
 ) -> None:
     """
-    Invalidate the LLM suggestions cache for a specific document and backend.
+    Invalidate every LLM suggestion variant for a document.
     """
-    doc_key = get_suggestion_cache_key(document_id)
-    data: SuggestionCacheData = cache.get(doc_key)
-
-    if data:
-        cache.delete(doc_key)
+    generation_key = _llm_generation_key(document_id)
+    if cache.get(generation_key) is not None:
+        cache.set(
+            generation_key,
+            uuid.uuid4().hex,
+            timeout=LLM_CACHE_GENERATION_TIMEOUT,
+        )
 
 
 def get_metadata_cache_key(document_id: int) -> str:
@@ -344,3 +323,4 @@ def clear_document_caches(document_id: int) -> None:
             get_thumbnail_modified_key(document_id),
         ],
     )
+    invalidate_llm_suggestions_cache(document_id)

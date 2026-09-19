@@ -29,13 +29,11 @@ Compared to upstream paperless-ngx, Paperflow AI:
   with tool-driven retrieval and dynamic citations. It is built on upstream's
   llama-index AI stack (`src/paperless_ai/agent_chat.py`) and reuses the same
   streaming protocol as the built-in per-document chat.
-- Adds **Mistral** as a first-class backend in upstream's pluggable AI
-  configuration: a Mistral **embedding** backend for the semantic index, a
-  Mistral **chat** backend for the LLM, and a **Mistral OCR** parser that takes
-  priority over Tesseract when configured (and silently falls back to Tesseract
-  when it is not).
+- Supports Mistral chat/embeddings through the OpenAI-compatible backend, and
+  includes a Mistral OCR parser with Markdown/image output. Remote OCR can run
+  automatically or selectively through upstream's workflow controls.
 - Uses **`uv` as the Python dependency manager** for local development and CI.
-- Simplifies the **CI pipeline** to focus on static checks and documentation instead of multi-target releases and Docker image publishing.
+- Simplifies the **CI pipeline** to focus on tests and static checks instead of multi-target releases and Docker image publishing.
 
 The goal is to make it easy to:
 
@@ -51,6 +49,10 @@ The recommended way to run Paperflow AI is via Docker Compose, similar to upstre
 
 ### Quick start with Docker Compose
 
+Copy `.env.example` to `.env` and configure secrets locally first. For an existing
+installation, set `COMPOSE_PROJECT_NAME` to the existing project name before
+starting, to preserve the association with its database/media volumes.
+
 From this repository on your server:
 
 ```bash
@@ -59,7 +61,7 @@ docker compose build
 docker compose up -d
 ```
 
-`docker compose` uses [docker-compose.yml](docker-compose.yml) by default, which is the **production** deployment (built image, no source mounts, served on host port 8010). The provided `docker-compose.yml` expects environment variables for API keys and secrets (e.g. Mistral, database password). Check the `webserver` service section and configure the relevant variables (preferably via a `.env` file) before running in production.
+`docker compose` uses [docker-compose.yml](docker-compose.yml) by default, which is the **production** deployment (built image, no source mounts, bound to localhost port 8000 by default). The provided `docker-compose.yml` expects environment variables for API keys and secrets (e.g. Mistral, database password). Check the `webserver` service section and configure the relevant variables (preferably via a `.env` file) before running in production.
 
 To run the **development** stack instead (Angular dev server with HMR on `http://localhost:4200`, live source mounts, Django auto-reload), opt in with the dev override:
 
@@ -67,16 +69,15 @@ To run the **development** stack instead (Angular dev server with HMR on `http:/
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
-The AI features are configured through these variables (sensible Mistral
-defaults are baked into `docker-compose.yml`):
+AI is disabled by default. Configure your provider locally before enabling it:
 
 | Variable                             | Purpose                                                                 |
 | ------------------------------------ | ----------------------------------------------------------------------- |
 | `PAPERLESS_AI_ENABLED`               | Master switch for the AI suite (chat + index).                          |
 | `PAPERLESS_AI_LLM_API_KEY`           | API key for the embedding/chat backend (your Mistral key).              |
-| `PAPERLESS_AI_LLM_EMBEDDING_BACKEND` | Embedding backend: `mistral`, `openai-like`, `huggingface` or `ollama`. |
+| `PAPERLESS_AI_LLM_EMBEDDING_BACKEND` | Embedding backend: `openai-like`, `huggingface` or `ollama`. |
 | `PAPERLESS_AI_LLM_EMBEDDING_MODEL`   | Embedding model name (e.g. `mistral-embed`).                            |
-| `PAPERLESS_AI_LLM_BACKEND`           | Chat LLM backend: `mistral`, `openai-like` or `ollama`.                 |
+| `PAPERLESS_AI_LLM_BACKEND`           | Chat LLM backend: `openai-like` or `ollama`.                 |
 | `PAPERLESS_AI_LLM_MODEL`             | Chat model name (e.g. `mistral-large-latest`).                          |
 | `PAPERLESS_MISTRAL_API_KEY`          | Enables the Mistral OCR parser; unset → Tesseract.                      |
 | `PAPERLESS_MISTRAL_MODEL`            | Mistral OCR model (default `mistral-ocr-latest`).                       |
@@ -84,6 +85,25 @@ defaults are baked into `docker-compose.yml`):
 > Note: This fork assumes you are comfortable managing your own Docker deployment. There is no one-line install script or hosted demo like the upstream project.
 
 ---
+
+## Upgrading this fork to v3.2
+
+Back up the database, media and data volumes before upgrading. Keep local
+credentials, hosts and volume/project names in `.env` or an ignored Compose
+override. Set `COMPOSE_PROJECT_NAME` to the existing project name; changing it
+makes Compose select different named volumes.
+
+This merge retains the fork's Django migration history and reconciles it with
+upstream. The AI index now uses upstream sqlite-vec instead of LanceDB. Rebuild
+it from existing document content after migration:
+
+```sh
+docker compose exec webserver python manage.py document_llmindex rebuild
+```
+
+Indexing can make billable embedding calls. Document files do not need to be
+re-OCRed. Keep the old database/data backups for rollback; rolling back only the
+container image does not reverse database/index migrations.
 
 ## Development setup (with `uv`)
 
@@ -105,7 +125,7 @@ This will create and manage a virtual environment and install all development de
 
 ### Common tasks
 
-Run tests (if/when they are re-enabled):
+Run tests:
 
 ```bash
 uv run pytest
@@ -121,21 +141,17 @@ uv run manage.py runserver
 Lint and format using pre-commit hooks (also used in CI):
 
 ```bash
-uv run pre-commit run --all-files
+uv run prek run --all-files
 ```
 
 ---
 
 ## CI pipeline (fork-specific)
 
-The GitHub Actions workflow in `.github/workflows/ci.yml` has been simplified for this fork:
-
-- ✅ Keep: static checks via `pre-commit`.
-- ✅ Keep: documentation build via `mkdocs` (no deploy step).
-- ❌ Remove: backend and frontend test matrices that depend on heavy Docker orchestration.
-- ❌ Remove: Docker image build & publish and release packaging logic.
-
-This makes the CI pipeline faster and easier to maintain for a personal / small-team fork while still catching obvious issues in pull requests.
+The fork retains checks for backend/frontend tests, linting, static analysis and
+container builds. Upstream publishing, release, translation and maintenance
+workflows remain removed. There is no deployment automation tied to a personal
+server. Keep credentials and deployment overrides in ignored local files.
 
 ---
 

@@ -7,6 +7,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import {
   NgbAlertModule,
   NgbModal,
@@ -24,7 +25,7 @@ import {
   SystemStatus,
   SystemStatusItemStatus,
 } from 'src/app/data/system-status'
-import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
+import { HideableSidebarItemID, SETTINGS_KEYS } from 'src/app/data/ui-settings'
 import { IfOwnerDirective } from 'src/app/directives/if-owner.directive'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { PermissionsGuard } from 'src/app/guards/permissions.guard'
@@ -99,6 +100,13 @@ const status: SystemStatus = {
     llmindex_status: SystemStatusItemStatus.DISABLED,
     llmindex_last_modified: new Date().toISOString(),
     llmindex_error: null,
+    summary: {
+      days: 30,
+      total_count: 12,
+      pending_count: 1,
+      success_count: 10,
+      failure_count: 1,
+    },
   },
 }
 
@@ -161,7 +169,7 @@ describe('SettingsComponent', () => {
     viewportScroller = TestBed.inject(ViewportScroller)
     toastService = TestBed.inject(ToastService)
     settingsService = TestBed.inject(SettingsService)
-    settingsService.currentUser = users[0]
+    settingsService.currentUser.set(users[0])
     userService = TestBed.inject(UserService)
     permissionsService = TestBed.inject(PermissionsService)
     modalService = TestBed.inject(NgbModal)
@@ -202,7 +210,46 @@ describe('SettingsComponent', () => {
     fixture.detectChanges()
   }
 
-  it('should support tabbed settings & change URL, prevent navigation if dirty confirmation rejected', () => {
+  it('supports configuring sidebar items and canceling changes', () => {
+    completeSetup()
+
+    component.toggleSidebarItem(HideableSidebarItemID.Workflows, false)
+    fixture.detectChanges()
+
+    expect(component.settingsForm.value.sidebarHiddenItems).toContain(
+      HideableSidebarItemID.Workflows
+    )
+
+    settingsService.updateSidebarItemVisibility(
+      HideableSidebarItemID.Mail,
+      false
+    )
+
+    expect(component.settingsForm.value.sidebarHiddenItems).toContain(
+      HideableSidebarItemID.Mail
+    )
+
+    component.reset()
+
+    expect(component.settingsForm.value.sidebarHiddenItems).not.toContain(
+      HideableSidebarItemID.Workflows
+    )
+    expect(component.settingsForm.value.sidebarHiddenItems).not.toContain(
+      HideableSidebarItemID.Mail
+    )
+  })
+
+  it('enables sidebar item controls on general settings until destroyed', () => {
+    completeSetup()
+
+    expect(settingsService.organizingSidebarItems()).toBe(true)
+
+    component.ngOnDestroy()
+
+    expect(settingsService.organizingSidebarItems()).toBe(false)
+  })
+
+  it('should support tabbed settings & change URL, prevent navigation if dirty confirmation rejected', async () => {
     completeSetup()
     const navigateSpy = jest.spyOn(router, 'navigate')
     const tabButtons = fixture.debugElement.queryAll(By.directive(NgbNavLink))
@@ -210,16 +257,19 @@ describe('SettingsComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['settings', 'documents'])
     tabButtons[2].nativeElement.dispatchEvent(new MouseEvent('click'))
     expect(navigateSpy).toHaveBeenCalledWith(['settings', 'permissions'])
+    await fixture.whenStable()
 
     const initSpy = jest.spyOn(component, 'initialize')
     component.isDirty = true // mock dirty
     navigateSpy.mockResolvedValueOnce(false) // nav rejected cause dirty
     tabButtons[0].nativeElement.dispatchEvent(new MouseEvent('click'))
+    await fixture.whenStable()
     expect(navigateSpy).toHaveBeenCalledWith(['settings', 'general'])
     expect(initSpy).not.toHaveBeenCalled()
 
     navigateSpy.mockResolvedValueOnce(true) // nav accepted even though dirty
     tabButtons[2].nativeElement.dispatchEvent(new MouseEvent('click'))
+    await fixture.whenStable()
     expect(navigateSpy).toHaveBeenCalledWith(['settings', 'permissions'])
     expect(initSpy).toHaveBeenCalled()
   })
@@ -232,13 +282,14 @@ describe('SettingsComponent', () => {
     activatedRoute.snapshot.fragment = '#notifications'
     const scrollSpy = jest.spyOn(viewportScroller, 'scrollToAnchor')
     component.ngOnInit()
-    expect(component.activeNavID).toEqual(4) // Notifications
+    expect(component.activeNavID()).toEqual(4) // Notifications
     component.ngAfterViewInit()
     expect(scrollSpy).toHaveBeenCalledWith('#notifications')
   })
 
   it('should support save local settings updating appearance settings and calling API, show error', () => {
     completeSetup()
+    component.toggleSidebarItem(HideableSidebarItemID.Workflows, false)
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
     const toastSpy = jest.spyOn(toastService, 'show')
     const storeSpy = jest.spyOn(settingsService, 'storeSettings')
@@ -257,7 +308,10 @@ describe('SettingsComponent', () => {
     expect(toastErrorSpy).toHaveBeenCalled()
     expect(storeSpy).toHaveBeenCalled()
     expect(appearanceSettingsSpy).not.toHaveBeenCalled()
-    expect(setSpy).toHaveBeenCalledTimes(32)
+    expect(setSpy).toHaveBeenCalledTimes(34)
+    expect(setSpy).toHaveBeenCalledWith(SETTINGS_KEYS.SIDEBAR_HIDDEN_ITEMS, [
+      HideableSidebarItemID.Workflows,
+    ])
 
     // succeed
     storeSpy.mockReturnValueOnce(of(true))
@@ -340,13 +394,13 @@ describe('SettingsComponent', () => {
           type === PermissionType.SystemMonitoring
       )
     completeSetup()
-    expect(component['systemStatus']).toEqual(status) // private
+    expect(component.systemStatus()).toEqual(status)
     expect(component.systemStatusHasErrors).toBeTruthy()
     // coverage
-    component['systemStatus'].database.status = SystemStatusItemStatus.OK
-    component['systemStatus'].tasks.redis_status = SystemStatusItemStatus.OK
-    component['systemStatus'].tasks.celery_status = SystemStatusItemStatus.OK
-    component['systemStatus'].tasks.sanity_check_status =
+    component.systemStatus().database.status = SystemStatusItemStatus.OK
+    component.systemStatus().tasks.redis_status = SystemStatusItemStatus.OK
+    component.systemStatus().tasks.celery_status = SystemStatusItemStatus.OK
+    component.systemStatus().tasks.sanity_check_status =
       SystemStatusItemStatus.OK
     expect(component.systemStatusHasErrors).toBeFalsy()
   })
@@ -389,17 +443,17 @@ describe('SettingsComponent', () => {
     completeSetup()
     const field = 'storage_path'
     expect(
-      component.settingsForm.get('documentDetailsHiddenFields').value.length
-    ).toEqual(0)
+      component.settingsForm.get('documentDetailsHiddenFields').value
+    ).toHaveLength(0)
     component.toggleDocumentDetailField(field, false)
     expect(
-      component.settingsForm.get('documentDetailsHiddenFields').value.length
-    ).toEqual(1)
+      component.settingsForm.get('documentDetailsHiddenFields').value
+    ).toHaveLength(1)
     expect(component.isDocumentDetailFieldShown(field)).toBeFalsy()
     component.toggleDocumentDetailField(field, true)
     expect(
-      component.settingsForm.get('documentDetailsHiddenFields').value.length
-    ).toEqual(0)
+      component.settingsForm.get('documentDetailsHiddenFields').value
+    ).toHaveLength(0)
     expect(component.isDocumentDetailFieldShown(field)).toBeTruthy()
   })
 })

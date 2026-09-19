@@ -1,9 +1,8 @@
 import { DragDropModule } from '@angular/cdk/drag-drop'
 import { NgTemplateOutlet } from '@angular/common'
-import { AfterViewInit, Component, Input } from '@angular/core'
+import { AfterViewInit, Component, input, signal } from '@angular/core'
 import { LucideAngularModule } from 'lucide-angular'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
-import { LoadingComponentWithPermissions } from 'src/app/components/loading-component/loading.component'
 
 @Component({
   selector: 'pngx-widget-frame',
@@ -16,32 +15,22 @@ import { LoadingComponentWithPermissions } from 'src/app/components/loading-comp
     NgTemplateOutlet,
   ],
 })
-export class WidgetFrameComponent
-  extends LoadingComponentWithPermissions
-  implements AfterViewInit
-{
-  constructor() {
-    super()
-  }
+export class WidgetFrameComponent implements AfterViewInit {
+  readonly show = signal(false)
 
-  @Input()
-  title: string
+  loading = input(false)
 
-  @Input()
-  loading: boolean = false
+  title = input<string>()
 
-  @Input()
-  draggable: any
+  titleIcon = input<string>()
 
-  @Input()
-  cardless: boolean = false
+  draggable = input<any>()
 
-  @Input()
-  badge: string
+  cardless = input(false)
+
+  badge = input<string | number>(null)
 
   ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.show = true
-    }, 100)
+    this.show.set(true)
   }
 }

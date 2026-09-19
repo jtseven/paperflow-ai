@@ -117,3 +117,27 @@ class TestMistralOcrParser(TestCase):
         client.ocr.process.assert_called_once()
         _, kwargs = client.ocr.process.call_args
         self.assertEqual(kwargs["model"], "mistral-ocr-latest")
+
+
+class TestMistralSelection(TestCase):
+    def test_workflow_only_mode_excludes_mistral_until_requested(self):
+        from paperless.parsers.registry import ParserRegistry
+
+        registry = ParserRegistry()
+        registry.register_builtin(MistralOcrDocumentParser)
+        with mock.patch.dict("os.environ", {"PAPERLESS_MISTRAL_API_KEY": "test-key"}):
+            self.assertIsNone(
+                registry.get_parser_for_file(
+                    "application/pdf",
+                    "test.pdf",
+                    allow_remote=False,
+                ),
+            )
+            self.assertIs(
+                registry.get_parser_for_file(
+                    "application/pdf",
+                    "test.pdf",
+                    allow_remote=True,
+                ),
+                MistralOcrDocumentParser,
+            )

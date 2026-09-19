@@ -4,19 +4,51 @@
   i18n-info
   [infoLink]="activeInfoLink"
   [loading]="activeHeaderLoading"
-  >
+>
   @if (activeManagementList) {
     <div ngbDropdown class="btn-group flex-fill d-sm-none">
-      <button class="btn btn-sm btn-outline-primary" id="dropdownSelectMobile" ngbDropdownToggle>
-        <lucide-icon name="text-indent-left"></lucide-icon><div class="d-none d-sm-inline ms-1"><ng-container i18n>Select</ng-container></div>
+      <button
+        class="btn btn-sm btn-outline-primary"
+        id="dropdownSelectMobile"
+        ngbDropdownToggle
+        aria-label="Select"
+        i18n-aria-label
+      >
+        <lucide-icon name="text-indent-left"></lucide-icon>
+        <div class="d-none d-sm-inline ms-1">
+          <ng-container i18n>Select</ng-container>
+        </div>
         @if (activeManagementList.hasSelection) {
-          <pngx-clearable-badge [selected]="activeManagementList.hasSelection" [number]="activeManagementList.selectedCount" (cleared)="activeManagementList.selectNone()"></pngx-clearable-badge><span class="visually-hidden">selected</span>
+          <pngx-clearable-badge
+            [selected]="activeManagementList.hasSelection"
+            [number]="activeManagementList.selectedCount"
+            (cleared)="activeManagementList.selectNone()"
+          ></pngx-clearable-badge
+          ><span class="visually-hidden">selected</span>
         }
       </button>
-      <div ngbDropdownMenu aria-labelledby="dropdownSelectMobile" class="shadow">
-        <button ngbDropdownItem (click)="activeManagementList.selectNone()" i18n>Select none</button>
-        <button ngbDropdownItem (click)="activeManagementList.selectPage(true)" i18n>Select page</button>
-        <button ngbDropdownItem (click)="activeManagementList.selectAll()" i18n>Select all</button>
+      <div
+        ngbDropdownMenu
+        aria-labelledby="dropdownSelectMobile"
+        class="shadow"
+      >
+        <button
+          ngbDropdownItem
+          (click)="activeManagementList.selectNone()"
+          i18n
+        >
+          Select none
+        </button>
+        <button
+          ngbDropdownItem
+          (click)="activeManagementList.selectPage(true)"
+          i18n
+        >
+          Select page
+        </button>
+        <button ngbDropdownItem (click)="activeManagementList.selectAll()" i18n>
+          Select all
+        </button>
       </div>
     </div>
 
@@ -26,50 +58,102 @@
       </div>
       <div class="btn-group btn-group-sm flex-nowrap">
         @if (activeManagementList.hasSelection) {
-          <button class="btn btn-sm btn-outline-secondary" (click)="activeManagementList.selectNone()">
-            <lucide-icon name="slash-circle" class="me-1"></lucide-icon><ng-container i18n>None</ng-container>
+          <button
+            class="btn btn-sm btn-outline-secondary"
+            (click)="activeManagementList.selectNone()"
+          >
+            <lucide-icon name="slash-circle" class="me-1"></lucide-icon
+            ><ng-container i18n>None</ng-container>
           </button>
         }
-        <button class="btn btn-sm btn-outline-primary" (click)="activeManagementList.selectPage(true)">
-          <lucide-icon name="file-earmark-check" class="me-1"></lucide-icon><ng-container i18n>Page</ng-container>
+        <button
+          class="btn btn-sm btn-outline-primary"
+          (click)="activeManagementList.selectPage(true)"
+        >
+          <lucide-icon name="file-earmark-check" class="me-1"></lucide-icon
+          ><ng-container i18n>Page</ng-container>
         </button>
-        <button class="btn btn-sm btn-outline-primary" (click)="activeManagementList.selectAll()">
-          <lucide-icon name="check-all" class="me-1"></lucide-icon><ng-container i18n>All</ng-container>
+        <button
+          class="btn btn-sm btn-outline-primary"
+          (click)="activeManagementList.selectAll()"
+        >
+          <lucide-icon name="check-all" class="me-1"></lucide-icon
+          ><ng-container i18n>All</ng-container>
         </button>
       </div>
     </div>
 
-    <button type="button" class="btn btn-sm btn-outline-primary" (click)="activeManagementList.setPermissions()"
-      [disabled]="!activeManagementList.userCanBulkEdit(PermissionAction.Change) || !activeManagementList.hasSelection">
-      <lucide-icon name="person-fill-lock" class="me-1"></lucide-icon><ng-container i18n>Permissions</ng-container>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary"
+      (click)="activeManagementList.setPermissions()"
+      [disabled]="
+        !activeManagementList.userCanBulkEdit(PermissionAction.Change) ||
+        !activeManagementList.hasSelection
+      "
+    >
+      <lucide-icon name="person-fill-lock" class="me-1"></lucide-icon
+      ><ng-container i18n>Permissions</ng-container>
     </button>
-    <button type="button" class="btn btn-sm btn-outline-danger" (click)="activeManagementList.delete()"
-      [disabled]="!activeManagementList.userCanBulkEdit(PermissionAction.Delete) || !activeManagementList.hasSelection">
-      <lucide-icon name="trash" class="me-1"></lucide-icon><ng-container i18n>Delete</ng-container>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-danger"
+      (click)="activeManagementList.delete()"
+      [disabled]="
+        !activeManagementList.userCanBulkEdit(PermissionAction.Delete) ||
+        !activeManagementList.hasSelection
+      "
+    >
+      <lucide-icon name="trash" class="me-1"></lucide-icon
+      ><ng-container i18n>Delete</ng-container>
     </button>
-    <button type="button" class="btn btn-sm btn-outline-primary ms-md-5" (click)="activeManagementList.openCreateDialog()"
-      *pngxIfPermissions="{ action: PermissionAction.Add, type: activeManagementList.permissionType }">
-      <lucide-icon name="plus-circle" class="me-1"></lucide-icon><ng-container i18n>Create</ng-container>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary ms-md-5"
+      (click)="activeManagementList.openCreateDialog()"
+      *pngxIfPermissions="{
+        action: PermissionAction.Add,
+        type: activeManagementList.permissionType,
+      }"
+    >
+      <lucide-icon name="plus-circle" class="me-1"></lucide-icon
+      ><ng-container i18n>Create</ng-container>
     </button>
-  } @else if (activeCustomFields) {
-    <button type="button" class="btn btn-sm btn-outline-primary" (click)="activeCustomFields.editField()"
-      *pngxIfPermissions="{ action: PermissionAction.Add, type: PermissionType.CustomField }">
-      <lucide-icon name="plus-circle" class="me-1"></lucide-icon><ng-container i18n>Add Field</ng-container>
+  } @else if (customFieldsActive) {
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary"
+      (click)="addCustomField()"
+      *pngxIfPermissions="{
+        action: PermissionAction.Add,
+        type: PermissionType.CustomField,
+      }"
+    >
+      <lucide-icon name="plus-circle" class="me-1"></lucide-icon
+      ><ng-container i18n>Add Field</ng-container>
     </button>
   }
 </pngx-page-header>
 
-<ul ngbNav #nav="ngbNav" (navChange)="onNavChange($event)" [(activeId)]="activeNavID" class="nav-underline">
+<ul
+  ngbNav
+  #nav="ngbNav"
+  (navChange)="onNavChange($event)"
+  [activeId]="activeNavID()"
+  (activeIdChange)="activeNavID.set($event)"
+  class="nav-underline"
+>
   @for (section of visibleSections; track section.id) {
     <li [ngbNavItem]="section.id">
-      <a ngbNavLink >
-        <lucide-icon class="me-2" [name]="section.icon"></lucide-icon>{{ section.label }}
+      <a ngbNavLink>
+        <lucide-icon class="me-2" [name]="section.icon"></lucide-icon
+        >{{ section.label }}
       </a>
     </li>
   }
 </ul>
 
-<div class="my-3 shadow-sm">
+<div class="my-3">
   <ng-container
     [ngComponentOutlet]="activeSection?.component"
     #activeOutlet="ngComponentOutlet"

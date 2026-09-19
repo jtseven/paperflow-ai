@@ -14,21 +14,25 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 3 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Keep parallelism modest for the shared SQLite backend. */
+  workers: 2,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    port,
-    // Serve with the e2e environment so the app's API/WebSocket requests target
-    // http://localhost:8000, matching the recorded HAR fixtures (the default dev
-    // server derives URLs from document.baseURI on :4200, which they no longer
-    // match). See src/environments/environment.e2e.ts.
-    command: 'pnpm run start:e2e',
-    reuseExistingServer: !process.env.CI,
-    timeout: 2 * 60 * 1000,
-  },
+  /* Run the disposable backend and local UI before starting the tests. */
+  webServer: [
+    {
+      url: 'http://localhost:8001/accounts/login/',
+      command: 'npm run e2e:backend',
+      reuseExistingServer: false,
+      timeout: 2 * 60 * 1000,
+    },
+    {
+      port,
+      command: 'npm run start:e2e',
+      reuseExistingServer: !process.env.CI,
+      timeout: 2 * 60 * 1000,
+    },
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */

@@ -7,6 +7,7 @@ import {
   Router,
 } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject } from 'rxjs'
 import {
@@ -14,10 +15,12 @@ import {
   PermissionsService,
   PermissionType,
 } from 'src/app/services/permissions.service'
+import { CustomFieldsComponent } from './custom-fields/custom-fields.component'
 import {
   DocumentAttributesComponent,
   DocumentAttributesSectionKind,
 } from './document-attributes.component'
+import { ManagementListComponent } from './management-list/management-list.component'
 
 @Component({
   selector: 'pngx-dummy-section',
@@ -100,7 +103,7 @@ describe('DocumentAttributesComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['attributes', 'tags'], {
       replaceUrl: true,
     })
-    expect(component.activeNavID).toBe(1)
+    expect(component.activeNavID()).toBe(1)
   })
 
   it('should set active section from route param when valid', () => {
@@ -116,7 +119,7 @@ describe('DocumentAttributesComponent', () => {
     fixture.detectChanges()
     paramMapSubject.next(convertToParamMap({ section: 'customfields' }))
 
-    expect(component.activeNavID).toBe(2)
+    expect(component.activeNavID()).toBe(2)
     expect(router.navigate).not.toHaveBeenCalled()
   })
 
@@ -124,10 +127,10 @@ describe('DocumentAttributesComponent', () => {
     jest.spyOn(permissionsService, 'currentUserCan').mockReturnValue(true)
 
     fixture.detectChanges()
-    component.activeNavID = 1
+    component.activeNavID.set(1)
     paramMapSubject.next(convertToParamMap({ section: 'customfields' }))
 
-    expect(component.activeNavID).toBe(2)
+    expect(component.activeNavID()).toBe(2)
   })
 
   it('should redirect to dashboard when no sections are visible', () => {
@@ -169,21 +172,66 @@ describe('DocumentAttributesComponent', () => {
     jest.spyOn(permissionsService, 'currentUserCan').mockReturnValue(true)
     expect(component.activeManagementList).toBeNull()
 
-    component.activeNavID = 1
+    component.activeNavID.set(1)
+    const managementList = Object.create(ManagementListComponent.prototype)
+    component.activeOutlet = {
+      componentInstance: managementList,
+    } as any
     expect(component.activeSection.kind).toBe(
       DocumentAttributesSectionKind.ManagementList
     )
-    expect(component.activeManagementList).toBeDefined()
+    expect(component.activeManagementList).toBe(managementList)
+  })
+
+  it('should use the current component instance when the outlet is reused', () => {
+    jest.spyOn(permissionsService, 'currentUserCan').mockReturnValue(true)
+    component.activeNavID.set(1)
+    const firstManagementList = Object.create(ManagementListComponent.prototype)
+    const secondManagementList = Object.create(
+      ManagementListComponent.prototype
+    )
+    component.activeOutlet = {
+      componentInstance: firstManagementList,
+    } as any
+
+    expect(component.activeManagementList).toBe(firstManagementList)
+
+    component.activeOutlet.componentInstance = secondManagementList
+
+    expect(component.activeManagementList).toBe(secondManagementList)
   })
 
   it('should return activeCustomFields correctly', () => {
     jest.spyOn(permissionsService, 'currentUserCan').mockReturnValue(true)
     expect(component.activeCustomFields).toBeNull()
 
-    component.activeNavID = 2
+    component.activeNavID.set(2)
     expect(component.activeSection.kind).toBe(
       DocumentAttributesSectionKind.CustomFields
     )
-    expect(component.activeCustomFields).toBeDefined()
+    const customFields = Object.create(CustomFieldsComponent.prototype)
+    customFields.editField = jest.fn()
+    component.activeOutlet = {
+      componentInstance: customFields,
+    } as any
+    expect(component.activeCustomFields).toBe(customFields)
+
+    component.addCustomField()
+    expect(customFields.editField).toHaveBeenCalled()
+  })
+
+  it('should show the add field button before the custom fields instance is available', async () => {
+    jest.spyOn(permissionsService, 'currentUserCan').mockReturnValue(true)
+
+    fixture.detectChanges()
+    component.activeNavID.set(2)
+    await fixture.whenStable()
+
+    expect(component.activeCustomFields).toBeNull()
+    expect(
+      fixture.nativeElement.querySelector(
+        'pngx-page-header .btn-outline-primary'
+      )?.textContent
+    ).toContain('Add Field')
   })
 })

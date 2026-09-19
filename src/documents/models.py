@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from pathlib import Path
 from typing import Final
 
@@ -217,6 +218,7 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
         _("checksum"),
         max_length=64,
         editable=False,
+        db_index=True,
         help_text=_("The checksum of the original document."),
     )
 
@@ -226,6 +228,7 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
         editable=False,
         blank=True,
         null=True,
+        db_index=True,
         help_text=_("The checksum of the archived document."),
     )
 
@@ -234,7 +237,7 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
         blank=False,
         null=True,
         unique=False,
-        db_index=False,
+        db_index=True,
         validators=[MinValueValidator(1)],
         help_text=_(
             "The number of pages of the document.",
@@ -338,6 +341,9 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
         ordering = ("-created",)
         verbose_name = _("document")
         verbose_name_plural = _("documents")
+        indexes = [
+            models.Index(fields=["owner", "created"]),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["root_document", "version_index"],
@@ -368,11 +374,29 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
         For version documents, this is always the document's own content.
         If the queryset already annotated ``effective_content``, that value is used.
         """
+        # Here to avoid circular import
+        from documents.versioning import LATEST_VERSION_CONTENT_PREFETCH_ATTR
+        from documents.versioning import sort_versions_newest_first
+        from documents.versioning import versions_newest_first
+
         if hasattr(self, "effective_content"):
             return getattr(self, "effective_content")
 
         if self.root_document_id is not None or self.pk is None:
             return self.content
+
+        latest_version_prefetch = getattr(
+            self,
+            LATEST_VERSION_CONTENT_PREFETCH_ATTR,
+            None,
+        )
+        if latest_version_prefetch is not None:
+            # Empty list means prefetch ran and found no versions — use own content.
+            return (
+                latest_version_prefetch[0].content
+                if latest_version_prefetch
+                else self.content
+            )
 
         prefetched_cache = getattr(self, "_prefetched_objects_cache", None)
         prefetched_versions = (
@@ -384,12 +408,10 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
             # Empty list means prefetch ran and found no versions — use own content.
             if not prefetched_versions:
                 return self.content
-            latest_prefetched = max(prefetched_versions, key=lambda doc: doc.id)
-            return latest_prefetched.content
+            return sort_versions_newest_first(prefetched_versions)[0].content
 
         latest_version_content = (
-            Document.objects.filter(root_document=self)
-            .order_by("-id")
+            versions_newest_first(Document.objects.filter(root_document=self))
             .values_list("content", flat=True)
             .first()
         )
@@ -456,7 +478,11 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
         """
         Returns a sanitized filename for the document, not including any paths.
         """
-        result = str(self)
+        # Root owns metadata for all versions
+        context_document = (
+            self.root_document if self.root_document_id is not None else self
+        )
+        result = str(context_document)
 
         if counter:
             result += f"_{counter:02}"
@@ -503,18 +529,87 @@ class Document(SoftDeleteModel, ModelWithOwner):  # type: ignore[django-manager-
     def delete(
         self,
         *args,
+        transaction_id=None,
         **kwargs,
     ):
-        # If deleting a root document, move all its versions to trash as well.
+        # Versions must share the root's transaction ID so they are restored
+        # together by django-softdelete.
+        if transaction_id is None:
+            transaction_id = uuid.uuid4()
         if self.root_document_id is None:
-            Document.objects.filter(root_document=self).delete()
+            Document.objects.filter(root_document=self).delete(
+                transaction_id=transaction_id,
+            )
         return super().delete(
             *args,
+            transaction_id=transaction_id,
             **kwargs,
         )
 
 
 class SavedView(ModelWithOwner):
+    class Icon(models.TextChoices):
+        ARCHIVE = ("archive", _("Archive"))
+        BANK = ("bank", _("Bank"))
+        BASKET = ("basket", _("Basket"))
+        BELL = ("bell", _("Bell"))
+        BOOKMARK = ("bookmark", _("Bookmark"))
+        BOXES = ("boxes", _("Boxes"))
+        BRIEFCASE = ("briefcase", _("Briefcase"))
+        BUILDING = ("building", _("Building"))
+        CALCULATOR = ("calculator", _("Calculator"))
+        CALENDAR = ("calendar", _("Calendar"))
+        CAMERA = ("camera", _("Camera"))
+        CARD_CHECKLIST = ("card-checklist", _("Checklist"))
+        CASH = ("cash", _("Cash"))
+        CHAT_LEFT_TEXT = ("chat-left-text", _("Chat"))
+        CHECK_CIRCLE = ("check-circle", _("Check"))
+        CLIPBOARD = ("clipboard", _("Clipboard"))
+        CLOCK_HISTORY = ("clock-history", _("Clock"))
+        CREDIT_CARD = ("credit-card", _("Credit card"))
+        DOWNLOAD = ("download", _("Download"))
+        ENVELOPE = ("envelope", _("Envelope"))
+        EXCLAMATION_TRIANGLE = ("exclamation-triangle", _("Warning"))
+        FILE_EARMARK = ("file-earmark", _("File"))
+        FILE_EARMARK_CHECK = ("file-earmark-check", _("Checked file"))
+        FILE_EARMARK_LOCK = ("file-earmark-lock", _("Locked file"))
+        FILE_EARMARK_MEDICAL = ("file-earmark-medical", _("Medical file"))
+        FILE_EARMARK_PERSON = ("file-earmark-person", _("Person file"))
+        FILE_EARMARK_SPREADSHEET = (
+            "file-earmark-spreadsheet",
+            _("Spreadsheet"),
+        )
+        FILE_TEXT = ("file-text", _("Text file"))
+        FILES = ("files", _("Files"))
+        FOLDER = ("folder", _("Folder"))
+        FUNNEL = ("funnel", _("Filter"))
+        GEAR = ("gear", _("Gear"))
+        GLOBE = ("globe2", _("Globe"))
+        HASH = ("hash", _("Hash"))
+        HEART = ("heart", _("Heart"))
+        HOUSE = ("house", _("House"))
+        INBOX = ("inbox", _("Inbox"))
+        JOURNALS = ("journals", _("Journals"))
+        LIST_TASK = ("list-task", _("Task list"))
+        NEWSPAPER = ("newspaper", _("Newspaper"))
+        PAPERCLIP = ("paperclip", _("Attachment"))
+        PEOPLE = ("people", _("People"))
+        PERSON = ("person", _("Person"))
+        PRINTER = ("printer", _("Printer"))
+        RECEIPT = ("receipt", _("Receipt"))
+        SAFE = ("safe", _("Safe"))
+        SEARCH = ("search", _("Search"))
+        SEND = ("send", _("Send"))
+        SHOP = ("shop", _("Shop"))
+        STACK = ("stack", _("Stack"))
+        STARS = ("stars", _("Stars"))
+        TAG = ("tag", _("Tag"))
+        TAGS = ("tags", _("Tags"))
+        TELEPHONE = ("telephone", _("Telephone"))
+        TRUCK = ("truck", _("Truck"))
+        UPC_SCAN = ("upc-scan", _("Barcode"))
+        WALLET = ("wallet2", _("Wallet"))
+
     class DisplayMode(models.TextChoices):
         TABLE = ("table", _("Table"))
         SMALL_CARDS = ("smallCards", _("Small Cards"))
@@ -536,6 +631,13 @@ class SavedView(ModelWithOwner):
         CUSTOM_FIELD = ("custom_field_%d", ("Custom Field"))
 
     name = models.CharField(_("name"), max_length=128)
+
+    icon = models.CharField(
+        _("icon"),
+        max_length=64,
+        choices=Icon.choices,
+        default=Icon.FUNNEL,
+    )
 
     sort_field = models.CharField(
         _("sort field"),
@@ -627,6 +729,7 @@ class SavedViewFilterRule(models.Model):
         (47, _("mime type is")),
         (48, _("simple title search")),
         (49, _("simple text search")),
+        (50, _("has duplicates")),
     ]
 
     saved_view = models.ForeignKey(
@@ -691,6 +794,7 @@ class PaperlessTask(ModelWithOwner):
         REPROCESS_DOCUMENT = "reprocess_document", _("Reprocess Document")
         BUILD_SHARE_LINK = "build_share_link", _("Build Share Link")
         BULK_DELETE = "bulk_delete", _("Bulk Delete")
+        APPLY_AI_SUGGESTIONS = "apply_ai_suggestions", _("Apply AI Suggestions")
 
     COMPLETE_STATUSES = (
         Status.SUCCESS,
@@ -1190,6 +1294,12 @@ class CustomFieldInstance(SoftDeleteModel):
         ordering = ("created",)
         verbose_name = _("custom field instance")
         verbose_name_plural = _("custom field instances")
+        indexes = [
+            models.Index(fields=["field", "value_date"]),
+            models.Index(fields=["field", "value_int"]),
+            models.Index(fields=["field", "value_float"]),
+            models.Index(fields=["field", "value_monetary_amount"]),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["document", "field"],
@@ -1589,6 +1699,22 @@ class WorkflowAction(models.Model):
             6,
             _("Move to trash"),
         )
+        REMOTE_OCR = (
+            7,
+            _("Remote OCR"),
+        )
+        APPLY_AI_SUGGESTIONS = (
+            8,
+            _("Apply AI suggestions"),
+        )
+
+    class AISuggestionField(models.TextChoices):
+        TITLE = ("title", _("Title"))
+        TAGS = ("tags", _("Tags"))
+        CORRESPONDENT = ("correspondent", _("Correspondent"))
+        DOCUMENT_TYPE = ("document_type", _("Document type"))
+        STORAGE_PATH = ("storage_path", _("Storage path"))
+        CREATED = ("created", _("Created date"))
 
     type = models.PositiveSmallIntegerField(
         _("Workflow Action Type"),
@@ -1824,6 +1950,33 @@ class WorkflowAction(models.Model):
         blank=True,
         help_text=_(
             "Passwords to try when removing PDF protection. Separate with commas or new lines.",
+        ),
+    )
+
+    ai_suggestion_fields = models.JSONField(
+        _("AI suggestion fields"),
+        null=True,
+        blank=True,
+        help_text=_(
+            "Which of the AI-suggested fields to apply to the document.",
+        ),
+    )
+
+    ai_create_missing = models.BooleanField(
+        _("create missing objects"),
+        default=False,
+        help_text=_(
+            "Create suggested tags, correspondents, document types and storage "
+            "paths that do not already exist instead of skipping them.",
+        ),
+    )
+
+    ai_overwrite_existing = models.BooleanField(
+        _("overwrite existing values"),
+        default=False,
+        help_text=_(
+            "Apply suggestions even if the document already has a value for that "
+            "field. Tags are always added to, never replaced.",
         ),
     )
 

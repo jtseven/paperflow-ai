@@ -10,6 +10,7 @@ from paperless.models import CleanChoices
 from paperless.models import ColorConvertChoices
 from paperless.models import ModeChoices
 from paperless.models import OutputTypeChoices
+from paperless.models import RemoteOCRMode
 
 # Single source of truth pairing each ApplicationConfiguration model field with
 # the Django settings attribute (env var / paperless.conf / built-in default)
@@ -53,6 +54,11 @@ CONFIG_SETTINGS_MAP: dict[str, str] = {
     "llm_embedding_endpoint": "LLM_EMBEDDING_ENDPOINT",
     "llm_embedding_chunk_size": "LLM_EMBEDDING_CHUNK_SIZE",
     "llm_context_size": "LLM_CONTEXT_SIZE",
+    "llm_request_timeout": "LLM_REQUEST_TIMEOUT",
+    "remote_ocr_engine": "REMOTE_OCR_ENGINE",
+    "remote_ocr_api_key": "REMOTE_OCR_API_KEY",
+    "remote_ocr_endpoint": "REMOTE_OCR_ENDPOINT",
+    "remote_ocr_mode": "REMOTE_OCR_MODE",
     "llm_backend": "LLM_BACKEND",
     "llm_model": "LLM_MODEL",
     "llm_api_key": "LLM_API_KEY",
@@ -61,7 +67,7 @@ CONFIG_SETTINGS_MAP: dict[str, str] = {
 }
 
 # Fields whose inherited value must never be exposed verbatim to the frontend.
-_SECRET_CONFIG_FIELDS = frozenset({"llm_api_key"})
+_SECRET_CONFIG_FIELDS = frozenset({"llm_api_key", "remote_ocr_api_key"})
 _SECRET_PLACEHOLDER = "********"
 
 
@@ -265,6 +271,45 @@ class GeneralConfig(BaseConfig):
 
 
 @dataclasses.dataclass
+class RemoteOCRConfig(BaseConfig):
+    """
+    Settings for the remote (cloud) OCR parser
+    """
+
+    remote_ocr_engine: str | None = dataclasses.field(init=False)
+    remote_ocr_api_key: str | None = dataclasses.field(init=False)
+    remote_ocr_endpoint: str | None = dataclasses.field(init=False)
+    remote_ocr_mode: RemoteOCRMode = dataclasses.field(init=False)
+
+    def __post_init__(self) -> None:
+        app_config = self._get_config_instance()
+
+        self.remote_ocr_engine = (
+            app_config.remote_ocr_engine or settings.REMOTE_OCR_ENGINE
+        )
+        self.remote_ocr_api_key = (
+            app_config.remote_ocr_api_key or settings.REMOTE_OCR_API_KEY
+        )
+        self.remote_ocr_endpoint = (
+            app_config.remote_ocr_endpoint or settings.REMOTE_OCR_ENDPOINT
+        )
+        self.remote_ocr_mode = app_config.remote_ocr_mode or RemoteOCRMode(
+            settings.REMOTE_OCR_MODE,
+        )
+
+    @property
+    def remote_ocr_by_default(self) -> bool:
+        """
+        Whether every supported document goes to the remote engine.
+
+        When False the remote engine is used only for documents that
+        explicitly asked for it, i.e. a workflow matched during consumption or
+        the user ticked the box when reprocessing.
+        """
+        return self.remote_ocr_mode == RemoteOCRMode.ALWAYS
+
+
+@dataclasses.dataclass
 class AIConfig(BaseConfig):
     """
     AI related settings that require global scope
@@ -276,6 +321,7 @@ class AIConfig(BaseConfig):
     llm_embedding_endpoint: str = dataclasses.field(init=False)
     llm_embedding_chunk_size: int = dataclasses.field(init=False)
     llm_context_size: int = dataclasses.field(init=False)
+    llm_request_timeout: int = dataclasses.field(init=False)
     llm_backend: str = dataclasses.field(init=False)
     llm_model: str = dataclasses.field(init=False)
     llm_api_key: str = dataclasses.field(init=False)
@@ -294,6 +340,7 @@ class AIConfig(BaseConfig):
         "llm_embedding_endpoint",
         "llm_embedding_chunk_size",
         "llm_context_size",
+        "llm_request_timeout",
         "llm_backend",
         "llm_model",
         "llm_api_key",

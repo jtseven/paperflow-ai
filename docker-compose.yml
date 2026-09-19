@@ -1,37 +1,32 @@
-# Pin the Compose project name so the stack keeps using the existing
-# paperless_* named volumes (data/media/pgdata/redisdata) that hold the live
-# documents and database. Without this, Compose derives the project name from
-# the directory ("paperflow") and would create empty paperflow_* volumes.
-name: paperless
+# Generic local deployment. Keep secrets in .env (ignored by Git).
+# Existing installations must set COMPOSE_PROJECT_NAME to their existing project
+# name in .env before upgrading, so Compose reuses the correct named volumes.
 services:
   broker:
     image: docker.io/library/redis:8
-    container_name: paperflow-redis
     restart: unless-stopped
     volumes:
       - redisdata:/data
   db:
     image: docker.io/library/postgres:17
-    container_name: paperflow-db
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: paperless
       POSTGRES_USER: paperless
-      POSTGRES_PASSWORD: ${PAPERLESS_DB_PASSWORD}
+      POSTGRES_PASSWORD: ${PAPERLESS_DB_PASSWORD:?Set PAPERLESS_DB_PASSWORD in .env}
   webserver:
     build:
       context: .
       dockerfile: Dockerfile
     image: paperflow-ai:local
-    container_name: paperflow
     restart: unless-stopped
     depends_on:
       - db
       - broker
     ports:
-      - "8010:8000"
+      - "${PAPERFLOW_BIND_ADDRESS:-127.0.0.1}:${PAPERFLOW_HTTP_PORT:-8000}:8000"
     volumes:
       - data:/usr/src/paperless/data
       - media:/usr/src/paperless/media
@@ -40,8 +35,8 @@ services:
     environment:
       PAPERLESS_REDIS: redis://broker:6379
       PAPERLESS_DBHOST: db
-      PAPERLESS_DBPASS: ${PAPERLESS_DB_PASSWORD}
-      PAPERLESS_URL: ${PAPERLESS_URL:-http://localhost:8010}
+      PAPERLESS_DBPASS: ${PAPERLESS_DB_PASSWORD:?Set PAPERLESS_DB_PASSWORD in .env}
+      PAPERLESS_URL: ${PAPERLESS_URL:-http://localhost:8000}
       # Extra origins trusted for CSRF/login beyond PAPERLESS_URL (e.g. a
       # subdomain wildcard). Comma-separated, scheme included.
       PAPERLESS_CSRF_TRUSTED_ORIGINS: ${PAPERLESS_CSRF_TRUSTED_ORIGINS:-}
@@ -50,35 +45,34 @@ services:
       PAPERLESS_USE_X_FORWARD_HOST: ${PAPERLESS_USE_X_FORWARD_HOST:-}
       PAPERLESS_USE_X_FORWARD_PORT: ${PAPERLESS_USE_X_FORWARD_PORT:-}
       PAPERLESS_PROXY_SSL_HEADER: ${PAPERLESS_PROXY_SSL_HEADER:-}
-      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:?Set PAPERLESS_SECRET_KEY in .env}
       PAPERLESS_TIME_ZONE: ${PAPERLESS_TIME_ZONE:-UTC}
       PAPERLESS_OCR_LANGUAGE: ${PAPERLESS_OCR_LANGUAGE:-eng}
       # Mistral OCR parser (falls back to Tesseract when no key is set)
       PAPERLESS_MISTRAL_API_KEY: ${PAPERLESS_MISTRAL_API_KEY:-}
+      PAPERLESS_REMOTE_OCR_MODE: ${PAPERLESS_REMOTE_OCR_MODE:-always}
       PAPERLESS_MISTRAL_MODEL: ${PAPERLESS_MISTRAL_MODEL:-mistral-ocr-latest}
-      # AI suite (llama-index): embeddings index + agentic chat. Talks to
-      # Mistral through its OpenAI-compatible API via the openai-like backend.
-      # Set PAPERLESS_AI_LLM_API_KEY to your Mistral key to enable.
-      PAPERLESS_AI_ENABLED: ${PAPERLESS_AI_ENABLED:-true}
+      # AI providers are opt-in and configured locally.
+      PAPERLESS_AI_ENABLED: ${PAPERLESS_AI_ENABLED:-false}
       PAPERLESS_AI_LLM_EMBEDDING_BACKEND: ${PAPERLESS_AI_LLM_EMBEDDING_BACKEND:-openai-like}
-      PAPERLESS_AI_LLM_EMBEDDING_MODEL: ${PAPERLESS_AI_LLM_EMBEDDING_MODEL:-mistral-embed}
-      PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT: ${PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT:-https://api.mistral.ai/v1}
+      PAPERLESS_AI_LLM_EMBEDDING_MODEL: ${PAPERLESS_AI_LLM_EMBEDDING_MODEL:-}
+      PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT: ${PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT:-}
       PAPERLESS_AI_LLM_BACKEND: ${PAPERLESS_AI_LLM_BACKEND:-openai-like}
-      PAPERLESS_AI_LLM_MODEL: ${PAPERLESS_AI_LLM_MODEL:-mistral-large-latest}
-      PAPERLESS_AI_LLM_ENDPOINT: ${PAPERLESS_AI_LLM_ENDPOINT:-https://api.mistral.ai/v1}
-      PAPERLESS_AI_LLM_API_KEY: ${PAPERLESS_AI_LLM_API_KEY:-${PAPERLESS_MISTRAL_API_KEY:-}}
+      PAPERLESS_AI_LLM_MODEL: ${PAPERLESS_AI_LLM_MODEL:-}
+      PAPERLESS_AI_LLM_ENDPOINT: ${PAPERLESS_AI_LLM_ENDPOINT:-}
+      PAPERLESS_AI_LLM_API_KEY: ${PAPERLESS_AI_LLM_API_KEY:-}
       USERMAP_UID: ${USERMAP_UID:-1000}
       USERMAP_GID: ${USERMAP_GID:-1000}
   webdav:
+    profiles: [webdav]
     # WebDAV drop-box mapped onto the consume folder: files uploaded here are
     # picked up by the Paperless consumer. Reachable on host port 8080.
     build:
       context: ./docker/webdav
     image: paperflow-webdav
-    container_name: paperflow-webdav
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${PAPERFLOW_BIND_ADDRESS:-127.0.0.1}:${PAPERFLOW_WEBDAV_PORT:-8080}:80"
     volumes:
       - ./consume:/dav
     environment:

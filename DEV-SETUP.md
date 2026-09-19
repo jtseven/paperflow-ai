@@ -1,43 +1,18 @@
-# Development Setup
+# Development setup
 
-## Quick start
+Copy `.env.example` to `.env`, then set a database password and secret key locally.
 
-```bash
-docker compose up -d
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-This automatically applies `docker-compose.override.yml`, which adds:
+Open http://localhost:4200. The frontend proxies requests to the backend; frontend
+and backend source changes reload automatically. Plain `docker compose up` uses
+the production build. Enable the optional upload drop-box with `--profile webdav`.
 
-| Service                     | URL                   | Notes                     |
-| --------------------------- | --------------------- | ------------------------- |
-| Angular dev server (HMR)    | http://localhost:4200 | Frontend with live reload |
-| Django / granian (API + WS) | http://localhost:8000 | Backend in debug mode     |
+For native development, install Python dependencies with `uv sync` and frontend
+dependencies with `pnpm install` in `src-ui`. Run backend tests with `uv run pytest`
+and frontend tests with `pnpm test`. Run checks with `uv run prek run --all-files`.
 
-The first start takes a few extra minutes while pnpm installs frontend dependencies into an isolated Docker volume (`frontend_nm`).
-
-## Live reload behaviour
-
-**Frontend** — Angular HMR is on by default. Any change to `src-ui/` is reflected in the browser within seconds.
-
-**Backend** — `src/` is mounted into the container and granian runs with `--reload` (via `GRANIAN_RELOAD=true`). Python changes trigger an automatic server restart. For changes that require a migration, run:
-
-```bash
-docker compose exec webserver python manage.py migrate
-```
-
-## Resetting the frontend node_modules volume
-
-If you hit strange pnpm/node errors after a lockfile update:
-
-```bash
-docker volume rm paperless_frontend_nm
-docker compose up -d
-```
-
-## Running production mode locally
-
-Pass only the base file to skip the override:
-
-```bash
-docker compose -f docker-compose.yml up -d
-```
+Deployment-specific hosts, credentials, paths and Compose overrides belong in
+ignored local files. This repository does not automatically deploy to a server.

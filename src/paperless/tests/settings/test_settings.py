@@ -3,7 +3,10 @@ from unittest import TestCase
 from unittest import mock
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 
+from paperless.settings import _get_allauth_trusted_proxy_count
+from paperless.settings import _get_classifier_language_setting
 from paperless.settings import _get_search_language_setting
 from paperless.settings import _parse_paperless_url
 from paperless.settings import default_threads_per_worker
@@ -33,6 +36,70 @@ class TestThreadCalculation(TestCase):
                 self.assertGreaterEqual(default_threads, 1)
 
                 self.assertLessEqual(default_workers * default_threads, i)
+
+
+class TestClassifierLanguageSetting:
+    @pytest.mark.parametrize(
+        ("ocr_language", "expected"),
+        [
+            pytest.param("dan", "danish", id="danish"),
+            pytest.param("nld", "dutch", id="dutch"),
+            pytest.param("eng", "english", id="english"),
+            pytest.param("fin", "finnish", id="finnish"),
+            pytest.param("fra", "french", id="french"),
+            pytest.param("deu", "german", id="german"),
+            pytest.param("ita", "italian", id="italian"),
+            pytest.param("nor", "norwegian", id="norwegian"),
+            pytest.param("por", "portuguese", id="portuguese"),
+            pytest.param("rus", "russian", id="russian"),
+            pytest.param("spa", "spanish", id="spanish"),
+            pytest.param("swe", "swedish", id="swedish"),
+            pytest.param("eng+deu", "english", id="primary-english"),
+            pytest.param("deu+eng", "german", id="primary-german"),
+            pytest.param("ell", None, id="greek-unsupported"),
+            pytest.param("chi_sim", None, id="chinese-unsupported"),
+        ],
+    )
+    def test_maps_primary_ocr_language(
+        self,
+        ocr_language: str,
+        expected: str | None,
+    ) -> None:
+        """
+        GIVEN:
+            - An OCR language setting, possibly listing several languages
+        WHEN:
+            - The classifier language is determined
+        THEN:
+            - The first OCR language maps to its classifier language, or None
+              if unsupported
+        """
+        assert _get_classifier_language_setting(ocr_language) == expected
+
+
+def test_allauth_trusted_proxy_count_defaults_to_trusted_proxies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT", raising=False)
+
+    assert _get_allauth_trusted_proxy_count(["proxy-v4", "proxy-v6"]) == 2
+
+
+def test_allauth_trusted_proxy_count_can_be_overridden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT", "1")
+
+    assert _get_allauth_trusted_proxy_count(["proxy-v4", "proxy-v6"]) == 1
+
+
+def test_allauth_trusted_proxy_count_rejects_negative_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PAPERLESS_ALLAUTH_TRUSTED_PROXY_COUNT", "-1")
+
+    with pytest.raises(ImproperlyConfigured, match="must be zero or greater"):
+        _get_allauth_trusted_proxy_count([])
 
 
 @pytest.mark.parametrize(

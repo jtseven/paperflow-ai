@@ -3,13 +3,14 @@ from pathlib import Path
 import pytest
 import pytest_mock
 from llama_index.core.base.embeddings.base import BaseEmbedding
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import Settings
 
 
-@pytest.fixture
-def temp_llm_index_dir(tmp_path: Path, settings: SettingsWrapper) -> Path:
+@pytest.fixture(autouse=True)
+def temp_llm_index_dir(tmp_path: Path, settings: Settings) -> Path:
     settings.LLM_INDEX_DIR = tmp_path
     settings.LLM_INDEX_LOCK = tmp_path / "index.lock"
+    settings.LLM_INDEX_RWLOCK = tmp_path / "llmindex.rwlock.db"
     return tmp_path
 
 

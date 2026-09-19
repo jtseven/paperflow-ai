@@ -6,6 +6,7 @@ import {
 } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { RouterTestingModule } from '@angular/router/testing'
+import { jest } from '@jest/globals'
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { Subject } from 'rxjs'
 import { routes } from 'src/app/app-routing.module'
@@ -74,7 +75,7 @@ describe('StatisticsWidgetComponent', () => {
 
   it('should not call statistics endpoint on reload if already loading', () => {
     httpTestingController.expectOne(`${environment.apiBaseUrl}statistics/`)
-    component.loading = true
+    component.loading.set(true)
     component.reload()
     httpTestingController.expectNone(`${environment.apiBaseUrl}statistics/`)
   })

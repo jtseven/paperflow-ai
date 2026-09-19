@@ -1,7 +1,7 @@
 # Paperflow AI — Feature & UX Roadmap
 
 Ideas for improving Paperflow AI (a Paperless-ngx fork adding AI: agentic + per-document
-chat, "Suggest" metadata, LanceDB embeddings, Mistral OCR, LLM classification).
+chat, "Suggest" metadata, sqlite-vec embeddings, Mistral OCR, LLM classification).
 
 Status legend: ✅ done · 🏗️ in progress · 💡 proposed
 
@@ -19,21 +19,21 @@ Status legend: ✅ done · 🏗️ in progress · 💡 proposed
 
 ## 🚩 Flagship: wake up the dormant embeddings → semantic + answer-first search
 
-The LanceDB vector store currently powers **only chat**; the search bar is keyword-only
-(Tantivy), so "bike order" misses a German "Fahrradbestellung". Two layered wins on
-existing infra:
+The sqlite-vec vector store powers chat and semantic search alongside Tantivy keyword
+search, allowing "bike order" to match a German "Fahrradbestellung". Further search
+improvements can build on this infrastructure:
 
 1. ✅ **"Search by meaning"** — the global search now runs an embedding query in parallel
    with keyword search (gated on AI enabled) and shows a separate "By meaning" group.
-   Backend: `GET /api/search/semantic/` over the LanceDB index, permission-scoped.
+   Backend: `GET /api/search/semantic/` over the sqlite-vec index, permission-scoped.
 2. 💡 **Answer-first results (Perplexity-style)** — a synthesized, cited answer at the top
    of the results page, document hits below. Brings the chat differentiator to the most-used surface.
 
-_Impact: high · Effort: medium · Reuses: LanceDB index, chat retriever._
+_Impact: high · Effort: medium · Reuses: sqlite-vec index, chat retriever._
 
 ---
 
-## Theme 1 — More retrieval value from embeddings (reuse LanceDB)
+## Theme 1 — More retrieval value from embeddings (reuse sqlite-vec)
 
 - 💡 **Near-duplicate detection on ingest.** Cosine-similarity check at consume time →
   "looks like a document you already have" with merge / keep-both. Catches re-scans.

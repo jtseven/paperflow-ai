@@ -72,6 +72,7 @@ class MistralOcrDocumentParser:
         instantiating the parser.
     """
 
+    uses_remote_service = True
     name: str = "Paperflow Mistral OCR Parser"
     version: str = "2.0.0"
     author: str = "Paperflow AI"

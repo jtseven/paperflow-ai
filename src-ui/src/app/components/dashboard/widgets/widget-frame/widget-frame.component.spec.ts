@@ -2,6 +2,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop'
 import { Component } from '@angular/core'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { By } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 import { NgbAlertModule } from '@ng-bootstrap/ng-bootstrap'
 import { PermissionsGuard } from 'src/app/guards/permissions.guard'
 import { WidgetFrameComponent } from './widget-frame.component'
@@ -45,21 +46,19 @@ describe('WidgetFrameComponent', () => {
   })
 
   it('should show title', () => {
-    component.title = 'Foo'
+    fixture.componentRef.setInput('title', 'Foo')
     fixture.detectChanges()
     expect(fixture.debugElement.nativeElement.textContent).toContain('Foo')
   })
 
   it('should show loading indicator', () => {
     expect(fixture.debugElement.query(By.css('.spinner-border'))).toBeNull()
-    component.loading = true
+    fixture.componentRef.setInput('loading', true)
     fixture.detectChanges()
     expect(fixture.debugElement.query(By.css('.spinner-border'))).not.toBeNull()
   })
 
   it('should show', () => {
-    expect(component.show).toBeFalsy()
-    jest.advanceTimersByTime(100)
-    expect(component.show).toBeTruthy()
+    expect(component.show()).toBeTruthy()
   })
 })

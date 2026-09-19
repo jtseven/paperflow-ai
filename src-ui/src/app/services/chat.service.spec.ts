@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing'
 import { Meta } from '@angular/platform-browser'
+import { jest } from '@jest/globals'
 import { CookieService } from 'ngx-cookie-service'
 import { environment } from 'src/environments/environment'
 import { ChatEvent, ChatService } from './chat.service'

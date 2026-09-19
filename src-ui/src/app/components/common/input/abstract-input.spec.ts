@@ -1,6 +1,7 @@
 import { Component } from '@angular/core'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
+import { jest } from '@jest/globals'
 import { AbstractInputComponent } from './abstract-input'
 
 @Component({

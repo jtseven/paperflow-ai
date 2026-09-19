@@ -4,6 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing'
 import { TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 import { environment } from 'src/environments/environment'
 import { PermissionsService } from '../services/permissions.service'
 import { UsernamePipe } from './username.pipe'

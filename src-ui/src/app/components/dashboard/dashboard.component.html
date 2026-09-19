@@ -1,65 +1,95 @@
-<pngx-page-header title="Dashboard" [subTitle]="subtitle" i18n-title tourAnchor="tour.dashboard"></pngx-page-header>
+<pngx-page-header
+  title="Dashboard"
+  [subTitle]="subtitle"
+  i18n-title
+  tourAnchor="tour.dashboard"
+></pngx-page-header>
 
-<div class="row">
-  <div class="col-12 col-lg-8 col-xl-9 mb-4">
-    <div class="row row-cols-1 g-4" cdkDropList
-      [cdkDropListDisabled]="settingsService.globalDropzoneActive" (cdkDropListDropped)="onDrop($event)">
+<div class="row dashboard-grid g-4 pb-0">
+  <div class="col-12 col-lg-8 col-xl-9 mb-4 dashboard-main">
+    <div
+      class="row row-cols-1 g-4"
+      cdkDropList
+      [cdkDropListDisabled]="settingsService.globalDropzoneActive()"
+      (cdkDropListDropped)="onDrop($event)"
+    >
       @if (savedViewService.loading) {
-      <div class="col">
-        <div class="card shadow-sm bg-light">
-          <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="d-flex">
-                <div class="ms-n2 me-1">
-                  <lucide-icon name="grip-vertical"></lucide-icon>
+        <div class="col">
+          <div class="card shadow-sm bg-light">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex">
+                  <div class="ms-n2 me-1">
+                    <lucide-icon name="grip-vertical"></lucide-icon>
+                  </div>
+                  <h6 class="card-title mb-0"></h6>
                 </div>
-                <h6 class="card-title mb-0"></h6>
               </div>
             </div>
+            <div class="card-body">&nbsp;</div>
           </div>
-          <div class="card-body">&nbsp;</div>
         </div>
-      </div>
       }
 
       @if (settingsService.offerTour()) {
-      <div class="col">
-        <pngx-welcome-widget (dismiss)="completeTour()"></pngx-welcome-widget>
-      </div>
+        <div class="col">
+          <pngx-welcome-widget (dismiss)="completeTour()"></pngx-welcome-widget>
+        </div>
       }
 
       <div class="col">
         <pngx-ai-chat-widget></pngx-ai-chat-widget>
       </div>
 
-      <ng-container *pngxIfPermissions="{ action: PermissionAction.View, type: PermissionType.SavedView }">
-        @if (!settingsService.offerTour() && savedViewService.allViews.length === 0) {
-        <div class="col">
-          <div class="card shadow-sm bg-light opacity-50">
-            <div class="card-body">
-              <div class="text-center">
-                <p class="mb-0 fst-italic"><lucide-icon name="info-circle" class="me-2"></lucide-icon><ng-container i18n>Hint: saved
-                    views can be created from the <a routerLink="/documents">documents list</a></ng-container></p>
+      <ng-container
+        *pngxIfPermissions="{
+          action: PermissionAction.View,
+          type: PermissionType.SavedView,
+        }"
+      >
+        @if (
+          !settingsService.offerTour() && savedViewService.allViews.length === 0
+        ) {
+          <div class="col">
+            <div class="card shadow-sm bg-light opacity-50">
+              <div class="card-body">
+                <div class="text-center">
+                  <p class="mb-0 fst-italic">
+                    <lucide-icon name="info-circle" class="me-2"></lucide-icon
+                    ><ng-container i18n
+                      >Hint: saved views can be created from the
+                      <a routerLink="/documents"
+                        >documents list</a
+                      ></ng-container
+                    >
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         }
-        @for (v of dashboardViews; track v.id) {
-        <div class="col">
-          <pngx-saved-view-widget [savedView]="v" (cdkDragStarted)="onDragStart($event)"
-            (cdkDragEnded)="onDragEnd($event)">
-          </pngx-saved-view-widget>
-        </div>
+        @for (v of dashboardViews(); track v.id) {
+          <div class="col">
+            <pngx-saved-view-widget
+              [savedView]="v"
+              (cdkDragStarted)="onDragStart($event)"
+              (cdkDragEnded)="onDragEnd($event)"
+            >
+            </pngx-saved-view-widget>
+          </div>
         }
       </ng-container>
     </div>
   </div>
-  <div class="col-12 col-lg-4 col-xl-3 col-sidebar">
+  <div class="col-12 col-lg-4 col-xl-3 col-sidebar dashboard-aside">
     <div class="row row-cols-1 g-4 mb-4 sticky-lg-top z-0">
       <pngx-upload-file-widget></pngx-upload-file-widget>
       <pngx-statistics-widget
-        *pngxIfPermissions="{ action: PermissionAction.View, type: PermissionType.UISettings }"></pngx-statistics-widget>
+        *pngxIfPermissions="{
+          action: PermissionAction.View,
+          type: PermissionType.UISettings,
+        }"
+      ></pngx-statistics-widget>
     </div>
   </div>
 </div>

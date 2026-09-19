@@ -4,6 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing'
 import { TestBed } from '@angular/core/testing'
+import { jest } from '@jest/globals'
 import { of, Subscription } from 'rxjs'
 import { CustomFieldDataType } from 'src/app/data/custom-field'
 import {
@@ -175,7 +176,7 @@ describe(`DocumentService`, () => {
 
   it('should call appropriate api endpoint for getting selection data', () => {
     const ids = [documents[0].id]
-    subscription = service.getSelectionData(ids).subscribe()
+    subscription = service.getSelectionData({ documents: ids }).subscribe()
     const req = httpTestingController.expectOne(
       `${environment.apiBaseUrl}${endpoint}/selection_data/`
     )
@@ -183,6 +184,20 @@ describe(`DocumentService`, () => {
     expect(req.request.body).toEqual({
       documents: ids,
     })
+  })
+
+  it('should get selection data with all, filters, and exclusions', () => {
+    const selection = {
+      all: true,
+      filters: { title__icontains: 'apple' },
+      excluded_documents: [2, 3],
+    }
+    subscription = service.getSelectionData(selection).subscribe()
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}${endpoint}/selection_data/`
+    )
+    expect(req.request.method).toEqual('POST')
+    expect(req.request.body).toEqual(selection)
   })
 
   it('should call appropriate api endpoint for getting suggestions', () => {
@@ -240,7 +255,7 @@ describe(`DocumentService`, () => {
     })
   })
 
-  it('should call appropriate api endpoint for bulk edit with all and filters', () => {
+  it('should call appropriate api endpoint for bulk edit with all, filters, and exclusions', () => {
     const method = 'modify_tags'
     const parameters = {
       add_tags: [15],
@@ -249,6 +264,7 @@ describe(`DocumentService`, () => {
     const selection = {
       all: true,
       filters: { title__icontains: 'apple' },
+      excluded_documents: [2, 3],
     }
     subscription = service.bulkEdit(selection, method, parameters).subscribe()
     const req = httpTestingController.expectOne(
@@ -258,6 +274,7 @@ describe(`DocumentService`, () => {
     expect(req.request.body).toEqual({
       all: true,
       filters: { title__icontains: 'apple' },
+      excluded_documents: [2, 3],
       method,
       parameters,
     })
@@ -284,6 +301,21 @@ describe(`DocumentService`, () => {
     expect(req.request.method).toEqual('POST')
     expect(req.request.body).toEqual({
       documents: ids,
+      remote_ocr: false,
+    })
+  })
+
+  it('should request remote OCR when reprocessing with it enabled', () => {
+    const ids = [1, 2, 3]
+    subscription = service
+      .reprocessDocuments({ documents: ids }, true)
+      .subscribe()
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}${endpoint}/reprocess/`
+    )
+    expect(req.request.body).toEqual({
+      documents: ids,
+      remote_ocr: true,
     })
   })
 
@@ -313,6 +345,34 @@ describe(`DocumentService`, () => {
       documents: ids,
       metadata_document_id: 1,
       delete_originals: true,
+    })
+  })
+
+  it('should call appropriate api endpoint for merging documents as versions', () => {
+    const ids = [1, 2, 3]
+    subscription = service.mergeDocumentsAsVersions(ids, 2).subscribe()
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}${endpoint}/merge_as_versions/`
+    )
+    expect(req.request.method).toEqual('POST')
+    expect(req.request.body).toEqual({
+      documents: ids,
+      root_document_id: 2,
+    })
+  })
+
+  it('should include an optional label when merging one document as a version', () => {
+    const ids = [1, 2]
+    subscription = service
+      .mergeDocumentsAsVersions(ids, 2, 'Imported')
+      .subscribe()
+    const req = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}${endpoint}/merge_as_versions/`
+    )
+    expect(req.request.body).toEqual({
+      documents: ids,
+      root_document_id: 2,
+      version_label: 'Imported',
     })
   })
 

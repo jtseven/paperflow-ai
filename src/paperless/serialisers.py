@@ -1,4 +1,5 @@
 import logging
+import os
 from io import BytesIO
 
 import magic
@@ -227,11 +228,13 @@ _BLANK_TO_NULL_FIELDS = (
 class ApplicationConfigurationSerializer(
     serializers.ModelSerializer[ApplicationConfiguration],
 ):
+    externally_configured_variables = serializers.SerializerMethodField()
     user_args = serializers.JSONField(binary=True, allow_null=True)
     barcode_tag_mapping = serializers.JSONField(binary=True, allow_null=True)
     llm_api_key = ObfuscatedPasswordField(
         required=False,
         allow_null=True,
+        max_length=1024,
     )
     # Read-only: the inherited (env / config-file / default) value per field, so
     # the frontend can show values sourced from the environment as placeholders.
@@ -242,6 +245,38 @@ class ApplicationConfigurationSerializer(
 
         return get_configuration_defaults()
 
+    remote_ocr_api_key = ObfuscatedPasswordField(
+        required=False,
+        allow_null=True,
+        max_length=1024,
+    )
+
+    OBFUSCATED_FIELDS = ("llm_api_key", "remote_ocr_api_key")
+
+    def get_externally_configured_variables(
+        self,
+        instance: ApplicationConfiguration,
+    ) -> list[str]:
+        return sorted(name for name in os.environ if name.startswith("PAPERLESS_"))
+
+    @staticmethod
+    def _require_json_object(field: str, value: object) -> None:
+        if value is not None and not isinstance(value, dict):
+            raise serializers.ValidationError(f"{field} must be a JSON object.")
+
+    def validate_user_args(self, value):
+        self._require_json_object("user_args", value)
+        return value
+
+    def validate_barcode_tag_mapping(self, value):
+        self._require_json_object("barcode_tag_mapping", value)
+        # Each value is the regex substitute applied to a matching barcode
+        if value is not None and not all(isinstance(v, str) for v in value.values()):
+            raise serializers.ValidationError(
+                "barcode_tag_mapping values must be strings.",
+            )
+        return value
+
     def run_validation(self, data):
         # Empty strings treated as None to avoid unexpected behavior
         if "user_args" in data and data["user_args"] == "":
@@ -251,11 +286,17 @@ class ApplicationConfigurationSerializer(
         for field in _BLANK_TO_NULL_FIELDS:
             if field in data and data[field] == "":
                 data[field] = None
-        if "llm_api_key" in data and data["llm_api_key"] is not None:
-            if data["llm_api_key"] == "":
-                data["llm_api_key"] = None
-            elif len(data["llm_api_key"].replace("*", "")) == 0:
-                del data["llm_api_key"]
+        if "language" in data and data["language"] == "":
+            data["language"] = None
+        if "llm_output_language" in data and data["llm_output_language"] == "":
+            data["llm_output_language"] = None
+        for field in self.OBFUSCATED_FIELDS:
+            if field in data and data[field] is not None:
+                if data[field] == "":
+                    data[field] = None
+                # Not a real value, don't overwrite the stored one
+                elif len(data[field].replace("*", "")) == 0:
+                    del data[field]
         return super().run_validation(data)
 
     def update(self, instance, validated_data):
@@ -316,6 +357,22 @@ class ApplicationConfigurationSerializer(
         return value
 
     validate_llm_embedding_endpoint = validate_llm_endpoint
+
+    def validate_remote_ocr_endpoint(self, value: str | None) -> str | None:
+        if not value:
+            return value
+
+        try:
+            validate_outbound_http_url(
+                value,
+                allow_internal=settings.REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS,
+            )
+        except ValueError as e:
+            raise serializers.ValidationError(
+                f"Invalid remote OCR endpoint: {e.args[0]}, see logs for details",
+            ) from e
+
+        return value
 
     class Meta:
         model = ApplicationConfiguration

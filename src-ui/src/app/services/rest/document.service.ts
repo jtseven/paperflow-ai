@@ -72,6 +72,7 @@ export interface DocumentSelectionQuery {
   documents?: number[]
   all?: boolean
   filters?: { [key: string]: any }
+  excluded_documents?: number[]
 }
 
 @Injectable({
@@ -349,9 +350,13 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     })
   }
 
-  reprocessDocuments(selection: DocumentSelectionQuery) {
+  reprocessDocuments(
+    selection: DocumentSelectionQuery,
+    remoteOcr: boolean = false
+  ) {
     return this.http.post(this.getResourceUrl(null, 'reprocess'), {
       ...selection,
+      remote_ocr: remoteOcr,
     })
   }
 
@@ -374,6 +379,18 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     })
   }
 
+  mergeDocumentsAsVersions(
+    ids: number[],
+    rootDocumentId: number,
+    versionLabel?: string
+  ) {
+    return this.http.post(this.getResourceUrl(null, 'merge_as_versions'), {
+      documents: ids,
+      root_document_id: rootDocumentId,
+      ...(versionLabel ? { version_label: versionLabel } : {}),
+    })
+  }
+
   editPdfDocuments(ids: number[], request: EditPdfDocumentsRequest) {
     return this.http.post(this.getResourceUrl(null, 'edit_pdf'), {
       documents: ids,
@@ -391,10 +408,12 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     })
   }
 
-  getSelectionData(ids: number[]): Observable<SelectionData> {
+  getSelectionData(
+    selection: DocumentSelectionQuery
+  ): Observable<SelectionData> {
     return this.http.post<SelectionData>(
       this.getResourceUrl(null, 'selection_data'),
-      { documents: ids }
+      selection
     )
   }
 

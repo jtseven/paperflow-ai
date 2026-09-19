@@ -7,10 +7,11 @@ import {
   OnChanges,
   OnDestroy,
   Output,
+  signal,
   SimpleChanges,
 } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
+import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { merge, of, Subject } from 'rxjs'
@@ -25,6 +26,7 @@ import {
   tap,
 } from 'rxjs/operators'
 import { DocumentVersionInfo } from 'src/app/data/document'
+import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { ToastService } from 'src/app/services/toast.service'
@@ -33,6 +35,8 @@ import {
   WebsocketStatusService,
 } from 'src/app/services/websocket-status.service'
 import { ConfirmButtonComponent } from '../../common/confirm-button/confirm-button.component'
+import { ComponentWithPermissions } from '../../with-permissions/with-permissions.component'
+import { AddExistingDocumentVersionDialogComponent } from './add-existing-document-version-dialog/add-existing-document-version-dialog.component'
 
 @Component({
   selector: 'pngx-document-version-dropdown',
@@ -44,11 +48,15 @@ import { ConfirmButtonComponent } from '../../common/confirm-button/confirm-butt
     NgxBootstrapIconsModule,
     LucideAngularModule,
     ConfirmButtonComponent,
+    IfPermissionsDirective,
     SlicePipe,
     CustomDatePipe,
   ],
 })
-export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
+export class DocumentVersionDropdownComponent
+  extends ComponentWithPermissions
+  implements OnChanges, OnDestroy
+{
   UploadState = UploadState
 
   @Input() documentId: number
@@ -61,15 +69,16 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
   @Output() versionsUpdated = new EventEmitter<DocumentVersionInfo[]>()
 
   newVersionLabel: string = ''
-  versionUploadState: UploadState = UploadState.Idle
-  versionUploadError: string | null = null
-  savingVersionLabelId: number | null = null
+  readonly versionUploadState = signal(UploadState.Idle)
+  readonly versionUploadError = signal<string | null>(null)
+  readonly savingVersionLabelId = signal<number | null>(null)
   editingVersionId: number | null = null
   versionLabelDraft: string = ''
 
   private readonly documentsService = inject(DocumentService)
   private readonly toastService = inject(ToastService)
   private readonly websocketStatusService = inject(WebsocketStatusService)
+  private readonly modalService = inject(NgbModal)
   private readonly destroy$ = new Subject<void>()
   private readonly documentChange$ = new Subject<void>()
 
@@ -103,7 +112,7 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
   beginEditingVersion(version: DocumentVersionInfo, event?: Event): void {
     event?.preventDefault()
     event?.stopPropagation()
-    if (!this.canEditLabels || this.savingVersionLabelId !== null) return
+    if (!this.canEditLabels || this.savingVersionLabelId() !== null) return
     this.editingVersionId = version.id
     this.versionLabelDraft = version.version_label ?? ''
   }
@@ -118,7 +127,7 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
   submitEditedVersionLabel(version: DocumentVersionInfo, event?: Event): void {
     event?.preventDefault()
     event?.stopPropagation()
-    if (this.savingVersionLabelId !== null) return
+    if (this.savingVersionLabelId() !== null) return
     const nextLabel = this.versionLabelDraft?.trim() || null
     const currentLabel = version.version_label?.trim() || null
     if (nextLabel === currentLabel) {
@@ -160,15 +169,15 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
   }
 
   saveVersionLabel(versionId: number, versionLabel: string | null): void {
-    if (this.savingVersionLabelId !== null) return
-    this.savingVersionLabelId = versionId
+    if (this.savingVersionLabelId() !== null) return
+    this.savingVersionLabelId.set(versionId)
     this.documentsService
       .updateVersionLabel(this.documentId, versionId, versionLabel)
       .pipe(
         first(),
         finalize(() => {
-          if (this.savingVersionLabelId === versionId) {
-            this.savingVersionLabelId = null
+          if (this.savingVersionLabelId() === versionId) {
+            this.savingVersionLabelId.set(null)
           }
         }),
         takeUntil(this.destroy$)
@@ -201,8 +210,8 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
     const file = input.files[0]
     input.value = ''
     const label = this.newVersionLabel?.trim()
-    this.versionUploadState = UploadState.Uploading
-    this.versionUploadError = null
+    this.versionUploadState.set(UploadState.Uploading)
+    this.versionUploadError.set(null)
     this.documentsService
       .uploadVersion(uploadDocumentId, file, label)
       .pipe(
@@ -212,7 +221,7 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
             $localize`Uploading new version. Processing will happen in the background.`
           )
           this.newVersionLabel = ''
-          this.versionUploadState = UploadState.Processing
+          this.versionUploadState.set(UploadState.Processing)
         }),
         map((taskId) =>
           typeof taskId === 'string'
@@ -221,8 +230,8 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
         ),
         switchMap((taskId) => {
           if (!taskId) {
-            this.versionUploadState = UploadState.Failed
-            this.versionUploadError = $localize`Missing task ID.`
+            this.versionUploadState.set(UploadState.Failed)
+            this.versionUploadError.set($localize`Missing task ID.`)
             return of(null)
           }
           return merge(
@@ -242,9 +251,10 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
         switchMap((result) => {
           if (result?.state !== 'success') {
             if (result?.state === 'failed') {
-              this.versionUploadState = UploadState.Failed
-              this.versionUploadError =
+              this.versionUploadState.set(UploadState.Failed)
+              this.versionUploadError.set(
                 result.message || $localize`Upload failed.`
+              )
             }
             return of(null)
           }
@@ -256,18 +266,19 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
       .subscribe({
         next: (doc) => {
           if (uploadDocumentId !== this.documentId) return
-          if (doc?.versions) {
+          if (doc?.versions?.length) {
             this.versionsUpdated.emit(doc.versions)
-            this.versionSelected.emit(
-              Math.max(...doc.versions.map((version) => version.id))
-            )
+            // The API returns versions newest first
+            this.versionSelected.emit(doc.versions[0].id)
             this.clearVersionUploadStatus()
           }
         },
         error: (error) => {
           if (uploadDocumentId !== this.documentId) return
-          this.versionUploadState = UploadState.Failed
-          this.versionUploadError = error?.message || $localize`Upload failed.`
+          this.versionUploadState.set(UploadState.Failed)
+          this.versionUploadError.set(
+            error?.message || $localize`Upload failed.`
+          )
           this.toastService.showError(
             $localize`Error uploading new version`,
             error
@@ -276,8 +287,57 @@ export class DocumentVersionDropdownComponent implements OnChanges, OnDestroy {
       })
   }
 
+  addExistingDocumentAsVersion(): void {
+    const modal = this.modalService.open(
+      AddExistingDocumentVersionDialogComponent,
+      { backdrop: 'static' }
+    )
+    const dialog =
+      modal.componentInstance as AddExistingDocumentVersionDialogComponent
+    dialog.rootDocumentID = this.documentId
+    dialog.confirmClicked
+      .pipe(takeUntil(this.destroy$), takeUntil(this.documentChange$))
+      .subscribe((existingDocumentID) => {
+        dialog.buttonsEnabled.set(false)
+        const versionLabel = this.newVersionLabel?.trim()
+        this.documentsService
+          .mergeDocumentsAsVersions(
+            [this.documentId, existingDocumentID],
+            this.documentId,
+            versionLabel
+          )
+          .pipe(
+            switchMap(() => this.documentsService.getVersions(this.documentId)),
+            first(),
+            finalize(() => dialog.buttonsEnabled.set(true)),
+            takeUntil(this.destroy$),
+            takeUntil(this.documentChange$)
+          )
+          .subscribe({
+            next: (document) => {
+              if (document?.versions?.length) {
+                this.versionsUpdated.emit(document.versions)
+                // The API returns versions newest first
+                this.versionSelected.emit(document.versions[0].id)
+              }
+              this.newVersionLabel = ''
+              modal.close()
+              this.toastService.showInfo(
+                $localize`Existing document added as a version.`
+              )
+            },
+            error: (error) => {
+              this.toastService.showError(
+                $localize`Error adding existing document as a version`,
+                error
+              )
+            },
+          })
+      })
+  }
+
   clearVersionUploadStatus(): void {
-    this.versionUploadState = UploadState.Idle
-    this.versionUploadError = null
+    this.versionUploadState.set(UploadState.Idle)
+    this.versionUploadError.set(null)
   }
 }

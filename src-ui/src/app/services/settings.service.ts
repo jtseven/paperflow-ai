@@ -1,5 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http'
 import {
+  computed,
   DOCUMENT,
   EventEmitter,
   inject,
@@ -7,6 +8,8 @@ import {
   LOCALE_ID,
   Renderer2,
   RendererFactory2,
+  Signal,
+  signal,
 } from '@angular/core'
 import { Meta } from '@angular/platform-browser'
 import { CookieService } from 'ngx-cookie-service'
@@ -16,10 +19,12 @@ import {
   estimateBrightnessForColor,
   hexToHsl,
 } from 'src/app/utils/color'
-import { environment } from 'src/environments/environment'
+import { DEFAULT_APP_TITLE, environment } from 'src/environments/environment'
 import { DEFAULT_DISPLAY_FIELDS, DisplayField } from '../data/document'
+import { RemoteOCRModeConfig } from '../data/paperless-config'
 import { SavedView } from '../data/saved-view'
 import {
+  HideableSidebarItemID,
   PAPERFLOW_PRIMARY_HEX,
   SETTINGS,
   SETTINGS_KEYS,
@@ -294,7 +299,9 @@ export class SettingsService {
   protected baseUrl: string = environment.apiBaseUrl + 'ui_settings/'
 
   private settings: Record<string, any> = {}
-  currentUser: User
+  private readonly settingsVersion = signal(0)
+  private readonly settingSignals = new Map<string, Signal<unknown>>()
+  readonly currentUser = signal<User>(undefined)
 
   public settingsSaved: EventEmitter<any> = new EventEmitter()
 
@@ -303,17 +310,26 @@ export class SettingsService {
     return this._renderer
   }
 
-  public dashboardIsEmpty: boolean = false
+  readonly dashboardIsEmpty = signal(false)
+  readonly globalDropzoneEnabled = signal(true)
+  readonly globalDropzoneActive = signal(false)
+  readonly organizingSidebarSavedViews = signal(false)
+  readonly sidebarHiddenItemsEditing = signal<HideableSidebarItemID[] | null>(
+    null
+  )
+  readonly organizingSidebarItems = computed(
+    () => this.sidebarHiddenItemsEditing() !== null
+  )
+  readonly sidebarHiddenItemsEditingChanged = new EventEmitter<
+    HideableSidebarItemID[]
+  >()
+  readonly hiddenSidebarItems = this.getSignal<HideableSidebarItemID[]>(
+    SETTINGS_KEYS.SIDEBAR_HIDDEN_ITEMS
+  )
 
-  public globalDropzoneEnabled: boolean = true
-  public globalDropzoneActive: boolean = false
-  public organizingSidebarSavedViews: boolean = false
-
-  private _allDisplayFields: Array<{ id: DisplayField; name: string }> =
+  readonly allDisplayFields = signal<Array<{ id: DisplayField; name: string }>>(
     DEFAULT_DISPLAY_FIELDS
-  public get allDisplayFields(): Array<{ id: DisplayField; name: string }> {
-    return this._allDisplayFields
-  }
+  )
   public displayFieldsInit: EventEmitter<boolean> = new EventEmitter()
 
   constructor() {
@@ -335,6 +351,7 @@ export class SettingsService {
       if (!this.isSafeObjectKey(key)) continue
       this.settings[key] = source[key]
     }
+    this.settingsVersion.update((version) => version + 1)
   }
 
   // this is called by the app initializer in app.module
@@ -364,17 +381,16 @@ export class SettingsService {
       }),
       tap((uisettings) => {
         this.assignSafeSettings(uisettings.settings)
-        if (this.get(SETTINGS_KEYS.APP_TITLE)?.length) {
-          environment.appTitle = this.get(SETTINGS_KEYS.APP_TITLE)
-        }
+        environment.appTitle =
+          this.get(SETTINGS_KEYS.APP_TITLE) || DEFAULT_APP_TITLE
         this.maybeMigrateSettings()
         // to update lang cookie
         if (this.settings['language']?.length)
           this.setLanguage(this.settings['language'])
-        this.currentUser = uisettings.user
+        this.currentUser.set(uisettings.user)
         this.permissionsService.initialize(
           uisettings.permissions,
-          this.currentUser
+          this.currentUser()
         )
 
         this.initializeDisplayFields()
@@ -383,44 +399,39 @@ export class SettingsService {
   }
 
   public initializeDisplayFields() {
-    this._allDisplayFields = DEFAULT_DISPLAY_FIELDS
+    const displayFields = DEFAULT_DISPLAY_FIELDS?.map((field) => {
+      if (
+        field.id === DisplayField.NOTES &&
+        !this.get(SETTINGS_KEYS.NOTES_ENABLED)
+      ) {
+        return null
+      }
 
-    this._allDisplayFields = this._allDisplayFields
-      ?.map((field) => {
-        if (
-          field.id === DisplayField.NOTES &&
-          !this.get(SETTINGS_KEYS.NOTES_ENABLED)
-        ) {
-          return null
-        }
+      if (
+        [
+          DisplayField.TITLE,
+          DisplayField.CREATED,
+          DisplayField.ADDED,
+          DisplayField.ASN,
+          DisplayField.PAGE_COUNT,
+          DisplayField.SHARED,
+        ].includes(field.id)
+      ) {
+        return field
+      }
 
-        if (
-          [
-            DisplayField.TITLE,
-            DisplayField.CREATED,
-            DisplayField.ADDED,
-            DisplayField.ASN,
-            DisplayField.PAGE_COUNT,
-            DisplayField.SHARED,
-          ].includes(field.id)
-        ) {
-          return field
-        }
+      let type: PermissionType = Object.values(PermissionType).find((t) =>
+        t.includes(field.id)
+      )
+      if (field.id === DisplayField.OWNER) {
+        type = PermissionType.User
+      }
+      return this.permissionsService.currentUserCan(PermissionAction.View, type)
+        ? field
+        : null
+    }).filter(Boolean)
 
-        let type: PermissionType = Object.values(PermissionType).find((t) =>
-          t.includes(field.id)
-        )
-        if (field.id === DisplayField.OWNER) {
-          type = PermissionType.User
-        }
-        return this.permissionsService.currentUserCan(
-          PermissionAction.View,
-          type
-        )
-          ? field
-          : null
-      })
-      .filter((f) => f)
+    this.allDisplayFields.set(displayFields)
 
     if (
       this.permissionsService.currentUserCan(
@@ -429,13 +440,15 @@ export class SettingsService {
       )
     ) {
       this.customFieldsService.listAll().subscribe((r) => {
-        this._allDisplayFields = this._allDisplayFields.concat(
-          r.results.map((field) => {
-            return {
-              id: `${DisplayField.CUSTOM_FIELD}${field.id}` as any,
-              name: field.name,
-            }
-          })
+        this.allDisplayFields.set(
+          displayFields.concat(
+            r.results.map((field) => {
+              return {
+                id: `${DisplayField.CUSTOM_FIELD}${field.id}` as any,
+                name: field.name,
+              }
+            })
+          )
         )
         this.displayFieldsInit.emit(true)
       })
@@ -446,8 +459,8 @@ export class SettingsService {
 
   get displayName(): string {
     return (
-      this.currentUser.first_name ??
-      this.currentUser.username ??
+      this.currentUser()?.first_name ??
+      this.currentUser()?.username ??
       ''
     ).trim()
   }
@@ -580,7 +593,7 @@ export class SettingsService {
 
     // special case to fallback
     if (key === SETTINGS_KEYS.DEFAULT_PERMS_OWNER && value === undefined) {
-      return this.currentUser.id
+      return this.currentUser()?.id
     }
 
     if (value !== undefined) {
@@ -602,6 +615,18 @@ export class SettingsService {
     }
   }
 
+  getSignal<T = any>(key: string): Signal<T> {
+    let settingSignal = this.settingSignals.get(key)
+    if (!settingSignal) {
+      settingSignal = computed(() => {
+        this.settingsVersion()
+        return this.get(key)
+      })
+      this.settingSignals.set(key, settingSignal)
+    }
+    return settingSignal as Signal<T>
+  }
+
   set(key: string, value: any) {
     // parse key:key:key into nested object
     let settingObj = this.settings
@@ -614,6 +639,7 @@ export class SettingsService {
       if (index == keys.length - 1) settingObj[keyPart] = value
       else settingObj = settingObj[keyPart]
     })
+    this.settingsVersion.update((version) => version + 1)
   }
 
   private settingIsSet(key: string): boolean {
@@ -695,8 +721,19 @@ export class SettingsService {
     return this.settingIsSet(SETTINGS_KEYS.UPDATE_CHECKING_ENABLED)
   }
 
+  /**
+   * Offering remote OCR as a  choice only makes sense when an engine
+   * is configured but is not already handling every document.
+   */
+  get remoteOCRIsSelectable(): boolean {
+    return (
+      this.get(SETTINGS_KEYS.REMOTE_OCR_CONFIGURED) &&
+      this.get(SETTINGS_KEYS.REMOTE_OCR_MODE) !== RemoteOCRModeConfig.ALWAYS
+    )
+  }
+
   offerTour(): boolean {
-    return this.dashboardIsEmpty && !this.get(SETTINGS_KEYS.TOUR_COMPLETE)
+    return this.dashboardIsEmpty() && !this.get(SETTINGS_KEYS.TOUR_COMPLETE)
   }
 
   completeTour() {
@@ -731,6 +768,29 @@ export class SettingsService {
       ...new Set(sidebarViews.map((v) => v.id)),
     ])
     return this.storeSettings()
+  }
+
+  sidebarItemIsHidden(item: HideableSidebarItemID): boolean {
+    return (
+      this.sidebarHiddenItemsEditing() ?? this.hiddenSidebarItems()
+    ).includes(item)
+  }
+
+  updateSidebarItemVisibility(
+    item: HideableSidebarItemID,
+    visible: boolean
+  ): void {
+    const hiddenItems = new Set(
+      this.sidebarHiddenItemsEditing() ?? this.hiddenSidebarItems()
+    )
+    if (visible) {
+      hiddenItems.delete(item)
+    } else {
+      hiddenItems.add(item)
+    }
+    const updatedHiddenItems = [...hiddenItems]
+    this.sidebarHiddenItemsEditing.set(updatedHiddenItems)
+    this.sidebarHiddenItemsEditingChanged.emit(updatedHiddenItems)
   }
 
   updateSavedViewsVisibility(

@@ -1,4 +1,4 @@
-@use "sass:color";
+@use 'sass:color';
 @mixin paperflow-primary {
   // Paperflow AI brand blue #1d4ed8 = hsl(224, 76%, 48%)
   --pngx-primary: 224, 76%;
@@ -11,13 +11,34 @@
 
   --bs-primary: hsl(var(--pngx-primary), var(--pngx-primary-lightness));
   --bs-border-color: var(--bs-gray-400);
-  --pngx-primary-faded: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) + 76%));
-  --pngx-primary-lighten-10: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) + 10%));
-  --pngx-primary-lighten-30: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) + 30%));
-  --pngx-primary-darken-5: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) - 5%));
-  --pngx-primary-darken-15: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) - 15%));
-  --pngx-primary-darken-18: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) - 18%));
-  --pngx-primary-darken-27: hsl(var(--pngx-primary), calc(var(--pngx-primary-lightness) - 27%));
+  --pngx-primary-faded: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) + 76%)
+  );
+  --pngx-primary-lighten-10: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) + 10%)
+  );
+  --pngx-primary-lighten-30: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) + 30%)
+  );
+  --pngx-primary-darken-5: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) - 5%)
+  );
+  --pngx-primary-darken-15: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) - 15%)
+  );
+  --pngx-primary-darken-18: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) - 18%)
+  );
+  --pngx-primary-darken-27: hsl(
+    var(--pngx-primary),
+    calc(var(--pngx-primary-lightness) - 27%)
+  );
   --pngx-success-darken-10: hsl(152, 69%, 11%); // based on success #198754
   --pngx-bg-alt: #fff;
   --pngx-bg-darker: var(--bs-gray-100);
@@ -30,7 +51,11 @@
   --pngx-chrome-border: #e4e7ec;
   --pngx-chrome-input-bg: #eef0f3;
   --pngx-chrome-hover-bg: rgba(0, 0, 0, 0.045);
-  --pngx-accent-subtle: hsla(var(--pngx-primary), var(--pngx-primary-lightness), 0.1);
+  --pngx-accent-subtle: hsla(
+    var(--pngx-primary),
+    var(--pngx-primary-lightness),
+    0.1
+  );
   --pngx-focus-alpha: 0.3;
   --pngx-toast-max-width: 340px;
   --bs-info: var(--pngx-bg-alt2);
@@ -52,11 +77,11 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   --pngx-primary-text-contrast: #{$text-color-light-bg} !important;
 
   .form-check:not(.form-switch) {
-    .form-check-input:checked[type=checkbox] {
+    .form-check-input:checked[type='checkbox'] {
       background-image: escape-svg($form-check-input-checked-bg-image-dark);
     }
 
-    .form-check-input:checked[type=radio] {
+    .form-check-input:checked[type='radio'] {
       background-image: escape-svg($form-check-radio-checked-bg-image-dark);
     }
   }
@@ -77,7 +102,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
 // Dark mode
 @mixin paperflow-primary-dark-mode {
   --pngx-primary-lightness: 56%;
-  --bs-primary: hsl(var(--pngx-primary),var(--pngx-primary-lightness));
+  --bs-primary: hsl(var(--pngx-primary), var(--pngx-primary-lightness));
 }
 
 @mixin dark-mode {
@@ -107,9 +132,10 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   --bs-border-color: #47494f;
   --bs-tertiary-bg: var(--pngx-bg-darker);
   --bs-dark-border-subtle: var(--pngx-bg-darker);
-  --bs-border-color-translucent: rgba(0, 0, 0, .175); // override bs
+  --bs-border-color-translucent: rgba(0, 0, 0, 0.175); // override bs
 
-  .text-dark, .text-light {
+  .text-dark,
+  .text-light {
     color: var(--bs-body-color) !important;
   }
 
@@ -121,13 +147,19 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 
   .btn-primary {
-    &:hover, &:focus, &.active, &:active {
+    &:hover,
+    &:focus,
+    &.active,
+    &:active {
       color: var(--bs-body-color) !important;
     }
   }
 
   &.primary-light .btn-primary {
-    &:hover, &:focus, &.active, &:active {
+    &:hover,
+    &:focus,
+    &.active,
+    &:active {
       color: var(--pngx-bg-darker) !important;
     }
   }
@@ -142,13 +174,19 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 
   .btn-outline-primary {
-    &:hover, &:focus, &.active, &:active {
+    &:hover,
+    &:focus,
+    &.active,
+    &:active {
       color: var(--bs-light) !important;
     }
   }
 
   .btn-outline-secondary {
-    &:hover, &:focus, &.active, &:active {
+    &:hover,
+    &:focus,
+    &.active,
+    &:active {
       background-color: var(--pngx-bg-darker);
       color: var(--pngx-body-color-accent) !important;
     }
@@ -168,11 +206,14 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 
   .form-control:hover::file-selector-button {
-    background-color:var(--pngx-bg-dark) !important
+    background-color: var(--pngx-bg-dark) !important;
   }
 
   .search-container {
-    input, input:focus, lucide-icon[name="search"] , ::placeholder {
+    input,
+    input:focus,
+    lucide-icon[name='search'],
+    ::placeholder {
       color: var(--pngx-primary-text-contrast) !important;
     }
   }
@@ -186,21 +227,25 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
     }
   }
 
-  .row-cols-paperless-cards .card, pngx-document-card-large .card {
-    --bs-border-color-translucent: rgba(0, 0, 0, .3);
+  .row-cols-paperless-cards .card,
+  pngx-document-card-large .card {
+    --bs-border-color-translucent: rgba(0, 0, 0, 0.3);
   }
 
-  .modal-content, .modal-header, .modal-body, .modal-footer {
+  .modal-content,
+  .modal-header,
+  .modal-body,
+  .modal-footer {
     background-color: var(--bs-body-bg);
     border-color: var(--bs-border-color);
   }
 
   app-tag .badge {
-    filter: brightness(.8);
+    filter: brightness(0.8);
   }
 
   .badge.bg-light.border {
-    border-color: rgba(0,0,0,0) !important;
+    border-color: rgba(0, 0, 0, 0) !important;
   }
 
   .badge.bg-body {
@@ -231,8 +276,15 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
     mix-blend-mode: luminosity;
   }
 
-  .paperless-input-select .ng-select .ng-dropdown-panel .ng-dropdown-panel-items .ng-option:not(.ng-option-selected):hover,
-  .paperless-input-select .ng-dropdown-panel .ng-dropdown-panel-items .ng-option.ng-option-marked {
+  .paperless-input-select
+    .ng-select
+    .ng-dropdown-panel
+    .ng-dropdown-panel-items
+    .ng-option:not(.ng-option-selected):hover,
+  .paperless-input-select
+    .ng-dropdown-panel
+    .ng-dropdown-panel-items
+    .ng-option.ng-option-marked {
     background-color: var(--bs-light) !important;
   }
 
@@ -253,7 +305,9 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
     .des,
     .asc {
       &::after {
-        filter: invert(0.8); /* arrow is a black inline png bkgd image (!) so use filter */
+        filter: invert(
+          0.8
+        ); /* arrow is a black inline png bkgd image (!) so use filter */
       }
     }
 
@@ -264,7 +318,8 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 
   .table-row-selected {
-    td, a:not(.badge) {
+    td,
+    a:not(.badge) {
       color: var(--pngx-primary-text-contrast) !important;
     }
   }
@@ -283,8 +338,16 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
     // Subtle translucent tint rather than a solid blue block (the brand blue is
     // lighter than the old green, so the previous darken-18 bg read as a flood).
     --bs-alert-color: var(--bs-primary);
-    --bs-alert-bg: hsla(var(--pngx-primary), var(--pngx-primary-lightness), 0.13);
-    --bs-alert-border-color: hsla(var(--pngx-primary), var(--pngx-primary-lightness), 0.28);
+    --bs-alert-bg: hsla(
+      var(--pngx-primary),
+      var(--pngx-primary-lightness),
+      0.13
+    );
+    --bs-alert-border-color: hsla(
+      var(--pngx-primary),
+      var(--pngx-primary-lightness),
+      0.28
+    );
   }
 
   .alert-success {
@@ -297,16 +360,24 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
     color: var(--pngx-body-color-accent);
   }
 
-  .close, .modal .btn-close, .alert .btn-close {
+  .close,
+  .modal .btn-close,
+  .alert .btn-close {
     text-shadow: 0 1px 0 #666;
   }
 
-  .modal .btn-close, .alert .btn-close, .toast .btn-close {
+  .modal .btn-close,
+  .alert .btn-close,
+  .toast .btn-close {
     filter: invert(1) grayscale(100%) brightness(200%);
   }
 
   .toast {
-    background-color: hsla(var(--pngx-primary), calc(var(--pngx-primary-lightness) - 15%), 0.9);
+    background-color: hsla(
+      var(--pngx-primary),
+      calc(var(--pngx-primary-lightness) - 15%),
+      0.9
+    );
   }
 
   .toast,
@@ -337,7 +408,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
   }
 }
 
-[data-bs-theme="dark"] {
+[data-bs-theme='dark'] {
   body:not(.primary-light):not(.primary-dark) {
     @include paperflow-primary-dark-mode;
   }
@@ -346,7 +417,7 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
 }
 
 // Temp to not blink with white before angular loads
-[data-bs-theme="auto"] {
+[data-bs-theme='auto'] {
   @media (prefers-color-scheme: dark) {
     body {
       // no custom theme color
@@ -357,5 +428,4 @@ $form-check-radio-checked-bg-image-dark: url("data:image/svg+xml,<svg xmlns='htt
       @include dark-mode;
     }
   }
-
 }

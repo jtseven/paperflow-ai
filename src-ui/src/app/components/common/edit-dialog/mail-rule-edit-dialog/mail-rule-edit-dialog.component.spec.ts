@@ -2,9 +2,10 @@ import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
+import { jest } from '@jest/globals'
 import { NgbActiveModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { of } from 'rxjs'
+import { of, throwError } from 'rxjs'
 import {
   MailAction,
   MailMetadataCorrespondentOption,
@@ -15,6 +16,7 @@ import { CorrespondentService } from 'src/app/services/rest/correspondent.servic
 import { DocumentTypeService } from 'src/app/services/rest/document-type.service'
 import { MailAccountService } from 'src/app/services/rest/mail-account.service'
 import { SettingsService } from 'src/app/services/settings.service'
+import { ToastService } from 'src/app/services/toast.service'
 import { CheckComponent } from '../../input/check/check.component'
 import { NumberComponent } from '../../input/number/number.component'
 import { PermissionsFormComponent } from '../../input/permissions/permissions-form/permissions-form.component'
@@ -75,20 +77,55 @@ describe('MailRuleEditDialogComponent', () => {
 
     fixture = TestBed.createComponent(MailRuleEditDialogComponent)
     settingsService = TestBed.inject(SettingsService)
-    settingsService.currentUser = { id: 99, username: 'user99' }
+    settingsService.currentUser.set({ id: 99, username: 'user99' })
     component = fixture.componentInstance
 
     fixture.detectChanges()
   })
 
+  it('should use empty related object lists when retrieval fails', () => {
+    const failed = () => throwError(() => new Error('Forbidden'))
+    const toastSpy = jest.spyOn(TestBed.inject(ToastService), 'showError')
+    jest
+      .spyOn(TestBed.inject(MailAccountService), 'listAll')
+      .mockReturnValue(failed())
+    jest
+      .spyOn(TestBed.inject(CorrespondentService), 'listAll')
+      .mockReturnValue(failed())
+    jest
+      .spyOn(TestBed.inject(DocumentTypeService), 'listAll')
+      .mockReturnValue(failed())
+
+    const failedFixture = TestBed.createComponent(MailRuleEditDialogComponent)
+    const failedComponent = failedFixture.componentInstance
+
+    expect(failedComponent.accounts()).toEqual([])
+    expect(failedComponent.correspondents()).toEqual([])
+    expect(failedComponent.documentTypes()).toEqual([])
+    expect(() => failedFixture.detectChanges()).not.toThrow()
+    expect(toastSpy).toHaveBeenCalledTimes(3)
+    expect(toastSpy).toHaveBeenCalledWith(
+      'Error retrieving mail accounts',
+      expect.any(Error)
+    )
+    expect(toastSpy).toHaveBeenCalledWith(
+      'Error retrieving correspondents',
+      expect.any(Error)
+    )
+    expect(toastSpy).toHaveBeenCalledWith(
+      'Error retrieving document types',
+      expect.any(Error)
+    )
+  })
+
   it('should support create and edit modes', () => {
-    component.dialogMode = EditDialogMode.CREATE
+    component.dialogMode.set(EditDialogMode.CREATE)
     const createTitleSpy = jest.spyOn(component, 'getCreateTitle')
     const editTitleSpy = jest.spyOn(component, 'getEditTitle')
     fixture.detectChanges()
     expect(createTitleSpy).toHaveBeenCalled()
     expect(editTitleSpy).not.toHaveBeenCalled()
-    component.dialogMode = EditDialogMode.EDIT
+    component.dialogMode.set(EditDialogMode.EDIT)
     fixture.detectChanges()
     expect(editTitleSpy).toHaveBeenCalled()
   })

@@ -7,7 +7,6 @@ if TYPE_CHECKING:
     from llama_index.core.base.embeddings.base import BaseEmbedding
 
 from documents.models import Document
-from documents.models import Note
 from paperless.config import AIConfig
 from paperless.models import LLMEmbeddingBackend
 from paperless.network import PinnedHostAsyncHTTPTransport
@@ -15,6 +14,7 @@ from paperless.network import PinnedHostHTTPTransport
 from paperless.network import create_pinned_async_httpx_client
 from paperless.network import create_pinned_httpx_client
 from paperless.network import validate_outbound_http_url
+from paperless_ai.client import PLACEHOLDER_API_KEY
 
 OCR_LEADER_REGEX = re.compile(r"[._\-\u00b7]{4,}")
 HORIZONTAL_WHITESPACE_REGEX = re.compile(r"[ \t\u00a0]+")
@@ -32,15 +32,18 @@ def get_embedding_model(config: AIConfig) -> "BaseEmbedding":
                 http_client = create_pinned_httpx_client(
                     endpoint,
                     allow_internal=config.llm_allow_internal_endpoints,
+                    timeout=config.llm_request_timeout,
                 )
                 async_http_client = create_pinned_async_httpx_client(
                     endpoint,
                     allow_internal=config.llm_allow_internal_endpoints,
+                    timeout=config.llm_request_timeout,
                 )
             return OpenAILikeEmbedding(
                 model_name=config.llm_embedding_model or "text-embedding-3-small",
-                api_key=config.llm_api_key,
+                api_key=config.llm_api_key or PLACEHOLDER_API_KEY,
                 api_base=endpoint,
+                timeout=config.llm_request_timeout,
                 http_client=http_client,
                 async_http_client=async_http_client,
             )
@@ -73,12 +76,14 @@ def get_embedding_model(config: AIConfig) -> "BaseEmbedding":
             )
             embedding._client = Client(
                 host=endpoint,
+                timeout=config.llm_request_timeout,
                 transport=PinnedHostHTTPTransport(
                     allow_internal=config.llm_allow_internal_endpoints,
                 ),
             )
             embedding._async_client = AsyncClient(
                 host=endpoint,
+                timeout=config.llm_request_timeout,
                 transport=PinnedHostAsyncHTTPTransport(
                     allow_internal=config.llm_allow_internal_endpoints,
                 ),
@@ -99,9 +104,13 @@ _DEFAULT_MODEL_NAMES = {
 
 def get_configured_model_name(config: AIConfig) -> str:
     """Return the canonical name of the currently configured embedding model."""
-    default = _DEFAULT_MODEL_NAMES.get(
-        config.llm_embedding_backend,
-        "sentence-transformers/all-MiniLM-L6-v2",
+    # dict.get(key, default) overload resolution fails for TextChoices keys in some
+    # type checkers; use `or` fallback to avoid the ambiguity.
+    default = (
+        _DEFAULT_MODEL_NAMES.get(
+            config.llm_embedding_backend,
+        )
+        or "sentence-transformers/all-MiniLM-L6-v2"
     )
     return config.llm_embedding_model or default
 
@@ -112,16 +121,12 @@ def _normalize_llm_index_text(text: str) -> str:
 
 
 def build_llm_index_text(doc: Document) -> str:
-    # TODO: Filename, Storage Path, and Archive Serial Number are short structured
-    # values that could move to node.metadata (excluded from embeddings, visible to
-    # LLM via metadata prepend) — same pattern as title/tags/correspondent. Notes
-    # and Custom Fields should stay here: Notes can be long free text, Custom Fields
-    # are dynamic in count and best kept in the embedding.
+    # Short structured fields (filename, storage path, ASN, title, tags, ...) live
+    # in node.metadata: excluded from embeddings, shown to the LLM via metadata
+    # prepend. Notes and Custom Fields stay in the body: Notes can be long free
+    # text, Custom Fields are dynamic in count and best kept in the embedding.
     lines = [
-        f"Filename: {doc.filename}",
-        f"Storage Path: {doc.storage_path.name if doc.storage_path else ''}",
-        f"Archive Serial Number: {doc.archive_serial_number or ''}",
-        f"Notes: {','.join([str(c.note) for c in Note.objects.filter(document=doc)])}",
+        f"Notes: {','.join([str(c.note) for c in doc.notes.all()])}",
     ]
 
     for instance in doc.custom_fields.all():

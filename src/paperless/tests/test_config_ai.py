@@ -77,3 +77,8 @@ def test_get_configuration_defaults_masks_secret():
 def test_get_configuration_defaults_no_key_is_unmasked_empty():
     defaults = get_configuration_defaults()
     assert defaults["llm_api_key"] == ""
+
+
+@override_settings(REMOTE_OCR_API_KEY="test-remote-ocr-secret")
+def test_inherited_remote_ocr_key_is_masked():
+    assert get_configuration_defaults()["remote_ocr_api_key"] == "********"

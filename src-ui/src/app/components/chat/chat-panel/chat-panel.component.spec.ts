@@ -1,6 +1,7 @@
 import { NgZone } from '@angular/core'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { provideRouter, Router } from '@angular/router'
+import { jest } from '@jest/globals'
 import { provideMarkdown } from 'ngx-markdown'
 import { from, Observable, Subject } from 'rxjs'
 import { ChatEvent, ChatService } from 'src/app/services/chat.service'

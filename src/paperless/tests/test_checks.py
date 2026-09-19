@@ -8,14 +8,13 @@ import pytest
 from django.core.checks import ERROR
 from django.core.checks import Error
 from django.core.checks import Warning
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import Settings
 from pytest_mock import MockerFixture
 
 from paperless.checks import audit_log_check
 from paperless.checks import binaries_check
 from paperless.checks import check_default_language_available
 from paperless.checks import check_deprecated_db_settings
-from paperless.checks import check_remote_parser_configured
 from paperless.checks import check_v3_minimum_upgrade_version
 from paperless.checks import debug_mode_check
 from paperless.checks import paths_check
@@ -32,7 +31,7 @@ class PaperlessTestDirs:
 # TODO: consolidate with documents/tests/conftest.py PaperlessDirs/paperless_dirs
 #       once the paperless and documents test suites are ready to share fixtures.
 @pytest.fixture()
-def directories(tmp_path: Path, settings: SettingsWrapper) -> PaperlessTestDirs:
+def directories(tmp_path: Path, settings: Settings) -> PaperlessTestDirs:
     data_dir = tmp_path / "data"
     media_dir = tmp_path / "media"
     consumption_dir = tmp_path / "consumption"
@@ -55,7 +54,7 @@ class TestChecks:
     def test_binaries(self) -> None:
         assert binaries_check(None) == []
 
-    def test_binaries_fail(self, settings: SettingsWrapper) -> None:
+    def test_binaries_fail(self, settings: Settings) -> None:
         settings.CONVERT_BINARY = "uuuhh"
         assert len(binaries_check(None)) == 1
 
@@ -63,7 +62,7 @@ class TestChecks:
     def test_paths_check(self) -> None:
         assert paths_check(None) == []
 
-    def test_paths_check_dont_exist(self, settings: SettingsWrapper) -> None:
+    def test_paths_check_dont_exist(self, settings: Settings) -> None:
         settings.MEDIA_ROOT = Path("uuh")
         settings.DATA_DIR = Path("whatever")
         settings.CONSUMPTION_DIR = Path("idontcare")
@@ -90,11 +89,11 @@ class TestChecks:
         for msg in msgs:
             assert msg.msg.endswith("is not writeable")
 
-    def test_debug_disabled(self, settings: SettingsWrapper) -> None:
+    def test_debug_disabled(self, settings: Settings) -> None:
         settings.DEBUG = False
         assert debug_mode_check(None) == []
 
-    def test_debug_enabled(self, settings: SettingsWrapper) -> None:
+    def test_debug_enabled(self, settings: Settings) -> None:
         settings.DEBUG = True
         assert len(debug_mode_check(None)) == 1
 
@@ -151,7 +150,7 @@ class TestOcrSettingsChecks:
     )
     def test_invalid_setting_produces_one_error(
         self,
-        settings: SettingsWrapper,
+        settings: Settings,
         setting: str,
         value: str,
         expected_msg: str,
@@ -174,7 +173,7 @@ class TestOcrSettingsChecks:
 
 
 class TestTimezoneSettingsChecks:
-    def test_invalid_timezone(self, settings: SettingsWrapper) -> None:
+    def test_invalid_timezone(self, settings: Settings) -> None:
         """
         GIVEN:
             - Default settings
@@ -193,7 +192,7 @@ class TestTimezoneSettingsChecks:
 
 
 class TestEmailCertSettingsChecks:
-    def test_not_valid_file(self, settings: SettingsWrapper) -> None:
+    def test_not_valid_file(self, settings: Settings) -> None:
         """
         GIVEN:
             - Default settings
@@ -216,7 +215,7 @@ class TestEmailCertSettingsChecks:
 class TestAuditLogChecks:
     def test_was_enabled_once(
         self,
-        settings: SettingsWrapper,
+        settings: Settings,
         mocker: MockerFixture,
     ) -> None:
         """
@@ -631,36 +630,11 @@ class TestV3MinimumUpgradeVersionCheck:
         assert check_v3_minimum_upgrade_version(None) == []
 
 
-class TestRemoteParserChecks:
-    def test_no_engine(self, settings: SettingsWrapper) -> None:
-        settings.REMOTE_OCR_ENGINE = None
-        msgs = check_remote_parser_configured(None)
-
-        assert len(msgs) == 0
-
-    def test_azure_no_endpoint(self, settings: SettingsWrapper) -> None:
-
-        settings.REMOTE_OCR_ENGINE = "azureai"
-        settings.REMOTE_OCR_API_KEY = "somekey"
-        settings.REMOTE_OCR_ENDPOINT = None
-
-        msgs = check_remote_parser_configured(None)
-
-        assert len(msgs) == 1
-
-        msg = msgs[0]
-
-        assert (
-            "Azure AI remote parser requires endpoint and API key to be configured."
-            in msg.msg
-        )
-
-
 class TestTesseractChecks:
     def test_default_language(self) -> None:
         check_default_language_available(None)
 
-    def test_no_language(self, settings: SettingsWrapper) -> None:
+    def test_no_language(self, settings: Settings) -> None:
 
         settings.OCR_LANGUAGE = ""
 
@@ -675,7 +649,7 @@ class TestTesseractChecks:
 
     def test_invalid_language(
         self,
-        settings: SettingsWrapper,
+        settings: Settings,
         mocker: MockerFixture,
     ) -> None:
 
@@ -694,7 +668,7 @@ class TestTesseractChecks:
 
     def test_multi_part_language(
         self,
-        settings: SettingsWrapper,
+        settings: Settings,
         mocker: MockerFixture,
     ) -> None:
         """
@@ -718,7 +692,7 @@ class TestTesseractChecks:
 
     def test_multi_part_language_bad_format(
         self,
-        settings: SettingsWrapper,
+        settings: Settings,
         mocker: MockerFixture,
     ) -> None:
         """
