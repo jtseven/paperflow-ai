@@ -1661,7 +1661,7 @@ msgid "Documents not found: %(ids)s"
 msgstr "Documents no trobats: %(ids)s"
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
+msgid "Paperflow AI account inactive"
 msgstr "Compte inactiu"
 
 #: documents/templates/account/account_inactive.html:9
@@ -1689,8 +1689,8 @@ msgstr "Gràcies per fer servir %(site_name)s!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Validació Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Validació Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,7 +1733,7 @@ msgid "or sign in via"
 msgstr "o accedeix via"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
+msgid "Paperflow AI reset password request"
 msgstr "Sol·licitud de restabliment de la contrasenya"
 
 #: documents/templates/account/password_reset.html:9
@@ -1749,7 +1749,7 @@ msgid "Send me instructions!"
 msgstr "Enviar instruccions!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
+msgid "Paperflow AI reset password sent"
 msgstr "S'ha enviat el restabliment de contrasenya"
 
 #: documents/templates/account/password_reset_done.html:9
@@ -1761,8 +1761,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Us hem enviat per correu electrònic les instruccions per configurar la vostra contrasenya. Rebreu el correu electrònic en breu!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Paperless-ngx confirmació de restabliment de contrasenya"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Paperflow AI confirmació de restabliment de contrasenya"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1785,7 +1785,7 @@ msgid "Change my password"
 msgstr "Canvia contrasenya"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
+msgid "Paperflow AI reset password complete"
 msgstr "Contrasenya restablerta"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr "accedir"
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Registra't a Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "Registra't a Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Contrasenya (altre cop)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx carregant..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI carregant..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,8 +1834,8 @@ msgid "Here's a link to the docs."
 msgstr "Aquí teniu un enllaç a la documentació."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Doble Factor d'Autentificació de Paperless-ngx"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Doble Factor d'Autentificació de Paperflow AI"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1859,8 +1859,8 @@ msgstr "L'enllaç ha caducat."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Paperless-ngx accés a través de compte social"
+msgid "Paperflow AI social account sign in"
+msgstr "Paperflow AI accés a través de compte social"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Continuar"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Inscripció amb comptes socials a Paperless-ngx"
+msgid "Paperflow AI social account sign up"
+msgstr "Inscripció amb comptes socials a Paperflow AI"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

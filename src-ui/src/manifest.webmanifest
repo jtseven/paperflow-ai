@@ -1,6 +1,6 @@
 {
-  "background_color": "white",
-  "description": "Paperflow AI — AI-assisted document management: scan, index, archive, and chat with all your documents.",
+  "background_color": "#f5f6f8",
+  "description": "Paperflow AI \u2014 AI-assisted document management: scan, index, archive, and chat with all your documents.",
   "display": "standalone",
   "icons": [
     {
@@ -22,5 +22,6 @@
   ],
   "name": "Paperflow AI",
   "short_name": "Paperflow AI",
-  "start_url": "/"
+  "start_url": "/",
+  "theme_color": "#1d4ed8"
 }

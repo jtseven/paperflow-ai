@@ -1,11 +1,13 @@
 <!doctype html>
 {% load static i18n %}
 
-<html lang="en">
+{% get_current_language as LANGUAGE_CODE %}
+{% get_current_language_bidi as LANGUAGE_BIDI %}
+<html lang="{{ LANGUAGE_CODE }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr' }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <meta name="author" content="Paperless-ngx project and contributors">
+        <meta name="author" content="Paperflow AI contributors">
         <meta name="robots" content="noindex,nofollow">
 
         <title>
@@ -14,30 +16,25 @@
         </title>
         <link href="{% static 'bootstrap.min.css' %}" rel="stylesheet">
         <link href="{% static 'base.css' %}" rel="stylesheet">
+        <link rel="icon" href="{% url 'favicon' %}?v=paperflow">
     </head>
 
     <body class="text-center">
-        <div class="position-absolute top-50 start-50 translate-middle">
+        <main class="account-shell">
+            <section class="account-card" aria-label="Paperflow AI">
             <form class="form-accounts" id="form-account" method="post">
                 {% csrf_token %}
-                {% if not APP_LOGO and not APP_TITLE %}
-                    {% include "paperless-ngx/snippets/svg_logo.html" with extra_attrs="width='300' class='logo mb-4'" %}
-                {% else %}
+                <header class="account-brand">
                     {% if APP_LOGO %}
-                        <img src="{{APP_LOGO}}" width="300" class="logo mb-1" />
-                        <div class="d-flex flex-column align-items-end mb-4">
-                            <span class="byline text-uppercase font-monospace">by Paperless-ngx</span>
-                        </div>
+                        <img src="{{ APP_LOGO }}" class="custom-logo" alt="{{ APP_TITLE|default:'Paperflow AI' }}">
+                        <span class="byline">by Paperflow AI</span>
+                    {% elif APP_TITLE %}
+                        <h1 class="custom-title">{{ APP_TITLE }}</h1>
+                        <span class="byline">by Paperflow AI</span>
                     {% else %}
-                        <h1 class="font-weight-normal text-primary mb-1 d-flex justify-content-center align-items-start">
-                            {% include "paperless-ngx/snippets/svg_leaf.html" with extra_attrs="width='30' class='mt-2'" %}
-                            <div class="d-flex flex-column align-items-end mb-4">
-                                <span class="ms-2">{{ APP_TITLE }}</span>
-                                <span class="byline text-uppercase font-monospace">by Paperless-ngx</span>
-                            </div>
-                        </h1>
+                        {% include "paperless-ngx/snippets/paperflow_logo.html" %}
                     {% endif %}
-                {% endif %}
+                </header>
                 {% for message in messages %}
                     <div class="alert alert-{{ message.level_tag }}" role="alert">
                     {{ message }}
@@ -68,6 +65,7 @@
             </form>
             {% block after_form_content %}
             {% endblock after_form_content %}
-        </div>
+            </section>
+        </main>
     </body>
 </html>

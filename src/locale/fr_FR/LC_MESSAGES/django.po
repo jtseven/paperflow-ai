@@ -1661,8 +1661,8 @@ msgid "Documents not found: %(ids)s"
 msgstr "Documents introuvables : %(ids)s"
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
-msgstr "Compte Paperless-ngx inactif"
+msgid "Paperflow AI account inactive"
+msgstr "Compte Paperflow AI inactif"
 
 #: documents/templates/account/account_inactive.html:9
 msgid "Account inactive."
@@ -1688,8 +1688,8 @@ msgid "Thank you for using %(site_name)s!\n"
 msgstr "Merci d'utiliser %(site_name)s ! %(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Connexion à Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Connexion à Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1732,8 +1732,8 @@ msgid "or sign in via"
 msgstr "ou se connecter via"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Demande de réinitialisation du mot de passe Paperless-ngx"
+msgid "Paperflow AI reset password request"
+msgstr "Demande de réinitialisation du mot de passe Paperflow AI"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1748,8 +1748,8 @@ msgid "Send me instructions!"
 msgstr "Envoyez-moi les instructions !"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
-msgstr "Réinitialisation du mot de passe Paperless-ngx envoyé"
+msgid "Paperflow AI reset password sent"
+msgstr "Réinitialisation du mot de passe Paperflow AI envoyé"
 
 #: documents/templates/account/password_reset_done.html:9
 msgid "Check your inbox."
@@ -1760,8 +1760,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Nous vous avons envoyé un courriel contenant des instructions pour définir votre mot de passe. Vous devriez le recevoir bientôt !"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Confirmation de la réinitialisation du mot de passe Paperless-ngx"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Confirmation de la réinitialisation du mot de passe Paperflow AI"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1784,8 +1784,8 @@ msgid "Change my password"
 msgstr "Changer mon mot de passe"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
-msgstr "Mot de passe Paperless-ngx réinitialisé"
+msgid "Paperflow AI reset password complete"
+msgstr "Mot de passe Paperflow AI réinitialisé"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
 msgid "Password reset complete."
@@ -1800,8 +1800,8 @@ msgid "log in"
 msgstr "se connecter"
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "S'inscrire à Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "S'inscrire à Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1821,8 +1821,8 @@ msgid "Password (again)"
 msgstr "Mot de passe (à nouveau)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx est en cours de chargement..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI est en cours de chargement..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1833,8 +1833,8 @@ msgid "Here's a link to the docs."
 msgstr "Voici un lien vers la documentation."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Authentification à deux facteurs de Paperless-ngx"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Authentification à deux facteurs de Paperflow AI"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1858,8 +1858,8 @@ msgstr "Le lien de partage a expiré."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Connexion à Paperless-ngx avec un compte externe"
+msgid "Paperflow AI social account sign in"
+msgstr "Connexion à Paperflow AI avec un compte externe"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1879,8 +1879,8 @@ msgid "Continue"
 msgstr "Continuer"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Inscription à Paperless-ngx avec un compte externe"
+msgid "Paperflow AI social account sign up"
+msgstr "Inscription à Paperflow AI avec un compte externe"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

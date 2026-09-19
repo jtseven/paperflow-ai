@@ -1679,7 +1679,7 @@ msgid "Documents not found: %(ids)s"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
+msgid "Paperflow AI account inactive"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:9
@@ -1707,7 +1707,7 @@ msgid ""
 msgstr ""
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
+msgid "Paperflow AI sign in"
 msgstr ""
 
 #: documents/templates/account/login.html:10
@@ -1751,7 +1751,7 @@ msgid "or sign in via"
 msgstr ""
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
+msgid "Paperflow AI reset password request"
 msgstr ""
 
 #: documents/templates/account/password_reset.html:9
@@ -1769,7 +1769,7 @@ msgid "Send me instructions!"
 msgstr ""
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
+msgid "Paperflow AI reset password sent"
 msgstr ""
 
 #: documents/templates/account/password_reset_done.html:9
@@ -1783,7 +1783,7 @@ msgid ""
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
+msgid "Paperflow AI reset password confirmation"
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key.html:9
@@ -1807,7 +1807,7 @@ msgid "Change my password"
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
+msgid "Paperflow AI reset password complete"
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key_done.html:9
@@ -1823,7 +1823,7 @@ msgid "log in"
 msgstr ""
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
+msgid "Paperflow AI sign up"
 msgstr ""
 
 #: documents/templates/account/signup.html:11
@@ -1846,7 +1846,7 @@ msgid "Password (again)"
 msgstr ""
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
+msgid "Paperflow AI is loading..."
 msgstr ""
 
 #: documents/templates/index.html:62
@@ -1858,7 +1858,7 @@ msgid "Here's a link to the docs."
 msgstr ""
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
+msgid "Paperflow AI Two-Factor Authentication"
 msgstr ""
 
 #: documents/templates/mfa/authenticate.html:12
@@ -1885,7 +1885,7 @@ msgstr ""
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
+msgid "Paperflow AI social account sign in"
 msgstr ""
 
 #: documents/templates/socialaccount/authentication_error.html:10
@@ -1908,7 +1908,7 @@ msgid "Continue"
 msgstr ""
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
+msgid "Paperflow AI social account sign up"
 msgstr ""
 
 #: documents/templates/socialaccount/signup.html:11

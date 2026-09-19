@@ -1661,8 +1661,8 @@ msgid "Documents not found: %(ids)s"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
-msgstr "Ανενεργός λογαριασμός Paperless-ngx"
+msgid "Paperflow AI account inactive"
+msgstr "Ανενεργός λογαριασμός Paperflow AI"
 
 #: documents/templates/account/account_inactive.html:9
 msgid "Account inactive."
@@ -1689,8 +1689,8 @@ msgstr "Σας ευχαριστούμε που χρησιμοποιείτε το
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Σύνδεση Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Σύνδεση Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,8 +1733,8 @@ msgid "or sign in via"
 msgstr "ή συνδεθείτε μέσω"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Αίτημα επαναφοράς κωδικού πρόσβασης Paperless-ngx"
+msgid "Paperflow AI reset password request"
+msgstr "Αίτημα επαναφοράς κωδικού πρόσβασης Paperflow AI"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1749,7 +1749,7 @@ msgid "Send me instructions!"
 msgstr "Αποστολή Οδηγιών!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
+msgid "Paperflow AI reset password sent"
 msgstr "Επαναφορά κωδικού paperless-ngx εστάλη"
 
 #: documents/templates/account/password_reset_done.html:9
@@ -1761,7 +1761,7 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Σας στείλαμε μήνυμα ηλεκτρονικού ταχυδρομείου με οδηγίες για τον ορισμό του κωδικού πρόσβασης σας. Θα πρέπει να το λάβετε σύντομα!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
+msgid "Paperflow AI reset password confirmation"
 msgstr "Επιβεβαίωση κωδικού paperless-ngx"
 
 #: documents/templates/account/password_reset_from_key.html:9
@@ -1785,7 +1785,7 @@ msgid "Change my password"
 msgstr "Αλλαγή κωδικού πρόσβασης"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
+msgid "Paperflow AI reset password complete"
 msgstr "Η επαναφορά κωδικού paperless-ngx πραγματοποιήθηκε"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr "σύνδεση"
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Εγγραφή Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "Εγγραφή Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Κωδικός πρόσβασης (ξανά)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Το Paperless-ngx φορτώνει..."
+msgid "Paperflow AI is loading..."
+msgstr "Το Paperflow AI φορτώνει..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,8 +1834,8 @@ msgid "Here's a link to the docs."
 msgstr "Ορίστε ένας σύνδεσμος για τις οδηγίες."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Έλεγχος Ταυτότητας Δύο Παραγόντων Paperless-ngx"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Έλεγχος Ταυτότητας Δύο Παραγόντων Paperflow AI"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1859,8 +1859,8 @@ msgstr "Ο σύνδεσμος κοινοποίησης έχει λήξει."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Σύνδεση με λογαριασμό κοινωνικής δικτύωσης στο Paperless-ngx"
+msgid "Paperflow AI social account sign in"
+msgstr "Σύνδεση με λογαριασμό κοινωνικής δικτύωσης στο Paperflow AI"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Συνέχεια"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Εγγραφή με λογαριασμό κοινωνικής δικτύωσης στο Paperless-ngx"
+msgid "Paperflow AI social account sign up"
+msgstr "Εγγραφή με λογαριασμό κοινωνικής δικτύωσης στο Paperflow AI"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

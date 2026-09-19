@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block head_title %}
-    {% trans "Paperless-ngx sign in" %}
+    {% translate "Paperflow AI sign in" %}
 {% endblock head_title %}
 
 {% block form_top_content %}
@@ -25,11 +25,11 @@
         {% translate "Username" as i18n_username %}
         {% translate "Password" as i18n_password %}
         <div class="form-floating form-stacked-top">
-            <input type="text" name="login" id="inputUsername" placeholder="{{ i18n_username|force_escape }}" class="form-control" autocorrect="off" autocapitalize="none" required autofocus>
+            <input type="text" name="login" id="inputUsername" placeholder="{{ i18n_username|force_escape }}" class="form-control" autocomplete="username" autocorrect="off" autocapitalize="none" required autofocus>
             <label for="inputUsername">{{ i18n_username|force_escape }}</label>
         </div>
         <div class="form-floating form-stacked-bottom">
-            <input type="password" name="password" id="inputPassword" placeholder="{{ i18n_password|force_escape }}" class="form-control" required>
+            <input type="password" name="password" id="inputPassword" autocomplete="current-password" placeholder="{{ i18n_password|force_escape }}" class="form-control" required>
             <label for="inputPassword">{{ i18n_password|force_escape }}</label>
         </div>
         <div class="d-grid mt-3">

@@ -269,8 +269,8 @@
         </context-group>
         <target state="translated">Zatvori</target>
       </trans-unit>
-      <trans-unit id="3527354815023530656" datatype="html">
-        <source>Document <x id="PH" equiv-text="status.filename"/> was added to Paperless-ngx.</source>
+      <trans-unit id="761937788057720723" datatype="html">
+        <source>Document <x id="PH" equiv-text="status.filename"/> was added to Paperflow AI.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">93</context>
@@ -279,7 +279,7 @@
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">102</context>
         </context-group>
-        <target state="translated">Dokument <x id="PH" equiv-text="status.filename"/> je dodan u Paperless-ngx.</target>
+        <target state="translated">Dokument <x id="PH" equiv-text="status.filename"/> je dodan u Paperflow AI.</target>
       </trans-unit>
       <trans-unit id="1931214133925051574" datatype="html">
         <source>Open document</source>
@@ -317,8 +317,8 @@
         </context-group>
         <target state="translated">Bezuspješno dodavanje <x id="PH" equiv-text="status.filename"/>: <x id="PH_1" equiv-text="status.message"/></target>
       </trans-unit>
-      <trans-unit id="1218124467712564468" datatype="html">
-        <source>Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperless-ngx.</source>
+      <trans-unit id="3024718326815651415" datatype="html">
+        <source>Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperflow AI.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">132</context>
@@ -441,13 +441,13 @@
         </context-group>
         <target state="translated">Nadzorna ploča može se koristiti za pregled spremljenih prikaza, kao što je "Inbox". Prikazi se nalaze pod Upravljaj &gt; spremljenim prikazima, nakon što iste kreirate.</target>
       </trans-unit>
-      <trans-unit id="9075755296812854717" datatype="html">
-        <source>Drag-and-drop documents here to start uploading or place them in the consume folder. You can also drag-and-drop documents anywhere on all other pages of the web app. Once you do, Paperless-ngx will start training its machine learning algorithms.</source>
+      <trans-unit id="8762173488299649617" datatype="html">
+        <source>Drag-and-drop documents here to start uploading or place them in the consume folder. You can also drag-and-drop documents anywhere on all other pages of the web app. Once you do, Paperflow AI will start training its machine learning algorithms.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">178</context>
         </context-group>
-        <target state="translated">Povucite i ispustite dokumente ovdje za početak učitavanja ili ih smjestite u mapu za procesuiranje. Također možete povući i ispustiti dokumente bilo gdje na svim ostalim stranicama web aplikacije. Nakon što to učinite, Paperless-ngx počet će obučavati svoje algoritme strojnog učenja.</target>
+        <target state="translated">Povucite i ispustite dokumente ovdje za početak učitavanja ili ih smjestite u mapu za procesuiranje. Također možete povući i ispustiti dokumente bilo gdje na svim ostalim stranicama web aplikacije. Nakon što to učinite, Paperflow AI počet će obučavati svoje algoritme strojnog učenja.</target>
       </trans-unit>
       <trans-unit id="7495498057594070122" datatype="html">
         <source>The documents list shows all of your documents and allows for filtering as well as bulk-editing. There are three different view styles: list, small cards and large cards. A list of documents currently opened for editing is shown in the sidebar.</source>
@@ -533,13 +533,13 @@
         </context-group>
         <target state="translated">Postoji &lt;em&gt;tona&lt;/em&gt; više funkcija i informacija koje ovdje nismo pokrili, ali ovo bi trebalo da vas pokrene. Pogledajte dokumentaciju ili posjetite projekat na GitHubu da saznate više ili prijavite probleme.</target>
       </trans-unit>
-      <trans-unit id="4270528545616947218" datatype="html">
-        <source>Lastly, on behalf of every contributor to this community-supported project, thank you for using Paperless-ngx!</source>
+      <trans-unit id="4784552611252380004" datatype="html">
+        <source>Lastly, on behalf of every contributor to this community-supported project, thank you for using Paperflow AI!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">245</context>
         </context-group>
-        <target state="translated">Na kraju, u ime svih saradnika ovog projekta koji podržava zajednica, hvala vam što koristite Paperless-ngx!</target>
+        <target state="translated">Na kraju, u ime svih saradnika ovog projekta koji podržava zajednica, hvala vam što koristite Paperflow AI!</target>
       </trans-unit>
       <trans-unit id="9063918187161876141" datatype="html">
         <source>Application Configuration</source>
@@ -549,8 +549,8 @@
         </context-group>
         <target state="translated">Postavke aplikacije</target>
       </trans-unit>
-      <trans-unit id="8528041182664173532" datatype="html">
-        <source>Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperless-ngx. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</source>
+      <trans-unit id="2001857360708214643" datatype="html">
+        <source>Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperflow AI. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/admin/config/config.component.html</context>
           <context context-type="linenumber">4,5</context>
@@ -9077,13 +9077,13 @@
         </context-group>
         <target state="translated">Više detalja o tome kako koristiti i konfigurirati Paperless-ngx uvijek je dostupno u <x id="START_LINK" ctype="x-a" equiv-text="&lt;a href=&quot;https://docs.paperless-ngx.com&quot; target=&quot;_blank&quot;&gt;"/>dokumentaciji<x id="CLOSE_LINK" ctype="x-a" equiv-text="&lt;/a&gt;"/>.</target>
       </trans-unit>
-      <trans-unit id="4294899532887357745" datatype="html">
-        <source>Thanks for being a part of the Paperless-ngx community!</source>
+      <trans-unit id="6676687002557005308" datatype="html">
+        <source>Thanks for being a part of the Paperflow AI community!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/dashboard/widgets/welcome-widget/welcome-widget.component.html</context>
           <context context-type="linenumber">13,14</context>
         </context-group>
-        <target state="translated">Hvala što ste dio Paperless-ngx zajednice!</target>
+        <target state="translated">Hvala što ste dio Paperflow AI zajednice!</target>
       </trans-unit>
       <trans-unit id="1415832194529539652" datatype="html">
         <source>Start the tour</source>
@@ -12593,13 +12593,13 @@
         </context-group>
         <target state="needs-translation">Bundles</target>
       </trans-unit>
-      <trans-unit id="1229748338333965418" datatype="html">
-        <source>Use workflows to customize the behavior of Paperless-ngx when events &apos;trigger&apos; a workflow.</source>
+      <trans-unit id="1004125873961453378" datatype="html">
+        <source>Use workflows to customize the behavior of Paperflow AI when events &apos;trigger&apos; a workflow.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/manage/workflows/workflows.component.html</context>
           <context context-type="linenumber">4,5</context>
         </context-group>
-        <target state="translated">Koristite tijekove rada za prilagodbu ponašanja Paperless-ngx kada događaji 'aktiviraju' tijek rada.</target>
+        <target state="translated">Koristite tijekove rada za prilagodbu ponašanja Paperflow AI kada događaji 'aktiviraju' tijek rada.</target>
       </trans-unit>
       <trans-unit id="2437630016855517844" datatype="html">
         <source>Add Workflow</source>

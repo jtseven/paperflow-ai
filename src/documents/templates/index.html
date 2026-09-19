@@ -5,13 +5,13 @@
 <html lang="en" data-bs-theme="auto">
 <head>
 	<meta charset="utf-8">
-	<title>Paperless-ngx</title>
+	<title>{{ APP_TITLE|default:'Paperflow AI' }}</title>
 	<base href="{% url 'base' %}">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="cookie_prefix" content="{{cookie_prefix}}">
 	<meta name="robots" content="noindex,nofollow">
-	<meta name="author" content="The Paperless-ngx Team">
-	<link rel="icon" type="image/x-icon" href="favicon.ico">
+	<meta name="author" content="Paperflow AI contributors">
+	<link rel="icon" type="image/x-icon" href="favicon.ico?v=paperflow">
 	<link rel="manifest" href="{% static webmanifest %}">
 	<link rel="stylesheet" href="{% static styles_css %}">
 	<link rel="apple-touch-icon" href="{% static apple_touch_icon %}">
@@ -35,30 +35,32 @@
 
 			@keyframes pulsate {
 				0% {
-					opacity: 0.1;
+					opacity: 0.6;
 				}
 				50% {
-					opacity: 0.3;
+					opacity: 1;
 				}
 				100% {
-					opacity: 0.1;
+					opacity: 0.6;
 				}
 			}
 
-			.app-loader svg, .app-loader h6 {
-				opacity: 0.1;
+			.app-loader picture, .app-loader h6 {
+				opacity: 0.6;
 				animation: pulsate 2s ease-out;
 				animation-iteration-count: infinite;
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .app-loader picture, .app-loader h6 { animation: none; opacity: 1; }
 			}
 
-			svg.logo .leaf {
-				fill: var(--bs-body-color) !important;
-			}
+            .paperflow-logo { display: block; margin-bottom: 1rem; }
+            .paperflow-logo img { max-width: 100%; height: auto; }
 		</style>
-		<div class="bg-light w-100 h-100 d-flex align-items-center">
+		<div class="bg-body w-100 h-100 d-flex align-items-center">
 			<div class="app-loader align-self-center text-center mx-auto">
-				{% include "paperless-ngx/snippets/svg_logo.html" with extra_attrs="class='logo mb-2' height='6em'" %}
-				<h6 class="m-auto">{% translate "Paperless-ngx is loading..." %}</h6>
+				{% include "paperless-ngx/snippets/paperflow_logo.html" %}
+				<h6 class="m-auto">{% translate "Paperflow AI is loading..." %}</h6>
 				<p class="warning m-auto mt-3 small fade hide">{% translate "Still here?! Hmm, something might be wrong." %} <a href="https://docs.paperless-ngx.com">{% translate "Here's a link to the docs." %}</a></p>
 			</div>
 		</div>

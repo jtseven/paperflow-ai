@@ -1661,8 +1661,8 @@ msgid "Documents not found: %(ids)s"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
-msgstr "Účet Paperless-ngx je neaktivní"
+msgid "Paperflow AI account inactive"
+msgstr "Účet Paperflow AI je neaktivní"
 
 #: documents/templates/account/account_inactive.html:9
 msgid "Account inactive."
@@ -1689,8 +1689,8 @@ msgstr "Děkujeme za používání %(site_name)s!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Přihlášení do Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Přihlášení do Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,8 +1733,8 @@ msgid "or sign in via"
 msgstr "nebo se přihlásit prostřednictvím"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Žádost o obnovu hesla v Paperless-ngx"
+msgid "Paperflow AI reset password request"
+msgstr "Žádost o obnovu hesla v Paperflow AI"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1749,8 +1749,8 @@ msgid "Send me instructions!"
 msgstr "Pošlete mi pokyny!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
-msgstr "Žádost o obnovu hesla v Paperless-ngx odeslána"
+msgid "Paperflow AI reset password sent"
+msgstr "Žádost o obnovu hesla v Paperflow AI odeslána"
 
 #: documents/templates/account/password_reset_done.html:9
 msgid "Check your inbox."
@@ -1761,8 +1761,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Pokyny k nastavení hesla jsme vám zaslali e-mailem. Měli byste jej obdržet v nejbližší době!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Potvrzení obnovení hesla v Paperless-ngx"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Potvrzení obnovení hesla v Paperflow AI"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1785,8 +1785,8 @@ msgid "Change my password"
 msgstr "Změnit moje heslo"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
-msgstr "Paperless-ngx obnovení hesla dokončeno"
+msgid "Paperflow AI reset password complete"
+msgstr "Paperflow AI obnovení hesla dokončeno"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
 msgid "Password reset complete."
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr ""
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Registrace do Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "Registrace do Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Heslo (znovu)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx se načítá…"
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI se načítá…"
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,8 +1834,8 @@ msgid "Here's a link to the docs."
 msgstr "Zde je odkaz na dokumenty."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Dvoufázové ověření Paperless-ngx"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Dvoufázové ověření Paperflow AI"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1859,8 +1859,8 @@ msgstr "Odkaz na sdílení vypršel."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Přihlášení do Paperless-ngx účtem sociální sítě"
+msgid "Paperflow AI social account sign in"
+msgstr "Přihlášení do Paperflow AI účtem sociální sítě"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Pokračovat"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Registrace do Paperless-ngx účtem sociální sítě"
+msgid "Paperflow AI social account sign up"
+msgstr "Registrace do Paperflow AI účtem sociální sítě"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

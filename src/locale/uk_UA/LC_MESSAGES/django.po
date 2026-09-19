@@ -1661,7 +1661,7 @@ msgid "Documents not found: %(ids)s"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
+msgid "Paperflow AI account inactive"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:9
@@ -1689,8 +1689,8 @@ msgstr "Дякуємо за використання %(site_name)s!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Увійти в Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Увійти в Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,8 +1733,8 @@ msgid "or sign in via"
 msgstr "або увійдіть за допомогою"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Запит на скидання пароля Paperless-ngx"
+msgid "Paperflow AI reset password request"
+msgstr "Запит на скидання пароля Paperflow AI"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1749,8 +1749,8 @@ msgid "Send me instructions!"
 msgstr "Надіслати мені інструкції!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
-msgstr "Запит на скидання пароля Paperless-ngx надіслано"
+msgid "Paperflow AI reset password sent"
+msgstr "Запит на скидання пароля Paperflow AI надіслано"
 
 #: documents/templates/account/password_reset_done.html:9
 msgid "Check your inbox."
@@ -1761,8 +1761,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Ми надіслали вам на електронну пошту інструкції щодо встановлення паролю. Ви маєте отримати лист найближчим часом!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Підтвердження скидання пароля Paperless-ngx"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Підтвердження скидання пароля Paperflow AI"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1785,8 +1785,8 @@ msgid "Change my password"
 msgstr "Змінити мій пароль"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
-msgstr "Скидання пароля Paperless-ngx завершено"
+msgid "Paperflow AI reset password complete"
+msgstr "Скидання пароля Paperflow AI завершено"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
 msgid "Password reset complete."
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr ""
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Зареєструватись у Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "Зареєструватись у Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Пароль (повторно)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx завантажується..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI завантажується..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,7 +1834,7 @@ msgid "Here's a link to the docs."
 msgstr "Ось посилання на документацію."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
+msgid "Paperflow AI Two-Factor Authentication"
 msgstr ""
 
 #: documents/templates/mfa/authenticate.html:12
@@ -1859,8 +1859,8 @@ msgstr "Термін дії посилання закінчився."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Paperless-ngx увійти за допомогою акаунту в соцмережах"
+msgid "Paperflow AI social account sign in"
+msgstr "Paperflow AI увійти за допомогою акаунту в соцмережах"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Продовжити"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Зареєструватися в Paperless-ngx за допомогою акаунту в соцмережах"
+msgid "Paperflow AI social account sign up"
+msgstr "Зареєструватися в Paperflow AI за допомогою акаунту в соцмережах"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

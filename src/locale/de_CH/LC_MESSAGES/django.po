@@ -1661,8 +1661,8 @@ msgid "Documents not found: %(ids)s"
 msgstr "Dokumente nicht gefunden: %(ids)s"
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
-msgstr "Paperless-ngx-Konto inaktiv"
+msgid "Paperflow AI account inactive"
+msgstr "Paperflow AI-Konto inaktiv"
 
 #: documents/templates/account/account_inactive.html:9
 msgid "Account inactive."
@@ -1689,8 +1689,8 @@ msgstr "Vielen Dank, dass Sie %(site_name)s verwenden!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Paperless-ngx Anmeldung"
+msgid "Paperflow AI sign in"
+msgstr "Paperflow AI Anmeldung"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,8 +1733,8 @@ msgid "or sign in via"
 msgstr "oder anmelden über"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Paperless-ngx Kennwortrücksetzungsanfrage"
+msgid "Paperflow AI reset password request"
+msgstr "Paperflow AI Kennwortrücksetzungsanfrage"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1749,8 +1749,8 @@ msgid "Send me instructions!"
 msgstr "Anweisungen senden!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
-msgstr "Paperless-ngx Kennwortrücksetzung gesendet"
+msgid "Paperflow AI reset password sent"
+msgstr "Paperflow AI Kennwortrücksetzung gesendet"
 
 #: documents/templates/account/password_reset_done.html:9
 msgid "Check your inbox."
@@ -1761,8 +1761,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Wir haben Ihnen Anweisungen zum Setzen Ihres neuen Kennworts gesendet. Sie sollten die E-Mail in Kürze erhalten!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Paperless-ngx Kennwortrücksetzungsbestätigung"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Paperflow AI Kennwortrücksetzungsbestätigung"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1785,8 +1785,8 @@ msgid "Change my password"
 msgstr "Mein Kennwort ändern"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
-msgstr "Paperless-ngx Kennwort-Rücksetzung abgeschlossen"
+msgid "Paperflow AI reset password complete"
+msgstr "Paperflow AI Kennwort-Rücksetzung abgeschlossen"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
 msgid "Password reset complete."
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr "einloggen"
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Paperless-ngx-Registrierung"
+msgid "Paperflow AI sign up"
+msgstr "Paperflow AI-Registrierung"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Kennwort (wiederholen)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx wird geladen..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI wird geladen..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,8 +1834,8 @@ msgid "Here's a link to the docs."
 msgstr "Hier ist ein Link zur Dokumentation."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Paperless-ngx Zwei-Faktor-Authentifizierung"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Paperflow AI Zwei-Faktor-Authentifizierung"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1859,8 +1859,8 @@ msgstr "Freigabelink ist abgelaufen."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Paperless-ngx Drittanbieterkonto-Anmeldung"
+msgid "Paperflow AI social account sign in"
+msgstr "Paperflow AI Drittanbieterkonto-Anmeldung"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Fortfahren"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Paperless-ngx Drittanbieterkonto-Registrierung"
+msgid "Paperflow AI social account sign up"
+msgstr "Paperflow AI Drittanbieterkonto-Registrierung"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

@@ -1661,7 +1661,7 @@ msgid "Documents not found: %(ids)s"
 msgstr "Dokumentet nuk u gjetën: %(ids)s"
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
+msgid "Paperflow AI account inactive"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:9
@@ -1689,8 +1689,8 @@ msgstr "Faleminderit që përdorni %(site_name)s!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Hyrje në Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Hyrje në Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,8 +1733,8 @@ msgid "or sign in via"
 msgstr "ose hyr përmes"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Kërkesë për rivendosje fjalëkalimi në Paperless-ngx"
+msgid "Paperflow AI reset password request"
+msgstr "Kërkesë për rivendosje fjalëkalimi në Paperflow AI"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1749,8 +1749,8 @@ msgid "Send me instructions!"
 msgstr "Më dërgo udhëzimet!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
-msgstr "Rivendosja e fjalëkalimit në Paperless-ngx u dërgua"
+msgid "Paperflow AI reset password sent"
+msgstr "Rivendosja e fjalëkalimit në Paperflow AI u dërgua"
 
 #: documents/templates/account/password_reset_done.html:9
 msgid "Check your inbox."
@@ -1761,8 +1761,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Ju kemi dërguar me email udhëzimet për vendosjen e fjalëkalimit. Email-in duhet ta merrni së shpejti!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Konfirmimi i rivendosjes së fjalëkalimit në Paperless-ngx"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Konfirmimi i rivendosjes së fjalëkalimit në Paperflow AI"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1785,7 +1785,7 @@ msgid "Change my password"
 msgstr "Ndrysho fjalëkalimin tim"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
+msgid "Paperflow AI reset password complete"
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key_done.html:9
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr "hyni"
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Regjistrim në Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "Regjistrim në Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Fjalëkalimi (përsëri)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx po ngarkohet..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI po ngarkohet..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,8 +1834,8 @@ msgid "Here's a link to the docs."
 msgstr "Ja një lidhje te dokumentacioni."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Autentikim me dy faktorë në Paperless-ngx"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Autentikim me dy faktorë në Paperflow AI"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1859,7 +1859,7 @@ msgstr "Lidhja e ndarjes ka skaduar."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
+msgid "Paperflow AI social account sign in"
 msgstr ""
 
 #: documents/templates/socialaccount/authentication_error.html:10
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Vazhdo"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Paperless-ngx social llogari sign up"
+msgid "Paperflow AI social account sign up"
+msgstr "Paperflow AI social llogari sign up"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

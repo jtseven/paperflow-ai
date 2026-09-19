@@ -377,7 +377,7 @@ msgid "File type %(type)s not supported"
 msgstr ""
 
 #: documents/templates/index.html:22
-msgid "Paperless-ngx is loading..."
+msgid "Paperflow AI is loading..."
 msgstr ""
 
 #: documents/templates/registration/logged_out.html:14
@@ -393,7 +393,7 @@ msgid "Sign in again"
 msgstr ""
 
 #: documents/templates/registration/login.html:15
-msgid "Paperless-ngx sign in"
+msgid "Paperflow AI sign in"
 msgstr ""
 
 #: documents/templates/registration/login.html:61

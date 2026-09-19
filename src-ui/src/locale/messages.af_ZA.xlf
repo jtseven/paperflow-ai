@@ -269,8 +269,8 @@
         </context-group>
         <target state="translated">Sluit</target>
       </trans-unit>
-      <trans-unit id="3527354815023530656" datatype="html">
-        <source>Document <x id="PH" equiv-text="status.filename"/> was added to Paperless-ngx.</source>
+      <trans-unit id="761937788057720723" datatype="html">
+        <source>Document <x id="PH" equiv-text="status.filename"/> was added to Paperflow AI.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">93</context>
@@ -279,7 +279,7 @@
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">102</context>
         </context-group>
-        <target state="needs-translation">Document <x id="PH" equiv-text="status.filename"/> was added to Paperless-ngx.</target>
+        <target state="needs-translation">Document <x id="PH" equiv-text="status.filename"/> was added to Paperflow AI.</target>
       </trans-unit>
       <trans-unit id="1931214133925051574" datatype="html">
         <source>Open document</source>
@@ -317,13 +317,13 @@
         </context-group>
         <target state="translated">Kon nie <x id="PH" equiv-text="status.filename"/> toevoeg nie: <x id="PH_1" equiv-text="status.message"/></target>
       </trans-unit>
-      <trans-unit id="1218124467712564468" datatype="html">
-        <source>Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperless-ngx.</source>
+      <trans-unit id="3024718326815651415" datatype="html">
+        <source>Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperflow AI.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">132</context>
         </context-group>
-        <target state="needs-translation">Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperless-ngx.</target>
+        <target state="needs-translation">Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperflow AI.</target>
       </trans-unit>
       <trans-unit id="6570363013146073520" datatype="html">
         <source>Dashboard</source>
@@ -441,13 +441,13 @@
         </context-group>
         <target state="needs-translation">The dashboard can be used to show saved views, such as an 'Inbox'. Views are found under Manage &gt; Saved Views once you have created some.</target>
       </trans-unit>
-      <trans-unit id="9075755296812854717" datatype="html">
-        <source>Drag-and-drop documents here to start uploading or place them in the consume folder. You can also drag-and-drop documents anywhere on all other pages of the web app. Once you do, Paperless-ngx will start training its machine learning algorithms.</source>
+      <trans-unit id="8762173488299649617" datatype="html">
+        <source>Drag-and-drop documents here to start uploading or place them in the consume folder. You can also drag-and-drop documents anywhere on all other pages of the web app. Once you do, Paperflow AI will start training its machine learning algorithms.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">178</context>
         </context-group>
-        <target state="translated">Sleep-en-los dokumente hier om te begin oplaai, of plaas dit in die verbruik-vouer. U kan ook dokumente enige plek sleep-en-los op alle ander blaaie van die webtoep. Sodra u dit doen, sal Paperless-ngx sy masjienleeralgoritmes begin oplei.</target>
+        <target state="translated">Sleep-en-los dokumente hier om te begin oplaai, of plaas dit in die verbruik-vouer. U kan ook dokumente enige plek sleep-en-los op alle ander blaaie van die webtoep. Sodra u dit doen, sal Paperflow AI sy masjienleeralgoritmes begin oplei.</target>
       </trans-unit>
       <trans-unit id="7495498057594070122" datatype="html">
         <source>The documents list shows all of your documents and allows for filtering as well as bulk-editing. There are three different view styles: list, small cards and large cards. A list of documents currently opened for editing is shown in the sidebar.</source>
@@ -533,13 +533,13 @@
         </context-group>
         <target state="translated">Daar is nog &lt;em&gt;baie&lt;/em&gt; meer funksies en inligting wat ons nie hier behandel het nie, maar u sal hiermee kan begin. Bekyk die dokumentasie of besoek die projek op GitHub vir meer inligting of om probleme te rapporteer.</target>
       </trans-unit>
-      <trans-unit id="4270528545616947218" datatype="html">
-        <source>Lastly, on behalf of every contributor to this community-supported project, thank you for using Paperless-ngx!</source>
+      <trans-unit id="4784552611252380004" datatype="html">
+        <source>Lastly, on behalf of every contributor to this community-supported project, thank you for using Paperflow AI!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">245</context>
         </context-group>
-        <target state="translated">Ten slotte, namens elke bydraer aan hierdie gemeenskapsondersteunde projek, dankie dat u Paperless-ngx gebruik!</target>
+        <target state="translated">Ten slotte, namens elke bydraer aan hierdie gemeenskapsondersteunde projek, dankie dat u Paperflow AI gebruik!</target>
       </trans-unit>
       <trans-unit id="9063918187161876141" datatype="html">
         <source>Application Configuration</source>
@@ -549,13 +549,13 @@
         </context-group>
         <target state="needs-translation">Application Configuration</target>
       </trans-unit>
-      <trans-unit id="8528041182664173532" datatype="html">
-        <source>Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperless-ngx. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</source>
+      <trans-unit id="2001857360708214643" datatype="html">
+        <source>Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperflow AI. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/admin/config/config.component.html</context>
           <context context-type="linenumber">4,5</context>
         </context-group>
-        <target state="needs-translation">Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperless-ngx. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</target>
+        <target state="needs-translation">Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperflow AI. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</target>
       </trans-unit>
       <trans-unit id="7991430199894172363" datatype="html">
         <source>Read the documentation about this setting</source>
@@ -9077,13 +9077,13 @@
         </context-group>
         <target state="translated">Meer detail oor hoe om Paperless-ngx te gebruik en op te stel, is altyd in die <x id="START_LINK" ctype="x-a" equiv-text="&lt;a href=&quot;https://docs.paperless-ngx.com&quot; target=&quot;_blank&quot;&gt;"/>dokumentasie<x id="CLOSE_LINK" ctype="x-a" equiv-text="&lt;/a&gt;"/> beskikbaar.</target>
       </trans-unit>
-      <trans-unit id="4294899532887357745" datatype="html">
-        <source>Thanks for being a part of the Paperless-ngx community!</source>
+      <trans-unit id="6676687002557005308" datatype="html">
+        <source>Thanks for being a part of the Paperflow AI community!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/dashboard/widgets/welcome-widget/welcome-widget.component.html</context>
           <context context-type="linenumber">13,14</context>
         </context-group>
-        <target state="translated">Dankie dat u deel is van die Paperless-ngx-gemeenskap!</target>
+        <target state="translated">Dankie dat u deel is van die Paperflow AI-gemeenskap!</target>
       </trans-unit>
       <trans-unit id="1415832194529539652" datatype="html">
         <source>Start the tour</source>
@@ -12593,13 +12593,13 @@
         </context-group>
         <target state="needs-translation">Bundles</target>
       </trans-unit>
-      <trans-unit id="1229748338333965418" datatype="html">
-        <source>Use workflows to customize the behavior of Paperless-ngx when events &apos;trigger&apos; a workflow.</source>
+      <trans-unit id="1004125873961453378" datatype="html">
+        <source>Use workflows to customize the behavior of Paperflow AI when events &apos;trigger&apos; a workflow.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/manage/workflows/workflows.component.html</context>
           <context context-type="linenumber">4,5</context>
         </context-group>
-        <target state="needs-translation">Use workflows to customize the behavior of Paperless-ngx when events 'trigger' a workflow.</target>
+        <target state="needs-translation">Use workflows to customize the behavior of Paperflow AI when events 'trigger' a workflow.</target>
       </trans-unit>
       <trans-unit id="2437630016855517844" datatype="html">
         <source>Add Workflow</source>

@@ -1661,7 +1661,7 @@ msgid "Documents not found: %(ids)s"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
+msgid "Paperflow AI account inactive"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:9
@@ -1689,8 +1689,8 @@ msgstr "Kiitos kun käytät sivustoa %(site_name)s!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Paperless-ngx:n sisäänkirjautuminen"
+msgid "Paperflow AI sign in"
+msgstr "Paperflow AI:n sisäänkirjautuminen"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,7 +1733,7 @@ msgid "or sign in via"
 msgstr "tai kirjaudu käyttäen"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
+msgid "Paperflow AI reset password request"
 msgstr ""
 
 #: documents/templates/account/password_reset.html:9
@@ -1749,7 +1749,7 @@ msgid "Send me instructions!"
 msgstr "Lähettäkää ohjeet!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
+msgid "Paperflow AI reset password sent"
 msgstr ""
 
 #: documents/templates/account/password_reset_done.html:9
@@ -1761,7 +1761,7 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Olemme lähettäneet sinulle ohjeet salasanan asettamiseen. Sinun pitäisi saada sähköposti pian!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
+msgid "Paperflow AI reset password confirmation"
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key.html:9
@@ -1785,7 +1785,7 @@ msgid "Change my password"
 msgstr "Vaihda salasana"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
+msgid "Paperflow AI reset password complete"
 msgstr ""
 
 #: documents/templates/account/password_reset_from_key_done.html:9
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr ""
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Paperless-ngx:n rekisteröityminen"
+msgid "Paperflow AI sign up"
+msgstr "Paperflow AI:n rekisteröityminen"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Salasana (uudestaan)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx latautuu..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI latautuu..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,7 +1834,7 @@ msgid "Here's a link to the docs."
 msgstr "Tässä on linkki dokumentteihin."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
+msgid "Paperflow AI Two-Factor Authentication"
 msgstr ""
 
 #: documents/templates/mfa/authenticate.html:12
@@ -1859,7 +1859,7 @@ msgstr "Jakolinkki on vanhentunut."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
+msgid "Paperflow AI social account sign in"
 msgstr ""
 
 #: documents/templates/socialaccount/authentication_error.html:10
@@ -1880,7 +1880,7 @@ msgid "Continue"
 msgstr "Jatka"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
+msgid "Paperflow AI social account sign up"
 msgstr ""
 
 #: documents/templates/socialaccount/signup.html:11

@@ -269,8 +269,8 @@
         </context-group>
         <target state="translated">關閉</target>
       </trans-unit>
-      <trans-unit id="3527354815023530656" datatype="html">
-        <source>Document <x id="PH" equiv-text="status.filename"/> was added to Paperless-ngx.</source>
+      <trans-unit id="761937788057720723" datatype="html">
+        <source>Document <x id="PH" equiv-text="status.filename"/> was added to Paperflow AI.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">93</context>
@@ -279,7 +279,7 @@
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">102</context>
         </context-group>
-        <target state="translated">文件 <x id="PH" equiv-text="status.filename"/> 被添加至 Paperless-ngx.</target>
+        <target state="translated">文件 <x id="PH" equiv-text="status.filename"/> 被添加至 Paperflow AI.</target>
       </trans-unit>
       <trans-unit id="1931214133925051574" datatype="html">
         <source>Open document</source>
@@ -317,13 +317,13 @@
         </context-group>
         <target state="translated">無法新增 <x id="PH" equiv-text="status.filename"/>: <x id="PH_1" equiv-text="status.message"/></target>
       </trans-unit>
-      <trans-unit id="1218124467712564468" datatype="html">
-        <source>Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperless-ngx.</source>
+      <trans-unit id="3024718326815651415" datatype="html">
+        <source>Document <x id="PH" equiv-text="status.filename"/> is being processed by Paperflow AI.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">132</context>
         </context-group>
-        <target state="translated">文件 <x id="PH" equiv-text="status.filename"/> 正在被 Paperless-ngx 處理。</target>
+        <target state="translated">文件 <x id="PH" equiv-text="status.filename"/> 正在被 Paperflow AI 處理。</target>
       </trans-unit>
       <trans-unit id="6570363013146073520" datatype="html">
         <source>Dashboard</source>
@@ -441,13 +441,13 @@
         </context-group>
         <target state="translated">資訊主頁可顯示已儲存的檢視表，例如「收件匣」。建立檢視表後，會顯示於「文件管理」&gt;「已儲存的檢視表」。</target>
       </trans-unit>
-      <trans-unit id="9075755296812854717" datatype="html">
-        <source>Drag-and-drop documents here to start uploading or place them in the consume folder. You can also drag-and-drop documents anywhere on all other pages of the web app. Once you do, Paperless-ngx will start training its machine learning algorithms.</source>
+      <trans-unit id="8762173488299649617" datatype="html">
+        <source>Drag-and-drop documents here to start uploading or place them in the consume folder. You can also drag-and-drop documents anywhere on all other pages of the web app. Once you do, Paperflow AI will start training its machine learning algorithms.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">178</context>
         </context-group>
-        <target state="translated">將文件拖曳至此處開始上傳，或放入處理資料夾。也可以將文件拖曳至網頁應用程式的其他頁面上。完成後，Paperless-ngx 會開始訓練其機器學習演算法。</target>
+        <target state="translated">將文件拖曳至此處開始上傳，或放入處理資料夾。也可以將文件拖曳至網頁應用程式的其他頁面上。完成後，Paperflow AI 會開始訓練其機器學習演算法。</target>
       </trans-unit>
       <trans-unit id="7495498057594070122" datatype="html">
         <source>The documents list shows all of your documents and allows for filtering as well as bulk-editing. There are three different view styles: list, small cards and large cards. A list of documents currently opened for editing is shown in the sidebar.</source>
@@ -533,13 +533,13 @@
         </context-group>
         <target state="translated">還有&lt;em&gt;大量&lt;/em&gt;功能和資訊尚未介紹，但應該足夠上手了。請參閱說明文件或造訪 GitHub 頁面，以了解更多內容或回報問題。</target>
       </trans-unit>
-      <trans-unit id="4270528545616947218" datatype="html">
-        <source>Lastly, on behalf of every contributor to this community-supported project, thank you for using Paperless-ngx!</source>
+      <trans-unit id="4784552611252380004" datatype="html">
+        <source>Lastly, on behalf of every contributor to this community-supported project, thank you for using Paperflow AI!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.component.ts</context>
           <context context-type="linenumber">245</context>
         </context-group>
-        <target state="translated">最後，代表所有對此社群支持型專案付出的貢獻者，感謝您使用 Paperless-ngx！</target>
+        <target state="translated">最後，代表所有對此社群支持型專案付出的貢獻者，感謝您使用 Paperflow AI！</target>
       </trans-unit>
       <trans-unit id="9063918187161876141" datatype="html">
         <source>Application Configuration</source>
@@ -549,8 +549,8 @@
         </context-group>
         <target state="translated">系統配置</target>
       </trans-unit>
-      <trans-unit id="8528041182664173532" datatype="html">
-        <source>Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperless-ngx. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</source>
+      <trans-unit id="2001857360708214643" datatype="html">
+        <source>Global app configuration options which apply to &lt;strong&gt;every&lt;/strong&gt; user of this install of Paperflow AI. Options can also be set using environment variables or the configuration file but the value here will always take precedence.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/admin/config/config.component.html</context>
           <context context-type="linenumber">4,5</context>
@@ -9077,13 +9077,13 @@
         </context-group>
         <target state="translated">更多使用與設定 Paperless-ngx 的詳細資訊，請參閱<x id="START_LINK" ctype="x-a" equiv-text="&lt;a href=&quot;https://docs.paperless-ngx.com&quot; target=&quot;_blank&quot;&gt;"/>說明文件<x id="CLOSE_LINK" ctype="x-a" equiv-text="&lt;/a&gt;"/>。</target>
       </trans-unit>
-      <trans-unit id="4294899532887357745" datatype="html">
-        <source>Thanks for being a part of the Paperless-ngx community!</source>
+      <trans-unit id="6676687002557005308" datatype="html">
+        <source>Thanks for being a part of the Paperflow AI community!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/dashboard/widgets/welcome-widget/welcome-widget.component.html</context>
           <context context-type="linenumber">13,14</context>
         </context-group>
-        <target state="translated">感謝成為 Paperless-ngx 社群的一員！</target>
+        <target state="translated">感謝成為 Paperflow AI 社群的一員！</target>
       </trans-unit>
       <trans-unit id="1415832194529539652" datatype="html">
         <source>Start the tour</source>
@@ -12593,13 +12593,13 @@
         </context-group>
         <target state="needs-translation">Bundles</target>
       </trans-unit>
-      <trans-unit id="1229748338333965418" datatype="html">
-        <source>Use workflows to customize the behavior of Paperless-ngx when events &apos;trigger&apos; a workflow.</source>
+      <trans-unit id="1004125873961453378" datatype="html">
+        <source>Use workflows to customize the behavior of Paperflow AI when events &apos;trigger&apos; a workflow.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/manage/workflows/workflows.component.html</context>
           <context context-type="linenumber">4,5</context>
         </context-group>
-        <target state="translated">使用工作流程來自訂 Paperless-ngx 在事件「觸發」工作流程時的行為。</target>
+        <target state="translated">使用工作流程來自訂 Paperflow AI 在事件「觸發」工作流程時的行為。</target>
       </trans-unit>
       <trans-unit id="2437630016855517844" datatype="html">
         <source>Add Workflow</source>

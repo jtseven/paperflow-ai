@@ -1661,7 +1661,7 @@ msgid "Documents not found: %(ids)s"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
+msgid "Paperflow AI account inactive"
 msgstr ""
 
 #: documents/templates/account/account_inactive.html:9
@@ -1688,7 +1688,7 @@ msgid "Thank you for using %(site_name)s!\n"
 msgstr ""
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
+msgid "Paperflow AI sign in"
 msgstr ""
 
 #: documents/templates/account/login.html:10
@@ -1732,8 +1732,8 @@ msgid "or sign in via"
 msgstr "arba prisijunkite per"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "„Paperless-ngx“ slaptažodžio atkūrimo užklausa"
+msgid "Paperflow AI reset password request"
+msgstr "„Paperflow AI“ slaptažodžio atkūrimo užklausa"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1748,7 +1748,7 @@ msgid "Send me instructions!"
 msgstr ""
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
+msgid "Paperflow AI reset password sent"
 msgstr ""
 
 #: documents/templates/account/password_reset_done.html:9
@@ -1760,8 +1760,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Mes išsiuntėme jums intrukcijas slaptažodžio nustatymui. Netrukus turėtumėte gauti el. laišką!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "„Paperless-ngx“ slaptažodžio nustatymo iš naujo patvirtinimas"
+msgid "Paperflow AI reset password confirmation"
+msgstr "„Paperflow AI“ slaptažodžio nustatymo iš naujo patvirtinimas"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1784,8 +1784,8 @@ msgid "Change my password"
 msgstr "Pakeisti slaptažodį"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
-msgstr "„Paperless-ngx“ slaptažodžio atkūrimas baigtas"
+msgid "Paperflow AI reset password complete"
+msgstr "„Paperflow AI“ slaptažodžio atkūrimas baigtas"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
 msgid "Password reset complete."
@@ -1800,8 +1800,8 @@ msgid "log in"
 msgstr ""
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Paperless-ngx registracija"
+msgid "Paperflow AI sign up"
+msgstr "Paperflow AI registracija"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1821,8 +1821,8 @@ msgid "Password (again)"
 msgstr "Slaptažodis (pakartokite)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Įkeliama „Paperless-ngx“..."
+msgid "Paperflow AI is loading..."
+msgstr "Įkeliama „Paperflow AI“..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1833,8 +1833,8 @@ msgid "Here's a link to the docs."
 msgstr "Štai nuoroda į dokumentaciją."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Paperless-ngx dviejų žingsnių autentifikacija"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Paperflow AI dviejų žingsnių autentifikacija"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1858,8 +1858,8 @@ msgstr "Dalinimosi nuoroda nebegalioja."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Paperless-ngx socialinio tinklo paskyros prisijungimas"
+msgid "Paperflow AI social account sign in"
+msgstr "Paperflow AI socialinio tinklo paskyros prisijungimas"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1879,8 +1879,8 @@ msgid "Continue"
 msgstr "Tęsti"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Paperless-ngx socialiniės paskyros registracija"
+msgid "Paperflow AI social account sign up"
+msgstr "Paperflow AI socialiniės paskyros registracija"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

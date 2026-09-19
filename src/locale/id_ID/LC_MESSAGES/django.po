@@ -1661,8 +1661,8 @@ msgid "Documents not found: %(ids)s"
 msgstr "Dokumen tidak ditemukan: %(ids)s"
 
 #: documents/templates/account/account_inactive.html:5
-msgid "Paperless-ngx account inactive"
-msgstr "Akun Paperless-ngx tidak aktif"
+msgid "Paperflow AI account inactive"
+msgstr "Akun Paperflow AI tidak aktif"
 
 #: documents/templates/account/account_inactive.html:9
 msgid "Account inactive."
@@ -1689,8 +1689,8 @@ msgstr "Terima kasih telah menggunakan %(site_name)s!\n"
 "%(site_domain)s"
 
 #: documents/templates/account/login.html:5
-msgid "Paperless-ngx sign in"
-msgstr "Masuk Paperless-ngx"
+msgid "Paperflow AI sign in"
+msgstr "Masuk Paperflow AI"
 
 #: documents/templates/account/login.html:10
 msgid "Please sign in."
@@ -1733,8 +1733,8 @@ msgid "or sign in via"
 msgstr "atau masuk melalui"
 
 #: documents/templates/account/password_reset.html:5
-msgid "Paperless-ngx reset password request"
-msgstr "Permintaan atur ulang kata sandi Paperless-ngx"
+msgid "Paperflow AI reset password request"
+msgstr "Permintaan atur ulang kata sandi Paperflow AI"
 
 #: documents/templates/account/password_reset.html:9
 msgid "Enter your email address below, and we'll email instructions for setting a new one."
@@ -1749,8 +1749,8 @@ msgid "Send me instructions!"
 msgstr "Kirim saya instruksi!"
 
 #: documents/templates/account/password_reset_done.html:5
-msgid "Paperless-ngx reset password sent"
-msgstr "Permintaan atur ulang kata sandi Paperless-ngx terkirim"
+msgid "Paperflow AI reset password sent"
+msgstr "Permintaan atur ulang kata sandi Paperflow AI terkirim"
 
 #: documents/templates/account/password_reset_done.html:9
 msgid "Check your inbox."
@@ -1761,8 +1761,8 @@ msgid "We've emailed you instructions for setting your password. You should rece
 msgstr "Kami telah mengirimkan Anda surel instruksi untuk menyetel kata sandi. Anda akan menerima surel segera!"
 
 #: documents/templates/account/password_reset_from_key.html:5
-msgid "Paperless-ngx reset password confirmation"
-msgstr "Konfirmasi ubah kata sandi Paperless-ngx"
+msgid "Paperflow AI reset password confirmation"
+msgstr "Konfirmasi ubah kata sandi Paperflow AI"
 
 #: documents/templates/account/password_reset_from_key.html:9
 msgid "Set a new password."
@@ -1785,7 +1785,7 @@ msgid "Change my password"
 msgstr "Ubah kata sandi saya"
 
 #: documents/templates/account/password_reset_from_key_done.html:5
-msgid "Paperless-ngx reset password complete"
+msgid "Paperflow AI reset password complete"
 msgstr "Pengaturan ulang kata sandi paperless-ngx selesai"
 
 #: documents/templates/account/password_reset_from_key_done.html:9
@@ -1801,8 +1801,8 @@ msgid "log in"
 msgstr ""
 
 #: documents/templates/account/signup.html:5
-msgid "Paperless-ngx sign up"
-msgstr "Daftar Paperless-ngx"
+msgid "Paperflow AI sign up"
+msgstr "Daftar Paperflow AI"
 
 #: documents/templates/account/signup.html:11
 msgid "Already have an account?"
@@ -1822,8 +1822,8 @@ msgid "Password (again)"
 msgstr "Kata Sandi (ulang)"
 
 #: documents/templates/index.html:61
-msgid "Paperless-ngx is loading..."
-msgstr "Paperless-ngx sedang memuat..."
+msgid "Paperflow AI is loading..."
+msgstr "Paperflow AI sedang memuat..."
 
 #: documents/templates/index.html:62
 msgid "Still here?! Hmm, something might be wrong."
@@ -1834,8 +1834,8 @@ msgid "Here's a link to the docs."
 msgstr "Berikut tautan ke dokumen."
 
 #: documents/templates/mfa/authenticate.html:7
-msgid "Paperless-ngx Two-Factor Authentication"
-msgstr "Autentikasi Dua Faktor Paperless-ngx"
+msgid "Paperflow AI Two-Factor Authentication"
+msgstr "Autentikasi Dua Faktor Paperflow AI"
 
 #: documents/templates/mfa/authenticate.html:12
 msgid "Your account is protected by two-factor authentication. Please enter an authenticator code:"
@@ -1859,8 +1859,8 @@ msgstr "Tautan telah kedaluwarsa."
 
 #: documents/templates/socialaccount/authentication_error.html:5
 #: documents/templates/socialaccount/login.html:5
-msgid "Paperless-ngx social account sign in"
-msgstr "Paperless-ngx masuk dengan akun sosial"
+msgid "Paperflow AI social account sign in"
+msgstr "Paperflow AI masuk dengan akun sosial"
 
 #: documents/templates/socialaccount/authentication_error.html:10
 msgid "An error occurred while attempting to login via your social network account. Back to the"
@@ -1880,8 +1880,8 @@ msgid "Continue"
 msgstr "Lanjutkan"
 
 #: documents/templates/socialaccount/signup.html:5
-msgid "Paperless-ngx social account sign up"
-msgstr "Paperless-ngx daftar dengan akun sosial"
+msgid "Paperflow AI social account sign up"
+msgstr "Paperflow AI daftar dengan akun sosial"
 
 #: documents/templates/socialaccount/signup.html:11
 #, python-format

@@ -1,95 +1,190 @@
+/* Account pages share Paperflow AI's blue accent and neutral app surfaces. */
+:root {
+	color-scheme: light;
+	--bs-body-bg: #f5f6f8;
+	--bs-body-color: #212529;
+	--bs-border-color: #e4e7ec;
+	--bs-link-color-rgb: 29, 78, 216;
+	--bs-link-hover-color-rgb: 30, 64, 175;
+	--pf-surface: #fff;
+	--pf-muted: #667085;
+	--pf-primary: #1d4ed8;
+	--pf-primary-hover: #1e40af;
+	--pf-focus: rgba(29, 78, 216, 0.22);
+}
+
 body {
-  --bs-body-bg: #f5f5f5;
-  --bs-link-color-rgb: 23, 84, 31; /* #17541f */
-  --bs-link-hover-color-rgb: 15, 56, 20;
-  --pngx-primary: #17541f;
-  --pngx-primary-hover: #0f3614;
-  --pngx-primary-active: #0c2c10;
+	margin: 0;
+	min-height: 100vh;
+	min-height: 100dvh;
+	background: var(--bs-body-bg);
+	color: var(--bs-body-color);
+	font-size: 0.875rem;
+	letter-spacing: -0.005em;
 }
 
-.logo {
-  height: auto;
+.account-shell {
+	min-height: 100vh;
+	min-height: 100dvh;
+	display: grid;
+	place-items: center;
+	padding: 2rem 1rem;
 }
 
+.account-card {
+	width: 100%;
+	max-width: 26rem;
+	padding: 2.5rem 2rem;
+	background: var(--pf-surface);
+	border: 1px solid var(--bs-border-color);
+	border-radius: 0.75rem;
+	box-shadow:
+		0 1px 2px rgba(0, 0, 0, 0.04),
+		0 8px 24px rgba(0, 0, 0, 0.035);
+}
+
+.account-brand {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 2rem;
+}
+
+.paperflow-logo {
+	display: block;
+}
+.paperflow-logo img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin: auto;
+}
+.custom-logo {
+	max-width: 100%;
+	max-height: 6rem;
+	object-fit: contain;
+}
+.custom-title {
+	font-size: 1.75rem;
+	overflow-wrap: anywhere;
+	margin: 0;
+}
 .byline {
-  font-size: 0.6rem;
-  letter-spacing: 0.1rem;
+	color: var(--pf-muted);
+	font-size: 0.75rem;
 }
-
+.form-accounts {
+	width: 100%;
+}
+.form-accounts > p {
+	color: var(--pf-muted);
+	margin-bottom: 1.5rem;
+}
 .text-primary {
-  color: var(--pngx-primary) !important;
+	color: var(--pf-primary) !important;
 }
 
 .form-control {
-  --bs-body-bg: #fff;
+	background-color: var(--pf-surface);
+	color: var(--bs-body-color);
+	border-color: var(--bs-border-color);
+	border-radius: 0.425rem;
+	font-size: 0.9375rem;
+}
+
+.form-control:focus {
+	background-color: var(--pf-surface);
+	color: var(--bs-body-color);
+	border-color: var(--pf-primary);
+	box-shadow: 0 0 0 0.2rem var(--pf-focus);
+	z-index: 2;
+}
+
+.form-floating > label {
+	color: var(--pf-muted);
+}
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+	color: var(--pf-muted);
+}
+.form-floating > label::after {
+	background: var(--pf-surface) !important;
+}
+.form-stacked-top,
+.form-stacked-middle {
+	margin-bottom: 0.75rem;
+}
+
+.btn {
+	border-radius: 0.425rem;
+	font-weight: 500;
+	font-size: 0.9375rem;
+	padding: 0.75rem 1rem;
 }
 
 .btn.btn-primary {
-  --bs-btn-bg: var(--pngx-primary);
-  --bs-btn-border-color: var(--pngx-primary);
-  --bs-btn-hover-bg: var(--pngx-primary-hover);
-  --bs-btn-hover-border-color: #0c2c10;
-  --bs-btn-active-bg: var(--pngx-primary-active);
-  --bs-btn-active-border-color: #09220d;
+	--bs-btn-color: #fff;
+	--bs-btn-bg: var(--pf-primary);
+	--bs-btn-border-color: var(--pf-primary);
+	--bs-btn-hover-color: #fff;
+	--bs-btn-hover-bg: var(--pf-primary-hover);
+	--bs-btn-hover-border-color: var(--pf-primary-hover);
+	--bs-btn-active-color: #fff;
+	--bs-btn-active-bg: var(--pf-primary-hover);
+	--bs-btn-active-border-color: var(--pf-primary-hover);
+	--bs-btn-focus-shadow-rgb: 29, 78, 216;
+}
+
+.btn.btn-secondary {
+	--bs-btn-color: var(--bs-body-color);
+	--bs-btn-bg: var(--pf-surface);
+	--bs-btn-border-color: var(--bs-border-color);
+	--bs-btn-hover-color: var(--bs-body-color);
+	--bs-btn-hover-bg: var(--bs-body-bg);
+	--bs-btn-hover-border-color: var(--pf-muted);
+	--bs-btn-active-color: var(--bs-body-color);
+	--bs-btn-active-bg: var(--bs-body-bg);
 }
 
 .btn-link {
-  --bs-btn-color: var(--pngx-primary);
-  --bs-btn-hover-color: var(--pngx-primary-hover);
-  --bs-btn-active-color: var(--pngx-primary-active);
+	--bs-btn-color: var(--pf-primary);
+	--bs-btn-hover-color: var(--pf-primary-hover);
+}
+a:focus-visible,
+button:focus-visible {
+	outline: 3px solid var(--pf-primary);
+	outline-offset: 3px;
+}
+.alert {
+	text-align: start;
+	overflow-wrap: anywhere;
+	border-radius: 0.425rem;
 }
 
-.form-accounts {
-  max-width: 330px;
-  min-width: 300px;
-}
-
-.form-stacked-top input {
-  margin-bottom: -1px;
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
-}
-
-.form-stacked-middle input {
-  margin-bottom: -1px;
-  border-top-right-radius: 0;
-  border-top-left-radius: 0;
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
-}
-
-.form-stacked-bottom input {
-  border-top-right-radius: 0;
-  border-top-left-radius: 0;
-}
-
-.form-accounts .form-floating input:focus {
-  position: relative;
-  z-index: 100;
-}
-
-.form-accounts .form-floating input:focus~label {
-  z-index: 101;
+@media (max-width: 360px) {
+	.account-card {
+		padding: 1.75rem 1.25rem;
+	}
 }
 
 @media (prefers-color-scheme: dark) {
-  /* From theme_dark.scss */
-  body {
-    --bs-body-bg: #161618;
-    --bs-body-color: #abb2bf;
-    --bs-body-color-rgb: 171, 178, 191;
-    --bs-border-color: #47494f;
-  }
-
-  .form-control, .form-floating {
-    --bs-body-bg: #1c1c1f;
-  }
-
-  svg.logo .text {
-    fill: #abb2bf !important;
-  }
-
-  .byline {
-    color: #abb2bf;
-  }
+	:root {
+		color-scheme: dark;
+		--bs-body-bg: #161618;
+		--bs-body-color: #abb2bf;
+		--bs-body-color-rgb: 171, 178, 191;
+		--bs-border-color: #2c2e33;
+		--bs-link-color-rgb: 137, 167, 255;
+		--bs-link-hover-color-rgb: 173, 193, 255;
+		--pf-surface: #1b1c1f;
+		--pf-muted: #9aa3b2;
+		--pf-primary: #315fdc;
+		--pf-primary-hover: #2754cb;
+		--pf-focus: rgba(112, 149, 255, 0.3);
+	}
+	.btn-link {
+		--bs-btn-color: #89a7ff;
+		--bs-btn-hover-color: #adc1ff;
+	}
 }
