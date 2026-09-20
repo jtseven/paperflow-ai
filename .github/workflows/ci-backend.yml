@@ -110,6 +110,10 @@ jobs:
       - name: Install system dependencies
         timeout-minutes: 10
         run: |
+          # The Microsoft package feed is preconfigured on some GitHub runners
+          # but is not needed by this project. A transient 403 from it makes
+          # apt update fail before Paperflow's dependencies are installed.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get update -qq
           sudo apt-get install -qq --no-install-recommends \
             unpaper tesseract-ocr imagemagick ghostscript poppler-utils
