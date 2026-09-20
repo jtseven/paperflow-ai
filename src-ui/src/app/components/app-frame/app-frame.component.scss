@@ -446,6 +446,7 @@ main {
 
     @media screen and (max-width: 575.98px) {
       max-height: 2rem;
+      max-width: min(42vw, 13rem);
     }
   }
 
@@ -590,6 +591,10 @@ main {
     justify-self: center;
     overflow: hidden;
 
+    .navbar-official-logo {
+      min-width: 0;
+    }
+
     > div,
     .custom-title {
       min-width: 0;
@@ -640,8 +645,34 @@ main {
       max-width: 1.65rem;
     }
 
-    .brand-mark-slim {
+    .brand-mark-slim.brand-on-light {
       display: block !important;
+    }
+
+    .brand-mark-slim.brand-on-dark {
+      display: none !important;
+    }
+  }
+
+  :host-context([data-bs-theme='dark']) .navbar-brand.slim {
+    .brand-mark-slim.brand-on-light {
+      display: none !important;
+    }
+
+    .brand-mark-slim.brand-on-dark {
+      display: block !important;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :host-context([data-bs-theme='auto']) .navbar-brand.slim {
+      .brand-mark-slim.brand-on-light {
+        display: none !important;
+      }
+
+      .brand-mark-slim.brand-on-dark {
+        display: block !important;
+      }
     }
   }
 

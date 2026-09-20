@@ -31,7 +31,7 @@ describe('LogoComponent', () => {
     expect(fixture.debugElement.queryAll(By.css('.foo'))).toHaveLength(0)
     fixture.componentRef.setInput('extra_classes', 'foo')
     fixture.detectChanges()
-    expect(fixture.debugElement.queryAll(By.css('.foo'))).toHaveLength(1)
+    expect(fixture.debugElement.queryAll(By.css('.foo'))).toHaveLength(2)
   })
 
   it('should support setting height', () => {

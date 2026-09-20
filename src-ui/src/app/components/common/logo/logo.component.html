@@ -6,8 +6,15 @@
   />
 } @else {
   <img
-    [src]="defaultLogo"
-    [class]="getClasses()"
+    src="assets/paperflow-logo-light.svg"
+    [class]="getClasses() + ' logo-on-light'"
+    alt="Paperflow AI"
+    i18n-alt
+    [attr.style]="'height:' + height()"
+  />
+  <img
+    src="assets/paperflow-logo-dark.svg"
+    [class]="getClasses() + ' logo-on-dark'"
     alt="Paperflow AI"
     i18n-alt
     [attr.style]="'height:' + height()"
