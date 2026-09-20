@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: true
 env:
   DEFAULT_UV_VERSION: "0.12.x"
+  DEFAULT_PYTHON: "3.14"
   # Match the Docker image: nltk refuses to read hardlinked data files, such as
   # the copy bundled with llama-index when uv links packages from its cache
   UV_LINK_MODE: copy
@@ -34,11 +35,8 @@ jobs:
         id: force
         env:
           EVENT_NAME: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref_name }}
         run: |
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            echo "run_all=true" >> "$GITHUB_OUTPUT"
-          elif [[ "${EVENT_NAME}" == "push" && ( "${REF_NAME}" == "main" || "${REF_NAME}" == "dev" ) ]]; then
             echo "run_all=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_all=false" >> "$GITHUB_OUTPUT"
@@ -79,14 +77,10 @@ jobs:
   test:
     needs: changes
     if: needs.changes.outputs.backend_changed == 'true'
-    name: "Python ${{ matrix.python-version }}"
+    name: Python 3.14
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12', '3.13', '3.14']
-      fail-fast: false
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,7 +94,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "${{ matrix.python-version }}"
+          python-version: "${{ env.DEFAULT_PYTHON }}"
       - name: Install uv
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
@@ -145,13 +139,13 @@ jobs:
         if: always()
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          flags: backend-python-${{ matrix.python-version }}
+          flags: backend-python-${{ env.DEFAULT_PYTHON }}
           files: junit.xml
           report_type: test_results
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
-          flags: backend-python-${{ matrix.python-version }}
+          flags: backend-python-${{ env.DEFAULT_PYTHON }}
           files: coverage.xml
           report_type: coverage
       - name: Stop containers
@@ -167,7 +161,6 @@ jobs:
     permissions:
       contents: read
     env:
-      DEFAULT_PYTHON: "3.12"
       PAPERLESS_SECRET_KEY: "ci-typing-not-a-real-secret"
     steps:
       - name: Checkout
@@ -228,9 +221,15 @@ jobs:
       - name: Check gate
         env:
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend_changed }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
           TEST_RESULT: ${{ needs.test.result }}
           TYPING_RESULT: ${{ needs.typing.result }}
         run: |
+          if [[ "${CHANGES_RESULT}" != "success" ]]; then
+            echo "::error::Change detection failed: ${CHANGES_RESULT}"
+            exit 1
+          fi
+
           if [[ "${BACKEND_CHANGED}" != "true" ]]; then
             echo "No backend-relevant changes detected."
             exit 0

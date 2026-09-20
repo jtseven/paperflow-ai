@@ -13,7 +13,7 @@ This repository intentionally trims down some of the upstream project’s scope:
 
 - ✅ Keep: core document management, search, tags, web UI
 - ✅ Add: AI-powered features (chat over your documents, smarter extraction, Mistral integration)
-- ✅ Keep: modern tooling (Python 3.11, `uv`, Docker support)
+- ✅ Keep: modern tooling (Python 3.14, `uv`, Docker support)
 - ❌ Drop: complex multi-target release packaging and container publishing logic from upstream CI
 - ❌ Drop: upstream-specific badges, demo links, and community references
 
@@ -111,7 +111,7 @@ Paperflow AI uses [`uv`](https://github.com/astral-sh/uv) for Python dependency 
 
 ### Prerequisites
 
-- Python 3.11
+- Python 3.14 (the only supported Python minor version, matching the production image)
 - `uv` installed (`pip install uv` or via your package manager)
 
 ### Install dependencies

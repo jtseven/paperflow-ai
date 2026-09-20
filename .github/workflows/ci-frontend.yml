@@ -29,11 +29,8 @@ jobs:
         id: force
         env:
           EVENT_NAME: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref_name }}
         run: |
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            echo "run_all=true" >> "$GITHUB_OUTPUT"
-          elif [[ "${EVENT_NAME}" == "push" && ( "${REF_NAME}" == "main" || "${REF_NAME}" == "dev" ) ]]; then
             echo "run_all=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_all=false" >> "$GITHUB_OUTPUT"
@@ -67,6 +64,9 @@ jobs:
           filters: |
             frontend:
               - 'src-ui/**'
+              - 'src/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
               - '.github/workflows/ci-frontend.yml'
   install-dependencies:
     needs: changes
@@ -214,7 +214,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - name: Install uv
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
@@ -243,7 +243,7 @@ jobs:
         run: cd src-ui && pnpm exec playwright test
   frontend-build:
     name: Frontend Build
-    needs: [changes, unit-tests, e2e-tests]
+    needs: [changes, install-dependencies]
     if: needs.changes.outputs.frontend_changed == 'true'
     runs-on: ubuntu-24.04
     permissions:
@@ -284,12 +284,18 @@ jobs:
       - name: Check gate
         env:
           BUILD_RESULT: ${{ needs['frontend-build'].result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
           E2E_RESULT: ${{ needs['e2e-tests'].result }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend_changed }}
           INSTALL_RESULT: ${{ needs['install-dependencies'].result }}
           LINT_RESULT: ${{ needs.lint.result }}
           UNIT_RESULT: ${{ needs['unit-tests'].result }}
         run: |
+          if [[ "${CHANGES_RESULT}" != "success" ]]; then
+            echo "::error::Change detection failed: ${CHANGES_RESULT}"
+            exit 1
+          fi
+
           if [[ "${FRONTEND_CHANGED}" != "true" ]]; then
             echo "No frontend-relevant changes detected."
             exit 0
