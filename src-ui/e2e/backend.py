@@ -43,6 +43,7 @@ def configure_environment(instance_root: Path) -> None:
 
 
 def seed_database() -> None:
+    from django.contrib.auth.models import Permission
     from django.contrib.auth.models import User
     from django.core.management import call_command
     from django.utils import timezone
@@ -63,9 +64,14 @@ def seed_database() -> None:
         username="playwright",
         password="playwright",  # NOSONAR
     )
-    User.objects.create_user(
+    viewer = User.objects.create_user(
         username="viewer",
         password="viewer",  # NOSONAR
+    )
+    # Loading the application requires read access to the user's UI settings.
+    # Keep all document and administration permissions absent.
+    viewer.user_permissions.add(
+        Permission.objects.get(codename="view_uisettings"),
     )
 
     inbox = Tag.objects.create(name="Inbox", is_inbox_tag=True, owner=admin)
