@@ -187,7 +187,7 @@ class TestAiChatAllDocumentsPermissionBoundary:
     ENDPOINT = "/api/documents/chat/"
 
     @override_settings(AI_ENABLED=True)
-    @patch("documents.views.stream_chat_with_documents")
+    @patch("documents.views.stream_agentic_chat")
     def test_chat_all_documents_excludes_unshared_document(self, mock_stream_chat):
         mock_stream_chat.return_value = iter([b"data"])
 

@@ -71,16 +71,16 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 AI is disabled by default. Configure your provider locally before enabling it:
 
-| Variable                             | Purpose                                                                 |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `PAPERLESS_AI_ENABLED`               | Master switch for the AI suite (chat + index).                          |
-| `PAPERLESS_AI_LLM_API_KEY`           | API key for the embedding/chat backend (your Mistral key).              |
+| Variable                             | Purpose                                                      |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `PAPERLESS_AI_ENABLED`               | Master switch for the AI suite (chat + index).               |
+| `PAPERLESS_AI_LLM_API_KEY`           | API key for the embedding/chat backend (your Mistral key).   |
 | `PAPERLESS_AI_LLM_EMBEDDING_BACKEND` | Embedding backend: `openai-like`, `huggingface` or `ollama`. |
-| `PAPERLESS_AI_LLM_EMBEDDING_MODEL`   | Embedding model name (e.g. `mistral-embed`).                            |
+| `PAPERLESS_AI_LLM_EMBEDDING_MODEL`   | Embedding model name (e.g. `mistral-embed`).                 |
 | `PAPERLESS_AI_LLM_BACKEND`           | Chat LLM backend: `openai-like` or `ollama`.                 |
-| `PAPERLESS_AI_LLM_MODEL`             | Chat model name (e.g. `mistral-large-latest`).                          |
-| `PAPERLESS_MISTRAL_API_KEY`          | Enables the Mistral OCR parser; unset → Tesseract.                      |
-| `PAPERLESS_MISTRAL_MODEL`            | Mistral OCR model (default `mistral-ocr-latest`).                       |
+| `PAPERLESS_AI_LLM_MODEL`             | Chat model name (e.g. `mistral-large-latest`).               |
+| `PAPERLESS_MISTRAL_API_KEY`          | Enables the Mistral OCR parser; unset → Tesseract.           |
+| `PAPERLESS_MISTRAL_MODEL`            | Mistral OCR model (default `mistral-ocr-latest`).            |
 
 > Note: This fork assumes you are comfortable managing your own Docker deployment. There is no one-line install script or hosted demo like the upstream project.
 

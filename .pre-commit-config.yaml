@@ -84,7 +84,6 @@ repos:
         exclude: "^src-ui/pnpm-lock.yaml"
         types:
           - yaml
-
   # Local hooks. The frontend lint mirrors the ci-frontend "Lint" job; it runs at
   # the pre-push stage (not on every commit) and only when frontend sources change.
   - repo: local

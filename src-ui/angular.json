@@ -142,15 +142,6 @@
             },
             "en-US": {
               "localize": ["en-US"]
-            },
-            "e2e": {
-              "localize": ["en-US"],
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.e2e.ts"
-                }
-              ]
             }
           },
           "defaultConfiguration": ""
