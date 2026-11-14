@@ -147,6 +147,7 @@ main {
       padding-left: 0;
       padding-right: 0;
 
+      lucide-icon,
       pngx-bs-icon {
         margin-right: 0 !important;
       }
@@ -295,8 +296,13 @@ main {
   align-items: center;
   min-width: 0;
 
+  > lucide-icon,
   > pngx-bs-icon {
-    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.5rem;
+    width: 1.5rem;
   }
 
   > .nav-link-label {

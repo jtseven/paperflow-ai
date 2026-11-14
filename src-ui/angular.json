@@ -102,7 +102,6 @@
             "styles": ["src/styles.scss"],
             "scripts": [],
             "allowedCommonJsDependencies": ["file-saver", "mime-names", "utif"],
-            "externalDependencies": ["marked-katex-extension"],
             "extractLicenses": false,
             "sourceMap": true,
             "optimization": false,

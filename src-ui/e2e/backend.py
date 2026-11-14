@@ -68,6 +68,11 @@ def seed_database() -> None:
         username="viewer",
         password="viewer",  # NOSONAR
     )
+    # Loading the application requires read access to the user's UI settings.
+    # Keep all document and administration permissions absent.
+    viewer.user_permissions.add(
+        Permission.objects.get(codename="view_uisettings"),
+    )
 
     viewer.user_permissions.add(
         Permission.objects.get(

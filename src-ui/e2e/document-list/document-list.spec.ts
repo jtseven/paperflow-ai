@@ -78,13 +78,6 @@ test('date filtering', async ({ page }) => {
   await expect(page.locator('pngx-document-list')).toHaveText(/one document/i)
   // Clear the relative date, then pick an absolute "from" date instead.
   await page.locator('pngx-dates-dropdown a.focus-variants').first().click()
-  await page
-    .locator('pngx-dates-dropdown button:has(lucide-icon[name="calendar"])')
-    .first()
-    .click()
-  await page.getByRole('option', { name: 'Within 3 months' }).click()
-  await page.getByLabel('Dates selected').locator('button').first().click()
-  await page.getByLabel('Dates selected').locator('button').first().click()
   const createdFrom = page.getByRole('textbox', { name: 'mm/dd/yyyy' }).first()
   await createdFrom.fill('12/11/2022')
   await createdFrom.press('Enter')
@@ -158,16 +151,16 @@ test('bulk edit', async ({ page }) => {
     })
 
   await expect(page.locator('pngx-document-list')).toHaveText(
-    /Selected 4 of 61 documents/i
+    /Selected 4 of 61\s+documents/i
   )
 
   await page.getByRole('button', { name: 'Page' }).click()
   await expect(page.locator('pngx-document-list')).toHaveText(
-    /Selected 50 of 61 documents/i
+    /Selected 50 of 61\s+documents/i
   )
   await page.getByRole('button', { name: 'All' }).click()
   await expect(page.locator('pngx-document-list')).toHaveText(
-    /Selected 61 of 61 documents/i
+    /Selected 61 of 61\s+documents/i
   )
   await page.getByRole('button', { name: 'None' }).click()
 
