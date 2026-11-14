@@ -231,6 +231,11 @@ class ApplicationConfigurationSerializer(
     externally_configured_variables = serializers.SerializerMethodField()
     user_args = serializers.JSONField(binary=True, allow_null=True)
     barcode_tag_mapping = serializers.JSONField(binary=True, allow_null=True)
+    llm_embedding_api_key = ObfuscatedPasswordField(
+        required=False,
+        allow_null=True,
+        max_length=1024,
+    )
     llm_api_key = ObfuscatedPasswordField(
         required=False,
         allow_null=True,
@@ -268,6 +273,7 @@ class ApplicationConfigurationSerializer(
     )
 
     OBFUSCATED_FIELDS = (
+        "llm_embedding_api_key",
         "llm_api_key",
         "remote_ocr_api_key",
         "chat_openai_api_key",

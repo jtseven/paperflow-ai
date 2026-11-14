@@ -52,10 +52,11 @@ from documents.models import Workflow
 from documents.models import WorkflowAction
 from documents.models import WorkflowRun
 from documents.models import WorkflowTrigger
-from documents.permissions import get_objects_for_user_owner_aware
+from documents.permissions import restrict_queryset_to_visible
 from documents.plugins.helpers import DocumentsStatusManager
 from documents.templating.utils import convert_format_str_to_template_format
 from documents.utils import compute_checksum
+from documents.utils import copy_file_with_basic_stats
 from documents.workflows.actions import build_workflow_action_context
 from documents.workflows.actions import execute_email_action
 from documents.workflows.actions import execute_move_to_trash_action
@@ -80,15 +81,11 @@ DRF_DATETIME_FIELD = serializers.DateTimeField()
 
 
 def add_inbox_tags(sender, document: Document, logging_group=None, **kwargs) -> None:
-    if document.owner is not None:
-        tags = get_objects_for_user_owner_aware(
-            document.owner,
-            "documents.view_tag",
-            Tag,
-        )
-    else:
-        tags = Tag.objects.all()
-    inbox_tags = tags.filter(is_inbox_tag=True)
+    inbox_tags = restrict_queryset_to_visible(
+        Tag.objects.filter(is_inbox_tag=True),
+        document.owner,
+        "view_tag",
+    )
     document.add_nested_tags(inbox_tags)
 
 
@@ -363,7 +360,11 @@ def cleanup_document_deletion(sender, instance, **kwargs) -> None:
 
             logger.debug(f"Moving {instance.source_path} to trash at {new_file_path}")
             try:
-                shutil.move(instance.source_path, new_file_path)
+                shutil.move(
+                    instance.source_path,
+                    new_file_path,
+                    copy_function=copy_file_with_basic_stats,
+                )
             except OSError as e:
                 logger.error(
                     f"Failed to move {instance.source_path} to trash at "
@@ -475,13 +476,13 @@ def update_filename_and_move_files(
         return
 
     with FileLock(settings.MEDIA_LOCK):
-        try:
-            # If this was waiting for the lock, the filename or archive_filename
-            # of this document may have been updated.  This happens if multiple updates
-            # get queued from the UI for the same document
-            # So freshen up the data before doing anything
-            instance.refresh_from_db()
+        # If this was waiting for the lock, the filename or archive_filename
+        # of this document may have been updated.  This happens if multiple updates
+        # get queued from the UI for the same document
+        # So freshen up the data before doing anything
+        instance.refresh_from_db()
 
+        try:
             old_filename = instance.filename
             old_source_path = instance.source_path
             move_original = False
@@ -1380,9 +1381,17 @@ def task_revoked_handler(
         return
     try:
         close_old_connections()
+        reason = "Task revoked before completion."
+        if expired:
+            reason = "Task expired before execution."
+        elif terminated:
+            reason = "Task terminated during execution."
         PaperlessTask.objects.filter(task_id=task_id).update(
             status=PaperlessTask.Status.REVOKED,
             date_done=timezone.now(),
+            result_data={
+                "reason": (reason + " Check worker logs for details."),
+            },
         )
     except Exception:  # pragma: no cover
         logger.exception("Updating PaperlessTask on revocation failed")

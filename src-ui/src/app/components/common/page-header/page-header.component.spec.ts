@@ -1,8 +1,6 @@
 import { Clipboard } from '@angular/cdk/clipboard'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { Title } from '@angular/platform-browser'
-import { jest } from '@jest/globals'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { environment } from 'src/environments/environment'
 import { PageHeaderComponent } from './page-header.component'
 
@@ -15,7 +13,7 @@ describe('PageHeaderComponent', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       providers: [],
-      imports: [NgxBootstrapIconsModule.pick(allIcons), PageHeaderComponent],
+      imports: [PageHeaderComponent],
     }).compileComponents()
 
     titleService = TestBed.inject(Title)
@@ -42,6 +40,13 @@ describe('PageHeaderComponent', () => {
     fixture.componentRef.setInput('title', 'Foo Bar')
     fixture.detectChanges()
     expect(titleSpy).toHaveBeenCalledWith(`Foo Bar - ${environment.appTitle}`)
+  })
+
+  it('should set html title to just the app title until a title is available', () => {
+    const titleSpy = jest.spyOn(titleService, 'setTitle')
+    fixture.componentRef.setInput('title', undefined)
+    fixture.detectChanges()
+    expect(titleSpy).toHaveBeenCalledWith(environment.appTitle)
   })
 
   it('should copy id to clipboard, reset after 3 seconds', () => {

@@ -22,8 +22,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Self
 
-from bleach import clean
-from bleach import linkify
 from django.conf import settings
 from django.utils import timezone
 from django.utils.timezone import is_naive
@@ -57,12 +55,6 @@ logger = logging.getLogger("paperless.parsing.mail")
 _SUPPORTED_MIME_TYPES: dict[str, str] = {
     "message/rfc822": ".eml",
 }
-
-# Bleach's email-address linkifier uses a superlinear regular expression. Keep
-# email linkification for ordinary headers and short messages, but never run it
-# over an unbounded attacker-controlled field. URL linkification remains enabled
-# for longer text.
-_MAX_EMAIL_LINKIFY_LENGTH = 2048
 
 
 class MailDocumentParser:
@@ -627,16 +619,17 @@ class MailDocumentParser:
 
         def clean_html(text: str) -> str:
             """Attempt to clean, escape, and linkify the given HTML string."""
+            from turbohtml.clean import Linkify
+            from turbohtml.clean import linkify
+            from turbohtml.migration.bleach import clean
+
             if isinstance(text, list):
                 text = "\n".join([str(e) for e in text])
             if not isinstance(text, str):
                 text = str(text)
             text = escape(text)
             text = clean(text)
-            text = linkify(
-                text,
-                parse_email="@" in text and len(text) <= _MAX_EMAIL_LINKIFY_LENGTH,
-            )
+            text = linkify(text, Linkify(parse_email=True))
             text = text.replace("\n", "<br>")
             return text
 

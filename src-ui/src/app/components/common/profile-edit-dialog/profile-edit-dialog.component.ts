@@ -12,7 +12,6 @@ import {
   NgbPopoverModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { takeUntil } from 'rxjs'
 import {
   SocialAccount,
@@ -39,7 +38,6 @@ import { TextComponent } from '../input/text/text.component'
     ReactiveFormsModule,
     NgbAccordionModule,
     NgbPopoverModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })
@@ -206,14 +204,15 @@ export class ProfileEditDialogComponent
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe({
         next: () => {
-          this.toastService.showInfo($localize`Profile updated successfully`)
+          this.toastService.showSuccess($localize`Profile updated successfully`)
           if (passwordChanged) {
             this.toastService.showInfo(
               $localize`Password has been changed, you will be logged out momentarily.`
             )
             setTimeout(() => {
+              const basePath = new URL(document.baseURI).pathname
               setLocationHref(
-                `${window.location.origin}/accounts/logout/?next=/accounts/login/?next=/`
+                `${window.location.origin}${basePath}accounts/logout/?next=${basePath}accounts/login/?next=${basePath}`
               )
             }, 2500)
           }
@@ -308,7 +307,9 @@ export class ProfileEditDialogComponent
           this.recoveryCodes.set(activationResponse.recovery_codes)
           this.form.get('totp_code').enable()
           if (activationResponse.success) {
-            this.toastService.showInfo($localize`TOTP activated successfully`)
+            this.toastService.showSuccess(
+              $localize`TOTP activated successfully`
+            )
           } else {
             this.toastService.showError($localize`Error activating TOTP`)
           }
@@ -332,7 +333,9 @@ export class ProfileEditDialogComponent
           this.isTotpEnabled.set(!success)
           this.recoveryCodes.set(null)
           if (success) {
-            this.toastService.showInfo($localize`TOTP deactivated successfully`)
+            this.toastService.showSuccess(
+              $localize`TOTP deactivated successfully`
+            )
           } else {
             this.toastService.showError($localize`Error deactivating TOTP`)
           }

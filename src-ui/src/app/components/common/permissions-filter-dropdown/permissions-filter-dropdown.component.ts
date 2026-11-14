@@ -12,7 +12,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectComponent } from '@ng-select/ng-select'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first } from 'rxjs'
 import { User } from 'src/app/data/user'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
@@ -63,7 +62,6 @@ export enum OwnerFilterType {
     NgbDropdownModule,
     NgSelectComponent,
     NgClass,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

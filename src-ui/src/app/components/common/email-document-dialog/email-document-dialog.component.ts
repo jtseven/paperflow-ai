@@ -1,8 +1,6 @@
 import { Component, effect, inject, signal } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { ToastService } from 'src/app/services/toast.service'
 import { LoadingComponentWithPermissions } from '../../loading-component/loading.component'
@@ -11,7 +9,7 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
   selector: 'pngx-email-document-dialog',
   templateUrl: './email-document-dialog.component.html',
   styleUrl: './email-document-dialog.component.scss',
-  imports: [FormsModule, NgxBootstrapIconsModule, LucideAngularModule],
+  imports: [FormsModule],
 })
 export class EmailDocumentDialogComponent extends LoadingComponentWithPermissions {
   private activeModal = inject(NgbActiveModal)
@@ -51,7 +49,7 @@ export class EmailDocumentDialogComponent extends LoadingComponentWithPermission
           this.emailSubject = ''
           this.emailMessage = ''
           this.close()
-          this.toastService.showInfo($localize`Email sent`)
+          this.toastService.showSuccess($localize`Email sent`)
         },
         error: (e) => {
           this.loading.set(false)

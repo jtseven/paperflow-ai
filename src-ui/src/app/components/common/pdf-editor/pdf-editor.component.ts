@@ -7,7 +7,6 @@ import { Component, inject, signal } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { SettingsService } from 'src/app/services/settings.service'
@@ -34,9 +33,8 @@ interface PageOperation {
   imports: [
     DragDropModule,
     FormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     PngxPdfViewerComponent,
+    LucideAngularModule,
   ],
 })
 export class PDFEditorComponent extends ConfirmDialogComponent {

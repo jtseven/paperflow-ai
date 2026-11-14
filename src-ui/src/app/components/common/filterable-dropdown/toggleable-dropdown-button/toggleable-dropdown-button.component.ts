@@ -1,6 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { MatchingModel } from 'src/app/data/matching-model'
 import { Tag } from 'src/app/data/tag'
 import { TagComponent } from '../../tag/tag.component'
@@ -16,7 +15,7 @@ export enum ToggleableItemState {
   selector: 'pngx-toggleable-dropdown-button',
   templateUrl: './toggleable-dropdown-button.component.html',
   styleUrls: ['./toggleable-dropdown-button.component.scss'],
-  imports: [TagComponent, NgxBootstrapIconsModule, LucideAngularModule],
+  imports: [TagComponent, LucideAngularModule],
 })
 export class ToggleableDropdownButtonComponent {
   @Input()

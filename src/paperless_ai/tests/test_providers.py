@@ -103,7 +103,7 @@ class TestChatProviders(TestCase):
         assert response.status_code == 400
         assert "model" in response.json()
 
-    @patch("documents.views.stream_agentic_chat", return_value=iter([]))
+    @patch("paperless_ai.agent_chat.stream_agentic_chat", return_value=iter([]))
     def test_selected_model_forwarded_to_agent(self, stream):
         response = self.client.post(
             "/api/documents/chat/",

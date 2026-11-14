@@ -9,7 +9,6 @@ import { FormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
 import { jest } from '@jest/globals'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { ToastService } from 'src/app/services/toast.service'
 import { environment } from 'src/environments/environment'
 import { ProcessedMailDialogComponent } from './processed-mail-dialog.component'
@@ -48,11 +47,7 @@ describe('ProcessedMailDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        ProcessedMailDialogComponent,
-        FormsModule,
-        NgxBootstrapIconsModule.pick(allIcons),
-      ],
+      imports: [ProcessedMailDialogComponent, FormsModule],
       providers: [
         DatePipe,
         NgbActiveModal,
@@ -97,7 +92,7 @@ describe('ProcessedMailDialogComponent', () => {
     // select a couple of mails and delete
     component.selectedMailIds().add(5)
     component.selectedMailIds().add(6)
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     component.deleteSelected()
 
     const delReq = httpTestingController.expectOne(

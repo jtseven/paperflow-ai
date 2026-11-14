@@ -141,10 +141,6 @@
               <a
                 routerLink="/documents/{{ document().id }}"
                 class="btn btn-sm btn-outline-secondary"
-                *pngxIfPermissions="{
-                  action: PermissionAction.Change,
-                  type: PermissionType.Document,
-                }"
               >
                 <lucide-icon
                   name="file-earmark-richtext"

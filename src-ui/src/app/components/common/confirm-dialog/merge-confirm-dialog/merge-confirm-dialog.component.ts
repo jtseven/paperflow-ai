@@ -7,7 +7,6 @@ import { AsyncPipe } from '@angular/common'
 import { Component, OnInit, inject, signal } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { takeUntil } from 'rxjs'
 import { Document } from 'src/app/data/document'
 import { CorrespondentNamePipe } from 'src/app/pipes/correspondent-name.pipe'
@@ -27,7 +26,6 @@ import { ConfirmDialogComponent } from '../confirm-dialog.component'
     DragDropModule,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

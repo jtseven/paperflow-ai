@@ -3,7 +3,6 @@ import { Component, OnInit, effect, inject, input, signal } from '@angular/core'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first } from 'rxjs'
 import {
   FileVersion,
@@ -18,12 +17,7 @@ import { environment } from 'src/environments/environment'
   selector: 'pngx-share-links-dialog',
   templateUrl: './share-links-dialog.component.html',
   styleUrls: ['./share-links-dialog.component.scss'],
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-  ],
+  imports: [FormsModule, ReactiveFormsModule, LucideAngularModule],
 })
 export class ShareLinksDialogComponent implements OnInit {
   private activeModal = inject(NgbActiveModal)

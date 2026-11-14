@@ -9,7 +9,6 @@ import {
 import { jest } from '@jest/globals'
 import { NgbActiveModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { IfOwnerDirective } from 'src/app/directives/if-owner.directive'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
@@ -40,7 +39,6 @@ describe('UserEditDialogComponent', () => {
         ReactiveFormsModule,
         NgSelectModule,
         NgbModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         UserEditDialogComponent,
         IfPermissionsDirective,
         IfOwnerDirective,
@@ -152,7 +150,7 @@ describe('UserEditDialogComponent', () => {
       'deactivateTotp'
     )
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     deactivateSpy.mockReturnValueOnce(throwError(() => new Error('error')))
     component.deactivateTotp()
     expect(deactivateSpy).toHaveBeenCalled()

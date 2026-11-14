@@ -416,6 +416,56 @@
               </div>
             </div>
 
+            @if (aiEnabled) {
+              <div class="row mb-3">
+                <div class="col-md-3 col-form-label pt-0">
+                  <span i18n>Suggestions default to</span>
+                </div>
+                <div class="col">
+                  <fieldset class="btn-group btn-group-sm">
+                    <input
+                      type="radio"
+                      class="btn-check"
+                      id="suggestionSourceBoth"
+                      [value]="SuggestionSource.Both"
+                      formControlName="documentEditingSuggestionSource"
+                    />
+                    <label
+                      class="btn btn-outline-primary"
+                      for="suggestionSourceBoth"
+                      ><ng-container i18n>Both</ng-container></label
+                    >
+                    <input
+                      type="radio"
+                      class="btn-check"
+                      id="suggestionSourceML"
+                      [value]="SuggestionSource.ML"
+                      formControlName="documentEditingSuggestionSource"
+                    />
+                    <label
+                      class="btn btn-outline-primary"
+                      for="suggestionSourceML"
+                      ><lucide-icon class="me-1" name="cpu"></lucide-icon
+                      ><ng-container i18n>ML only</ng-container></label
+                    >
+                    <input
+                      type="radio"
+                      class="btn-check"
+                      id="suggestionSourceAI"
+                      [value]="SuggestionSource.AI"
+                      formControlName="documentEditingSuggestionSource"
+                    />
+                    <label
+                      class="btn btn-outline-primary"
+                      for="suggestionSourceAI"
+                      ><lucide-icon class="me-1" name="stars"></lucide-icon
+                      ><ng-container i18n>AI only</ng-container></label
+                    >
+                  </fieldset>
+                </div>
+              </div>
+            }
+
             <div class="row">
               <div class="col">
                 <pngx-input-check
@@ -659,25 +709,15 @@
           <div class="col">
             <pngx-input-check
               i18n-title
-              title="Show notifications when new documents are detected"
-              formControlName="notificationsConsumerNewDocument"
-            ></pngx-input-check>
-            <pngx-input-check
-              i18n-title
-              title="Show notifications when document processing completes successfully"
+              title="Add notifications when document processing completes successfully"
               formControlName="notificationsConsumerSuccess"
+              i18n-hint
+              hint="These are added to the notifications menu without a popup, processing progress is shown at the bottom of the screen."
             ></pngx-input-check>
             <pngx-input-check
               i18n-title
               title="Show notifications when document processing fails"
               formControlName="notificationsConsumerFailed"
-            ></pngx-input-check>
-            <pngx-input-check
-              i18n-title
-              title="Suppress notifications on dashboard"
-              formControlName="notificationsConsumerSuppressOnDashboard"
-              i18n-hint
-              hint="This will suppress all messages about document processing status on the dashboard."
             ></pngx-input-check>
           </div>
         </div>

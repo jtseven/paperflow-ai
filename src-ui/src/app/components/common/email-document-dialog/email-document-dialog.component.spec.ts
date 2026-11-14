@@ -4,7 +4,6 @@ import { jest } from '@jest/globals'
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { PermissionsService } from 'src/app/services/permissions.service'
@@ -21,11 +20,7 @@ describe('EmailDocumentDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        EmailDocumentDialogComponent,
-        IfPermissionsDirective,
-        NgxBootstrapIconsModule.pick(allIcons),
-      ],
+      imports: [EmailDocumentDialogComponent, IfPermissionsDirective],
       providers: [
         provideHttpClient(withInterceptorsFromDi()),
         provideHttpClientTesting(),
@@ -53,7 +48,7 @@ describe('EmailDocumentDialogComponent', () => {
 
   it('should support sending single document via email, showing error if needed', () => {
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastSuccessSpy = jest.spyOn(toastService, 'showInfo')
+    const toastSuccessSpy = jest.spyOn(toastService, 'showSuccess')
     component.documentIds.set([1])
     component.emailAddress = 'hello@paperless-ngx.com'
     component.emailSubject = 'Hello'
@@ -74,7 +69,7 @@ describe('EmailDocumentDialogComponent', () => {
 
   it('should support sending multiple documents via email, showing appropriate messages', () => {
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastSuccessSpy = jest.spyOn(toastService, 'showInfo')
+    const toastSuccessSpy = jest.spyOn(toastService, 'showSuccess')
     component.documentIds.set([1, 2, 3])
     component.emailAddress = 'hello@paperless-ngx.com'
     component.emailSubject = 'Hello'

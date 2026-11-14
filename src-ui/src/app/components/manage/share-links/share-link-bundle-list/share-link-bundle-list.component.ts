@@ -6,8 +6,10 @@ import {
   NgbPaginationModule,
   NgbPopoverModule,
 } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { LucideAngularModule } from 'lucide-angular'
 import { Subject, catchError, of, switchMap, takeUntil, timer } from 'rxjs'
+import { ConfirmButtonComponent } from 'src/app/components/common/confirm-button/confirm-button.component'
+import { LoadingComponentWithPermissions } from 'src/app/components/loading-component/loading.component'
 import { FileVersion } from 'src/app/data/share-link'
 import {
   SHARE_LINK_BUNDLE_FILE_VERSION_LABELS,
@@ -25,8 +27,6 @@ import { ShareLinkBundleService } from 'src/app/services/rest/share-link-bundle.
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
 import { environment } from 'src/environments/environment'
-import { ConfirmButtonComponent } from 'src/app/components/common/confirm-button/confirm-button.component'
-import { LoadingComponentWithPermissions } from 'src/app/components/loading-component/loading.component'
 
 @Component({
   selector: 'pngx-share-link-bundle-list',
@@ -38,9 +38,9 @@ import { LoadingComponentWithPermissions } from 'src/app/components/loading-comp
     FormsModule,
     NgbPaginationModule,
     NgbPopoverModule,
-    NgxBootstrapIconsModule,
     SortableDirective,
     FileSizePipe,
+    LucideAngularModule,
   ],
 })
 export class ShareLinkBundleListComponent
@@ -178,7 +178,7 @@ export class ShareLinkBundleListComponent
         if (this.bundles().length === 1 && this.page() > 1) {
           this.page.update((page) => page - 1)
         }
-        this.toastService.showInfo($localize`Share link bundle deleted.`)
+        this.toastService.showSuccess($localize`Share link bundle deleted.`)
         this.triggerRefresh(false)
       },
       error: (e) => {

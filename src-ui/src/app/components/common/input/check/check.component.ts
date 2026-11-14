@@ -6,7 +6,6 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -20,13 +19,7 @@ import { AbstractInputComponent } from '../abstract-input'
   selector: 'pngx-input-check',
   templateUrl: './check.component.html',
   styleUrls: ['./check.component.scss'],
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    NgClass,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-  ],
+  imports: [FormsModule, ReactiveFormsModule, NgClass, LucideAngularModule],
 })
 export class CheckComponent extends AbstractInputComponent<boolean> {
   constructor() {

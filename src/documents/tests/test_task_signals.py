@@ -17,7 +17,8 @@ from documents.signals.handlers import task_failure_handler
 from documents.signals.handlers import task_postrun_handler
 from documents.signals.handlers import task_prerun_handler
 from documents.signals.handlers import task_revoked_handler
-from documents.tests.factories import PaperlessTaskFactory
+from paperless_testing.factories import PaperlessTaskFactory
+from paperless_testing.factories import UserFactory
 
 
 @pytest.fixture
@@ -34,8 +35,8 @@ def consume_input_doc():
 
 
 @pytest.fixture
-def consume_overrides(django_user_model):
-    user = django_user_model.objects.create_user(username="testuser")
+def consume_overrides():
+    user = UserFactory(username="testuser")
     overrides = mock.MagicMock(spec=DocumentMetadataOverrides)
     overrides.owner_id = user.id
     return overrides
@@ -427,6 +428,36 @@ class TestTaskRevokedHandler:
         task.refresh_from_db()
         assert task.status == PaperlessTask.Status.REVOKED
         assert task.date_done is not None
+
+    @pytest.mark.parametrize(
+        ("expired", "terminated", "reason"),
+        [
+            (True, False, "Task expired before execution."),
+            (False, True, "Task terminated during execution."),
+            (False, False, "Task revoked before completion."),
+        ],
+    )
+    def test_records_revocation_details(
+        self,
+        mocker,
+        expired,
+        terminated,
+        reason,
+    ) -> None:
+        task = PaperlessTaskFactory(status=PaperlessTask.Status.PENDING)
+        request = mocker.MagicMock()
+        request.id = task.task_id
+
+        task_revoked_handler(
+            request=request,
+            expired=expired,
+            terminated=terminated,
+        )
+        task.refresh_from_db()
+
+        assert task.result_data == {
+            "reason": f"{reason} Check worker logs for details.",
+        }
 
     def test_ignores_none_request(self) -> None:
         """task_revoked_handler must not raise when request is None."""

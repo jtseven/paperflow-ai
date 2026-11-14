@@ -67,6 +67,9 @@
             "index": "src/index.html",
             "polyfills": ["src/polyfills.ts"],
             "tsConfig": "tsconfig.app.json",
+            "loader": {
+              ".svg": "text"
+            },
             "localize": true,
             "assets": [
               "src/apple-touch-icon.png",
@@ -89,11 +92,17 @@
                 "glob": "**/*",
                 "input": "node_modules/pdfjs-dist/iccs/",
                 "output": "/assets/iccs/"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/pdfjs-dist/cmaps/",
+                "output": "/assets/cmaps/"
               }
             ],
             "styles": ["src/styles.scss"],
             "scripts": [],
             "allowedCommonJsDependencies": ["file-saver", "mime-names", "utif"],
+            "externalDependencies": ["marked-katex-extension"],
             "extractLicenses": false,
             "sourceMap": true,
             "optimization": false,
@@ -142,15 +151,6 @@
             },
             "en-US": {
               "localize": ["en-US"]
-            },
-            "e2e": {
-              "localize": ["en-US"],
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.e2e.ts"
-                }
-              ]
             }
           },
           "defaultConfiguration": ""

@@ -1,8 +1,6 @@
 import { CommonModule } from '@angular/common'
 import { Component, Input, OnInit, inject } from '@angular/core'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { MarkdownModule } from 'ngx-markdown'
 import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
 
@@ -11,12 +9,7 @@ import { MarkdownConfigService } from 'src/app/services/markdown-config.service'
   templateUrl: './markdown-modal.component.html',
   styleUrls: ['./markdown-modal.component.scss'],
   standalone: true,
-  imports: [
-    CommonModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-    MarkdownModule,
-  ],
+  imports: [CommonModule, MarkdownModule],
 })
 export class MarkdownModalComponent implements OnInit {
   @Input() content: string

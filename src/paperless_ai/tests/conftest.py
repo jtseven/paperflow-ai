@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import pytest_mock
 from llama_index.core.base.embeddings.base import BaseEmbedding
-from pytest_django.fixtures import SettingsWrapper as Settings
+from pytest_django.fixtures import Settings
 
 
 @pytest.fixture(autouse=True)

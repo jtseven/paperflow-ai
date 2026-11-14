@@ -1,30 +1,38 @@
-<div class="btn-group">
-  <button
-    type="button"
-    class="btn btn-sm btn-outline-primary"
-    (click)="clickSuggest()"
-    [disabled]="disabled() || loading() || (suggestions() && !aiEnabled())"
-    [aria-label]="noSuggestions ? 'No suggestions' : 'Suggest'"
-    i18n-aria-label
-  >
-    @if (loading()) {
-      <div class="spinner-border spinner-border-sm" role="status"></div>
-    } @else if (noSuggestions) {
-      <i-bs width="1.2em" height="1.2em" name="check-circle"></i-bs>
-    } @else {
-      <lucide-icon width="1.2em" height="1.2em" name="stars"></lucide-icon>
-    }
-    @if (noSuggestions) {
-      <span class="d-none d-lg-inline ps-1" i18n>No suggestions</span>
-    } @else {
-      <span class="d-none d-lg-inline ps-1" i18n>Suggest</span>
-    }
-    @if (totalSuggestions > 0) {
-      <span class="badge bg-primary ms-2">{{ totalSuggestions }}</span>
-    }
-  </button>
+<div class="d-flex align-items-center">
+  <div class="btn-group">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-primary"
+      (click)="clickSuggest()"
+      [disabled]="disabled() || loading()"
+      [aria-label]="noSuggestions ? 'No suggestions' : 'Suggest'"
+      i18n-aria-label
+    >
+      @if (loading()) {
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+      } @else if (noSuggestions) {
+        <lucide-icon
+          width="1.2em"
+          height="1.2em"
+          name="check-circle"
+        ></lucide-icon>
+      } @else {
+        <lucide-icon
+          width="1.2em"
+          height="1.2em"
+          name="lightbulb"
+        ></lucide-icon>
+      }
+      @if (noSuggestions) {
+        <span class="d-none d-lg-inline ps-1" i18n>No suggestions</span>
+      } @else {
+        <span class="d-none d-lg-inline ps-1" i18n>Suggest</span>
+      }
+      @if (totalSuggestions > 0) {
+        <span class="badge bg-primary ms-2">{{ totalSuggestions }}</span>
+      }
+    </button>
 
-  @if (aiEnabled()) {
     <div
       class="btn-group"
       ngbDropdown
@@ -49,7 +57,7 @@
         class="shadow suggestions-dropdown"
       >
         <div class="list-group list-group-flush small pb-0">
-          @if (novelSuggestions === 0 && reusableSuggestions === 0) {
+          @if (novelSuggestions === 0 && fieldSuggestions === 0) {
             <div class="list-group-item text-muted fst-italic">
               <small class="text-muted small fst-italic" i18n
                 >No novel suggestions</small
@@ -104,20 +112,80 @@
               </button>
             }
           }
-          @if (reusableSuggestions > 0) {
+          @if (fieldSuggestions > 0) {
             <div class="list-group-item text-muted fst-italic">
               <small
                 class="text-muted small fst-italic"
                 i18n
-                >{reusableSuggestions, plural,
-                  =1 {1 existing value suggested below}
-                  other {
-                    {{reusableSuggestions}} existing values suggested below
-                  }
-                }</small
-              >
+                >{fieldSuggestions, plural,
+                  =1 {1 suggestion available below}
+                  other {{{fieldSuggestions}} suggestions available below}
+
+              }</small>
             </div>
           }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (aiEnabled()) {
+    <div
+      ngbDropdown
+      autoClose="outside"
+      placement="bottom-end"
+      [popperOptions]="popperOptions"
+    >
+      <button
+        type="button"
+        class="btn btn-sm btn-link position-relative"
+        ngbDropdownToggle
+        [disabled]="disabled() || loading()"
+        i18n-title
+        title="Suggestion options"
+      >
+        <lucide-icon name="three-dots"></lucide-icon>
+        @if (source() !== defaultSource()) {
+          <span
+            class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"
+          >
+            <span class="visually-hidden" i18n>Not using default</span>
+          </span>
+        }
+      </button>
+      <div ngbDropdownMenu class="shadow p-3">
+        <div class="small text-muted mb-2" i18n>Suggest using:</div>
+        <div class="form-check small">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="suggestionSourceML"
+            [checked]="useML"
+            [disabled]="useML && !useAI"
+            (change)="setSources($event.target.checked, useAI)"
+          />
+          <label
+            class="form-check-label d-inline-flex align-items-center gap-1"
+            for="suggestionSourceML"
+            ><lucide-icon name="cpu"></lucide-icon
+            ><ng-container i18n>ML</ng-container></label
+          >
+        </div>
+        <div class="form-check small">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="suggestionSourceAI"
+            [checked]="useAI"
+            [disabled]="useAI && !useML"
+            (change)="setSources(useML, $event.target.checked)"
+          />
+          <label
+            class="form-check-label d-inline-flex align-items-center gap-1"
+            for="suggestionSourceAI"
+            ><lucide-icon name="stars"></lucide-icon
+            ><ng-container i18n>AI</ng-container></label
+          >
         </div>
       </div>
     </div>

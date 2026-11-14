@@ -45,12 +45,12 @@
           (click)="addField(field)"
           #button
         >
-          <small class="d-flex"
-            >{{ field.name }}
+          <div class="d-flex">
+            {{ field.name }}
             <small class="ms-auto text-muted">{{
               getDataTypeLabel(field.data_type)
-            }}</small></small
-          >
+            }}</small>
+          </div>
         </button>
       }
       @if (!filterText?.length || filteredFields.length === 0) {
@@ -61,15 +61,13 @@
           [disabled]="!canCreateFields"
           #button
         >
-          <small>
-            <lucide-icon
-              width=".9em"
-              height=".9em"
-              name="asterisk"
-              class="me-1"
-            ></lucide-icon
-            ><ng-container i18n>Create new field</ng-container>
-          </small>
+          <lucide-icon
+            width=".9em"
+            height=".9em"
+            name="asterisk"
+            class="me-1"
+          ></lucide-icon
+          ><ng-container i18n>Create new field</ng-container>
         </button>
       }
     </div>

@@ -3,8 +3,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { ActivatedRoute } from '@angular/router'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, first, takeUntil, tap } from 'rxjs'
+import { BootstrapIconComponent } from 'src/app/components/common/bootstrap-icon/bootstrap-icon.component'
 import { MailAccount, MailAccountType } from 'src/app/data/mail-account'
 import { MailRule } from 'src/app/data/mail-rule'
 import { ObjectWithPermissions } from 'src/app/data/object-with-permissions'
@@ -40,7 +40,7 @@ import { ProcessedMailDialogComponent } from './processed-mail-dialog/processed-
     FormsModule,
     ReactiveFormsModule,
     NgbDropdownModule,
-    NgxBootstrapIconsModule,
+    BootstrapIconComponent,
     LucideAngularModule,
   ],
 })
@@ -137,7 +137,9 @@ export class MailComponent
       if (params.get('oauth_success')) {
         const success = params.get('oauth_success') === '1'
         if (success) {
-          this.toastService.showInfo($localize`OAuth2 authentication success`)
+          this.toastService.showSuccess(
+            $localize`OAuth2 authentication success`
+          )
           this.oAuthAccountId = parseInt(params.get('account_id'))
           if (this.mailAccounts().length > 0) {
             this.editMailAccount(
@@ -171,7 +173,7 @@ export class MailComponent
     modal.componentInstance.succeeded
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe((newMailAccount) => {
-        this.toastService.showInfo(
+        this.toastService.showSuccess(
           $localize`Saved account "${newMailAccount.name}".`
         )
         this.mailAccountService.clearCache()
@@ -202,7 +204,7 @@ export class MailComponent
       this.mailAccountService.delete(account).subscribe({
         next: () => {
           modal.close()
-          this.toastService.showInfo(
+          this.toastService.showSuccess(
             $localize`Deleted mail account "${account.name}"`
           )
           this.mailAccountService.clearCache()
@@ -250,7 +252,9 @@ export class MailComponent
     modal.componentInstance.succeeded
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe((newMailRule) => {
-        this.toastService.showInfo($localize`Saved rule "${newMailRule.name}".`)
+        this.toastService.showSuccess(
+          $localize`Saved rule "${newMailRule.name}".`
+        )
         this.mailRuleService.clearCache()
         this.mailRuleService
           .listAll(null, null, { full_perms: true })
@@ -275,7 +279,7 @@ export class MailComponent
   onMailRuleEnableToggled(rule: MailRule) {
     this.mailRuleService.patch(rule).subscribe({
       next: () => {
-        this.toastService.showInfo(
+        this.toastService.showSuccess(
           rule.enabled
             ? $localize`Rule "${rule.name}" enabled.`
             : $localize`Rule "${rule.name}" disabled.`
@@ -304,7 +308,7 @@ export class MailComponent
       this.mailRuleService.delete(rule).subscribe({
         next: () => {
           modal.close()
-          this.toastService.showInfo(
+          this.toastService.showSuccess(
             $localize`Deleted mail rule "${rule.name}"`
           )
           this.mailRuleService.clearCache()
@@ -340,7 +344,7 @@ export class MailComponent
         object['set_permissions'] = permissions['set_permissions']
         service.patch(object).subscribe({
           next: () => {
-            this.toastService.showInfo($localize`Permissions updated`)
+            this.toastService.showSuccess($localize`Permissions updated`)
             modal.close()
           },
           error: (e) => {

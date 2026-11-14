@@ -9,7 +9,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
 import { jest } from '@jest/globals'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { FileVersion, ShareLink } from 'src/app/data/share-link'
 import { ShareLinkService } from 'src/app/services/rest/share-link.service'
@@ -27,12 +26,7 @@ describe('ShareLinksDialogComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [
-        ShareLinksDialogComponent,
-        NgxBootstrapIconsModule.pick(allIcons),
-        FormsModule,
-        ReactiveFormsModule,
-      ],
+      imports: [ShareLinksDialogComponent, FormsModule, ReactiveFormsModule],
       providers: [
         provideHttpClient(withInterceptorsFromDi()),
         provideHttpClientTesting(),

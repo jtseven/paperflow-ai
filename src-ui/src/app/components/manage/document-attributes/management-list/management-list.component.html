@@ -27,7 +27,7 @@
           >Show:</label
         >
       </div>
-      <div class="input-group input-group-sm w-auto me-3">
+      <div class="input-group input-group-sm w-auto">
         <select
           id="managementPageSize"
           class="form-select form-select-sm small"
@@ -41,15 +41,18 @@
           >per page</span
         >
       </div>
-      <ngb-pagination
-        [pageSize]="pageSize"
-        [collectionSize]="collectionSize()"
-        [page]="page()"
-        [maxSize]="5"
-        (pageChange)="page.set($event); reloadData()"
-        size="sm"
-        aria-label="Pagination"
-      ></ngb-pagination>
+      @if (collectionSize() > pageSize) {
+        <ngb-pagination
+          [pageSize]="pageSize"
+          [collectionSize]="collectionSize()"
+          [page]="page()"
+          [maxSize]="5"
+          (pageChange)="page.set($event); reloadData()"
+          class="ms-3"
+          size="sm"
+          aria-label="Pagination"
+        ></ngb-pagination>
+      }
     </div>
   </div>
 </div>
@@ -154,7 +157,7 @@
         }
       </div>
     }
-    @if (collectionSize() > 20) {
+    @if (collectionSize() > pageSize) {
       <ngb-pagination
         class="ms-auto"
         [pageSize]="pageSize"

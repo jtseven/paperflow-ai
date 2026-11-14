@@ -15,7 +15,6 @@ import {
   NgbNavModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, takeUntil } from 'rxjs'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import {
@@ -65,10 +64,9 @@ interface DocumentAttributesSection {
     NgbNavModule,
     NgbDropdownModule,
     NgComponentOutlet,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     IfPermissionsDirective,
     ClearableBadgeComponent,
+    LucideAngularModule,
   ],
 })
 export class DocumentAttributesComponent implements OnInit, OnDestroy {

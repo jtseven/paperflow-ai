@@ -6,7 +6,6 @@ import { By } from '@angular/platform-browser'
 import { provideRouter } from '@angular/router'
 import { jest } from '@jest/globals'
 import { NgSelectComponent } from '@ng-select/ng-select'
-import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { of, Subject, throwError } from 'rxjs'
 import { FILTER_SIMPLE_TITLE } from 'src/app/data/filter-rule-type'
 import { DocumentService } from 'src/app/services/rest/document.service'
@@ -38,7 +37,7 @@ describe('DocumentLinkComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [DocumentLinkComponent, NgxBootstrapIconsModule.pick(allIcons)],
+      imports: [DocumentLinkComponent],
       providers: [
         provideHttpClient(withInterceptorsFromDi()),
         provideHttpClientTesting(),

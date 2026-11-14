@@ -13,7 +13,7 @@ import {
 import { RouterModule } from '@angular/router'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { BootstrapIconComponent } from 'src/app/components/common/bootstrap-icon/bootstrap-icon.component'
 import { matchesSearchText } from 'src/app/utils/text-search'
 import { AbstractInputComponent } from '../abstract-input'
 
@@ -33,7 +33,7 @@ import { AbstractInputComponent } from '../abstract-input'
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
-    NgxBootstrapIconsModule,
+    BootstrapIconComponent,
     LucideAngularModule,
   ],
 })

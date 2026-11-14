@@ -1,7 +1,5 @@
 import { Clipboard } from '@angular/cdk/clipboard'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
-import { jest } from '@jest/globals'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { FileVersion } from 'src/app/data/share-link'
 import {
@@ -23,6 +21,7 @@ class MockShareLinkBundleService {
 
 class MockToastService {
   showInfo = jest.fn()
+  showSuccess = jest.fn()
   showError = jest.fn()
 }
 
@@ -44,10 +43,7 @@ describe('ShareLinkBundleListComponent', () => {
     service.rebuildBundle.mockReturnValue(of(sampleBundle()))
 
     TestBed.configureTestingModule({
-      imports: [
-        ShareLinkBundleListComponent,
-        NgxBootstrapIconsModule.pick(allIcons),
-      ],
+      imports: [ShareLinkBundleListComponent],
       providers: [
         { provide: ShareLinkBundleService, useValue: service },
         { provide: ToastService, useValue: toastService },
@@ -211,7 +207,7 @@ describe('ShareLinkBundleListComponent', () => {
     component.delete(sampleBundle())
 
     expect(service.delete).toHaveBeenCalled()
-    expect(toastService.showInfo).toHaveBeenCalledWith(
+    expect(toastService.showSuccess).toHaveBeenCalledWith(
       expect.stringContaining('deleted.')
     )
     expect(service.list).toHaveBeenCalledTimes(2)

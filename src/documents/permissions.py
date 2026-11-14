@@ -1,12 +1,24 @@
+from collections.abc import Iterable
+from collections.abc import Mapping
+from collections.abc import Sequence
 from typing import Any
+from typing import ClassVar
+from typing import Final
+from typing import Literal
+from typing import TypeAlias
+from typing import TypedDict
+from typing import TypeGuard
 from typing import TypeVar
+from typing import cast
 
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Case
+from django.db.models import CharField
 from django.db.models import Count
+from django.db.models import F
 from django.db.models import IntegerField
 from django.db.models import Model
 from django.db.models import Q
@@ -14,17 +26,41 @@ from django.db.models import QuerySet
 from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Cast
+from django.db.models.functions import Coalesce
 from guardian.core import ObjectPermissionChecker
 from guardian.models import GroupObjectPermission
 from guardian.models import UserObjectPermission
-from guardian.shortcuts import assign_perm
-from guardian.shortcuts import get_objects_for_user
-from guardian.shortcuts import get_users_with_perms
-from guardian.shortcuts import remove_perm
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import DjangoObjectPermissions
 
 from documents.models import Document
+from documents.versioning import get_root_document
+
+PermissionAction = Literal["view", "change"]
+PERMISSION_ACTIONS: Final[tuple[PermissionAction, ...]] = ("view", "change")
+
+
+class PermissionGrantees(TypedDict):
+    """
+    The user and group ids holding one permission action directly on an
+    object. Users who only hold it through a group are not listed.
+    """
+
+    users: list[int]
+    groups: list[int]
+
+
+class PermissionGranteesUpdate(TypedDict, total=False):
+    """
+    The user and group ids to grant one permission action to. A missing key
+    leaves that kind of grant untouched.
+    """
+
+    users: Iterable[int]
+    groups: Iterable[int]
+
+
+PermissionsSpec: TypeAlias = Mapping[PermissionAction, PermissionGranteesUpdate]
 
 
 class PaperlessObjectPermissions(DjangoObjectPermissions):
@@ -58,129 +94,33 @@ class PaperlessAdminPermissions(BasePermission):
         return request.user.is_active and request.user.is_staff
 
 
-def has_global_statistics_permission(user: User | None) -> bool:
-    if (
-        user is None
-        or not getattr(user, "is_active", False)
-        or not getattr(user, "is_authenticated", False)
-    ):
-        return False
+def _is_active_and_authenticated(user: User | None) -> TypeGuard[User]:
+    return (
+        user is not None
+        and getattr(user, "is_active", False)
+        and getattr(user, "is_authenticated", False)
+    )
 
-    return getattr(user, "is_superuser", False) or user.has_perm(
-        "paperless.view_global_statistics",
+
+def has_global_statistics_permission(user: User | None) -> bool:
+    return _is_active_and_authenticated(user) and (
+        getattr(user, "is_superuser", False)
+        or user.has_perm("paperless.view_global_statistics")
     )
 
 
 def has_system_status_permission(user: User | None) -> bool:
-    if (
-        user is None
-        or not getattr(user, "is_active", False)
-        or not getattr(user, "is_authenticated", False)
-    ):
-        return False
-
-    return (
+    return _is_active_and_authenticated(user) and (
         getattr(user, "is_superuser", False)
         or getattr(user, "is_staff", False)
         or user.has_perm("paperless.view_system_monitoring")
     )
 
 
-def get_groups_with_only_permission(obj, codename):
-    ctype = ContentType.objects.get_for_model(obj)
-    permission = Permission.objects.get(content_type=ctype, codename=codename)
-    group_object_perm_group_ids = (
-        GroupObjectPermission.objects.filter(
-            object_pk=obj.pk,
-            content_type=ctype,
-        )
-        .filter(permission=permission)
-        .values_list("group_id")
-    )
-    return Group.objects.filter(id__in=group_object_perm_group_ids).distinct()
-
-
-def set_permissions_for_object(
-    permissions: dict,
-    object,
-    *,
-    merge: bool = False,
-) -> None:
-    """
-    Set permissions for an object. The permissions are given as a mapping of actions
-    to a dict of user / group id lists, e.g.
-    {"view": {"users": [1], "groups": [2]}, "change": {"users": [], "groups": []}}.
-
-    If merge is True, the permissions are merged with the existing permissions and
-    no users or groups are removed. If False, the permissions are set to exactly
-    the given list of users and groups.
-    """
-
-    for action, entry in permissions.items():
-        permission = f"{action}_{object.__class__.__name__.lower()}"
-        if "users" in entry:
-            # users
-            users_to_add = User.objects.filter(id__in=entry["users"])
-            users_to_remove = (
-                get_users_with_perms(
-                    object,
-                    only_with_perms_in=[permission],
-                    with_group_users=False,
-                )
-                if not merge
-                else User.objects.none()
-            )
-            if users_to_add.exists() and users_to_remove.exists():
-                users_to_remove = users_to_remove.exclude(id__in=users_to_add)
-            if users_to_remove.exists():
-                for user in users_to_remove:
-                    remove_perm(permission, user, object)
-            if users_to_add.exists():
-                for user in users_to_add:
-                    assign_perm(permission, user, object)
-                    if action == "change":
-                        # change gives view too
-                        assign_perm(
-                            f"view_{object.__class__.__name__.lower()}",
-                            user,
-                            object,
-                        )
-        if "groups" in entry:
-            # groups
-            groups_to_add = Group.objects.filter(id__in=entry["groups"])
-            groups_to_remove = (
-                get_groups_with_only_permission(
-                    object,
-                    permission,
-                )
-                if not merge
-                else Group.objects.none()
-            )
-            if groups_to_add.exists() and groups_to_remove.exists():
-                groups_to_remove = groups_to_remove.exclude(id__in=groups_to_add)
-            if groups_to_remove.exists():
-                for group in groups_to_remove:
-                    remove_perm(permission, group, object)
-            if groups_to_add.exists():
-                for group in groups_to_add:
-                    assign_perm(permission, group, object)
-                    if action == "change":
-                        # change gives view too
-                        assign_perm(
-                            f"view_{object.__class__.__name__.lower()}",
-                            group,
-                            object,
-                        )
-
-
 def _resolve_permissions(codenames: set[str], ctype: ContentType) -> list[Permission]:
     """
-    Resolves `codenames` to Permission rows, raising like the single-object
-    assign_perm() this bulk path replaces does (via a `.get()` internally)
-    if any codename doesn't exist. SetPermissionsSerializer rejects unknown
-    action names at the API, but a caller passing one directly would
-    otherwise get a plain `.filter()` that silently builds zero rows and
-    no-ops instead of reporting the bad input.
+    Resolve ``codenames`` to Permission rows, raising for any that don't exist
+    so a bad action name fails loudly instead of granting nothing.
     """
     permission_objs = list(
         Permission.objects.filter(content_type=ctype, codename__in=codenames),
@@ -199,16 +139,13 @@ def _apply_bulk_permission_entry(
     perm_model: type[UserObjectPermission] | type[GroupObjectPermission],
     identity_model: type[User] | type[Group],
     identity_field: str,
-    ids: list[int],
+    ids: Iterable[int],
     codename: str,
     permission_objs: list[Permission],
     ctype: ContentType,
     object_pks: list[str],
     merge: bool,
 ) -> None:
-    # Only the ids are needed to build permission rows (via `<field>_id=`),
-    # so avoid fetching full User/Group rows for identities that may not
-    # even end up being granted anything new.
     add_ids = set(
         identity_model.objects.filter(id__in=ids).values_list("id", flat=True),
     )
@@ -246,45 +183,26 @@ def _apply_bulk_permission_entry(
         for pk in object_pks
         for identity_id in add_ids
     ]
-    # ignore_conflicts skips only rows that already exist as an exact
-    # (identity, permission, object) match -- the same de-dup the
-    # underlying (user|group, permission, object_pk) unique constraint
-    # already enforces for the single-object assign_perm() this replaces,
-    # so it doesn't change what counts as "already granted". batch_size
-    # caps how many rows go into a single INSERT statement.
+    # ignore_conflicts skips grants that already exist (unique constraint).
     perm_model.objects.bulk_create(rows, ignore_conflicts=True, batch_size=1000)
 
 
 def set_permissions_for_objects(
-    permissions: dict,
+    permissions: PermissionsSpec,
     model: type[Model],
     pks: QuerySet | list,
     *,
     merge: bool = False,
 ) -> None:
     """
-    Bulk equivalent of set_permissions_for_object: applies the same
-    permission changes to every object identified by `pks` at once.
+    Set the view/change grants for every object in ``pks``. With ``merge``,
+    the given users and groups are added; without it, each given action's
+    direct grants are replaced. Granting change also grants view, and an
+    action entry with neither key is left untouched.
 
-    Takes a model + pks (rather than model instances) deliberately -- the
-    permission rows built below only ever need `pk`, `content_type`, and
-    identity ids, so callers shouldn't have to fetch full rows (with every
-    other field) just to hand them to this function.
-
-    Deliberately does not use guardian's queryset/list-aware assign_perm:
-    passing a list as the object routes to bulk_assign_perm, which skips
-    creating a direct permission row for anyone who already has the
-    permission via ANY group membership (it checks
-    ObjectPermissionChecker.has_perm, which is group-inheritance-aware) --
-    unlike the single-object assign_perm this replaces, which always
-    ensures a direct row via get_or_create regardless of group-derived
-    access. Losing that guarantee would mean a later revocation of the
-    group's grant silently strips access an admin explicitly asked to be
-    direct. Bulk-creating rows straight against the permission models
-    instead (see _apply_bulk_permission_entry) preserves the original
-    always-create-a-direct-row semantics while still batching every object
-    and every identity into one query per action, rather than one query per
-    (object, user) pair.
+    guardian's bulk assign_perm is avoided because it skips the direct row
+    for anyone who already has access through a group, so revoking the group
+    later would silently remove access that was granted explicitly.
     """
     object_pks = [str(pk) for pk in pks]
     if not object_pks:  # pragma: no cover
@@ -293,12 +211,9 @@ def set_permissions_for_objects(
     model_name = model.__name__.lower()
     ctype = ContentType.objects.get_for_model(model)
 
-    # Every action is resolved up front, before anything is written, so an
-    # unrecognized action name (see _resolve_permissions) aborts the whole
-    # call instead of leaving the actions ahead of it already applied.
-    # SetPermissionsSerializer rejects unknown actions at the API, so this
-    # guards any other caller.
-    permissions_by_action: dict[str, list[Permission]] = {}
+    # Resolve every action before writing, so a bad one can't leave the
+    # actions ahead of it applied.
+    permissions_by_action: dict[PermissionAction, list[Permission]] = {}
     for action, entry in permissions.items():
         if "users" not in entry and "groups" not in entry:
             continue
@@ -342,12 +257,63 @@ def set_permissions_for_objects(
             )
 
 
+def get_permission_grantees(
+    model: type[Model],
+    pks: Iterable[int],
+    actions: Iterable[PermissionAction] = PERMISSION_ACTIONS,
+) -> dict[int, dict[PermissionAction, PermissionGrantees]]:
+    """
+    Return the users and groups holding each of ``actions`` directly on each
+    object of ``model`` identified by ``pks``, in two queries however many
+    objects are asked about.
+
+    Every requested pk and action has an entry, with empty lists where nothing
+    is granted. Ids are sorted. Group grants stay group ids rather than being
+    expanded to their members, so a caller that copies them keeps access tied
+    to current group membership.
+    """
+    pks = list(pks)
+    actions = list(actions)
+    model_name = model.__name__.lower()
+    action_by_codename: dict[str, PermissionAction] = {
+        f"{action}_{model_name}": action for action in actions
+    }
+    result: dict[int, dict[PermissionAction, PermissionGrantees]] = {
+        pk: {action: {"users": [], "groups": []} for action in actions} for pk in pks
+    }
+    if not pks or not actions:
+        return result
+
+    ctype = ContentType.objects.get_for_model(model)
+    grant_filter = {
+        "content_type": ctype,
+        "permission__content_type": ctype,
+        "permission__codename__in": list(action_by_codename),
+        "object_pk__in": [str(pk) for pk in pks],
+    }
+    for perm_model, identity_field, key in (
+        (UserObjectPermission, "user_id", "users"),
+        (GroupObjectPermission, "group_id", "groups"),
+    ):
+        rows = (
+            perm_model.objects.filter(**grant_filter)
+            .values_list("object_pk", "permission__codename", identity_field)
+            .order_by(identity_field)
+        )
+        for object_pk, codename, identity_id in rows:
+            result[int(object_pk)][action_by_codename[codename]][key].append(
+                identity_id,
+            )
+    return result
+
+
 def permitted_object_ids(
     user: User | None,
     model: type[Model],
     perm: str,
     *,
     include_deleted: bool = False,
+    parent_field: str | None = None,
 ) -> QuerySet[int]:
     """
     Generic version of ``permitted_document_ids`` for any model with an
@@ -356,6 +322,24 @@ def permitted_object_ids(
     soft-delete pattern (currently only ``Document``); for every other model
     it is accepted but has no effect, since those models have no soft-delete
     concept.
+
+    ``parent_field`` names a self-referencing foreign key whose target
+    authorizes the row (``Document.root_document``). A row with a parent is
+    visible exactly when its parent is, judged by the parent's owner and
+    grants, so the row's own owner and grants are ignored.
+
+    Guardian stores ``object_pk`` as a string, so the row key is cast to a
+    string and tested against the user's and groups' grants with a single
+    uncorrelated ``IN``. Postgres and SQLite build that set once. MariaDB
+    evaluates it as an index probe per row, which is cheap because the
+    lookups use guardian's unique indexes. Casting every ``object_pk`` to an
+    integer instead cannot use an index, and MariaDB cannot materialize it
+    inside the owner ``OR``, so it re-scans the user's grants for every row.
+    A correlated ``EXISTS`` per grant fixes MariaDB too, but Postgres and
+    SQLite re-run it for every row and end up slower than the original. The
+    user's groups are matched with an ``IN`` subquery rather than a join
+    through the membership table, which SQLite plans badly once the grant
+    tables grow.
     """
     has_soft_delete = hasattr(model, "global_objects")
     manager = (
@@ -363,8 +347,14 @@ def permitted_object_ids(
     )
     base_qs = manager.all().only("id", "owner")
 
+    owner_field, key_field = "owner", "pk"
+    if parent_field is not None:
+        owner_field, key_field = "authorizing_owner", "authorizing_id"
+        base_qs = annotate_authorizing_fields(base_qs, parent_field)
+    unowned = Q(**{f"{owner_field}__isnull": True})
+
     if user is None or not getattr(user, "is_authenticated", False):
-        return base_qs.filter(owner__isnull=True).values_list("id", flat=True)
+        return base_qs.filter(unowned).values_list("id", flat=True)
 
     # Deactivated users get nothing, deactivated superusers included, so this
     # has to come before the superuser shortcut. guardian's
@@ -388,24 +378,49 @@ def permitted_object_ids(
         "permission__content_type": content_type,
     }
 
-    user_perm_ids = (
-        UserObjectPermission.objects.filter(user=user, **perm_filter)
-        .annotate(object_pk_int=Cast("object_pk", IntegerField()))
-        .values_list("object_pk_int", flat=True)
-    )
-    group_perm_ids = (
-        GroupObjectPermission.objects.filter(group__user=user, **perm_filter)
-        .annotate(object_pk_int=Cast("object_pk", IntegerField()))
-        .values_list("object_pk_int", flat=True)
-    )
-    permitted_ids = user_perm_ids.union(group_perm_ids)
+    # Both grant sets are compared to the row key as strings, exactly as
+    # guardian stores them, and are uncorrelated, so each engine can build the
+    # set once instead of probing per row.
+    user_keys = UserObjectPermission.objects.filter(
+        user=user,
+        **perm_filter,
+    ).values_list("object_pk", flat=True)
+    group_keys = GroupObjectPermission.objects.filter(
+        group_id__in=user.groups.values("id"),
+        **perm_filter,
+    ).values_list("object_pk", flat=True)
+    permitted_keys = user_keys.union(group_keys, all=True)
 
-    return base_qs.filter(
-        Q(owner=user) | Q(owner__isnull=True) | Q(id__in=permitted_ids),
-    ).values_list("id", flat=True)
+    return (
+        base_qs.annotate(permitted_key=Cast(key_field, CharField(max_length=64)))
+        .filter(
+            Q(**{owner_field: user.pk}) | unowned | Q(permitted_key__in=permitted_keys),
+        )
+        .values_list("id", flat=True)
+    )
 
 
 ModelT = TypeVar("ModelT", bound=Model)
+
+
+def annotate_authorizing_fields(
+    queryset: QuerySet[ModelT],
+    parent_field: str,
+) -> QuerySet[ModelT]:
+    """
+    Annotate each row with ``authorizing_id`` and ``authorizing_owner``: the id
+    and owner of the row that authorizes it. A row with a parent (the
+    self-referencing foreign key ``parent_field``) is authorized by its parent,
+    any other row by itself.
+    """
+    return queryset.annotate(
+        authorizing_id=Coalesce(f"{parent_field}_id", "id"),
+        authorizing_owner=Case(
+            When(**{f"{parent_field}_id__isnull": True}, then=F("owner_id")),
+            default=F(f"{parent_field}__owner_id"),
+            output_field=IntegerField(),
+        ),
+    )
 
 
 def user_is_unrestricted(user: User | None) -> bool:
@@ -457,6 +472,28 @@ def restrict_queryset_to_visible(
     return queryset.filter(pk__in=permitted_object_ids(user, queryset.model, perm))
 
 
+def user_is_active_superuser(user: User | None) -> bool:
+    """
+    True only for an active, authenticated superuser.
+    """
+    return user is not None and user_is_unrestricted(user)
+
+
+def restrict_queryset_to_owner_visible(
+    queryset: QuerySet[ModelT],
+    user: User | None,
+    perm: str,
+) -> QuerySet[ModelT]:
+    """
+    Like ``restrict_queryset_to_visible``, but ``user=None`` sees only unowned
+    rows (``permitted_object_ids(None, ...)`` semantics) instead of every row.
+    See ``user_is_active_superuser``.
+    """
+    if user_is_active_superuser(user):
+        return queryset
+    return queryset.filter(pk__in=permitted_object_ids(user, queryset.model, perm))
+
+
 def permitted_document_ids(
     user: User | None,
     *,
@@ -470,8 +507,17 @@ def permitted_document_ids(
     ``include_deleted=True`` for callers that need to check permission on
     soft-deleted documents (e.g. trash restore). This intentionally avoids
     ``get_objects_for_user`` to keep the subquery small and index-friendly.
+
+    A version is authorized by its root document, so a version's own owner and
+    grants never matter.
     """
-    return permitted_object_ids(user, Document, perm, include_deleted=include_deleted)
+    return permitted_object_ids(
+        user,
+        Document,
+        perm,
+        include_deleted=include_deleted,
+        parent_field="root_document",
+    )
 
 
 def get_document_count_filter_for_user(user, related_name: str = "documents"):
@@ -586,41 +632,6 @@ def annotate_document_count_for_related_queryset(
     )
 
 
-def get_objects_for_user_owner_aware(
-    user: User | None,
-    perms: str | list[str],
-    Model: Any,
-    *,
-    include_deleted: bool = False,
-) -> QuerySet[Any]:
-    """
-    Returns objects the user owns, are unowned, or has explicit perms.
-    When include_deleted is True, soft-deleted items are also included.
-
-    Legacy slow path (guardian-backed, O(n) style permission resolution).
-    Most queryset-filtering call sites have migrated onto
-    ``PermittedObjectsFilter``/``permitted_object_ids()``, but this function
-    is kept because production callers still remain. Several callers remain
-    across ``documents/``, ``paperless_mail/``, and ``paperless_ai/`` --
-    grep for this function name before removing it.
-    """
-    manager = (
-        Model.global_objects
-        if include_deleted and hasattr(Model, "global_objects")
-        else Model.objects
-    )
-
-    objects_owned = manager.filter(owner=user)
-    objects_unowned = manager.filter(owner__isnull=True)
-    objects_with_perms = get_objects_for_user(
-        user=user,
-        perms=perms,
-        klass=manager.all(),
-        accept_global_perms=False,
-    )
-    return objects_owned | objects_unowned | objects_with_perms
-
-
 def has_perms_owner_aware(user, perms, obj):
     """
     Legacy slow path (guardian-backed) single-object permission check.
@@ -630,12 +641,44 @@ def has_perms_owner_aware(user, perms, obj):
     single-object check still has many production callers. Several callers
     remain across ``documents/``, ``paperless_mail/``, and ``paperless_ai/``
     -- grep for this function name before removing it.
+
+    A document version is authorized by its root document, like in
+    ``permitted_document_ids``, so a version's own owner and grants never
+    matter. Fetch the root with ``select_related("root_document__owner")`` to
+    avoid extra queries.
     """
+    if isinstance(obj, Document):
+        obj = get_root_document(obj)
     checker = ObjectPermissionChecker(user)
     return obj.owner is None or obj.owner == user or checker.has_perm(perms, obj)
 
 
-class ViewDocumentsPermissions(BasePermission):
+# HEAD is deliberately absent: GlobalPermissionsByMethod checks it against GET.
+MappedMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+
+
+class GlobalPermissionsByMethod(BasePermission):
+    """
+    Requires the global (model-level) permissions listed in ``perms_map`` for
+    the request's HTTP method. HEAD is checked against the ``"GET"`` entry,
+    since DRF runs the GET handler for it. A method missing from
+    ``perms_map`` is denied.
+    """
+
+    perms_map: ClassVar[Mapping[MappedMethod, Sequence[str]]]
+
+    def has_permission(self, request: Any, view: Any) -> bool:
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        method = "GET" if request.method == "HEAD" else request.method
+        # An unknown method is not a MappedMethod, but .get() returns None for
+        # it, so it is still denied.
+        perms = self.perms_map.get(cast("MappedMethod", method))
+        return perms is not None and request.user.has_perms(perms)
+
+
+class ViewDocumentsPermissions(GlobalPermissionsByMethod):
     """
     Permissions class that checks for model permissions for only viewing Documents.
     """
@@ -646,31 +689,18 @@ class ViewDocumentsPermissions(BasePermission):
         "POST": ["documents.view_document"],
     }
 
-    def has_permission(self, request, view):
-        if not request.user or (not request.user.is_authenticated):  # pragma: no cover
-            return False
 
-        return request.user.has_perms(self.perms_map.get(request.method, []))
-
-
-class TrashPermissions(BasePermission):
+class TrashPermissions(GlobalPermissionsByMethod):
     """Check the global document permission for each trash operation."""
 
     perms_map = {
         "OPTIONS": ["documents.view_document"],
-        "HEAD": ["documents.view_document"],
         "GET": ["documents.view_document"],
         "POST": ["documents.delete_document"],
     }
 
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:  # pragma: no cover
-            return False
 
-        return request.user.has_perms(self.perms_map.get(request.method, []))
-
-
-class PaperlessNotePermissions(BasePermission):
+class PaperlessNotePermissions(GlobalPermissionsByMethod):
     """
     Permissions class that checks for model permissions for Notes.
     """
@@ -690,28 +720,13 @@ class PaperlessNotePermissions(BasePermission):
         ],
     }
 
-    def has_permission(self, request, view):
-        if not request.user or (not request.user.is_authenticated):  # pragma: no cover
-            return False
 
-        perms = self.perms_map[request.method]
-
-        return request.user.has_perms(perms)
-
-
-class AcknowledgeTasksPermissions(BasePermission):
+class AcknowledgeTasksPermissions(GlobalPermissionsByMethod):
     """
     Permissions class that checks for model permissions for acknowledging tasks.
     """
 
     perms_map = {
+        "OPTIONS": ["documents.change_paperlesstask"],
         "POST": ["documents.change_paperlesstask"],
     }
-
-    def has_permission(self, request: Any, view: Any) -> bool:
-        if not request.user or not request.user.is_authenticated:  # pragma: no cover
-            return False
-
-        perms = self.perms_map.get(request.method, [])
-
-        return request.user.has_perms(perms)

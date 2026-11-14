@@ -14,7 +14,6 @@ import {
   NgbProgressbarModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, takeUntil } from 'rxjs'
 import { PaperlessTaskType } from 'src/app/data/paperless-task'
 import {
@@ -43,7 +42,6 @@ import { environment } from 'src/environments/environment'
     NgbProgressbarModule,
     CustomDatePipe,
     FileSizePipe,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

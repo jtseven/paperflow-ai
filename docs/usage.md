@@ -299,19 +299,18 @@ for details.
 ### Duplicate documents
 
 By default, Paperless-ngx **does not reject duplicates**. If you consume a file whose
-contents exactly match an existing document (same checksum), the new copy is still
-consumed and a warning is logged. The task entry for the upload also flags that a
-duplicate was detected and links to the existing document(s).
+contents match an existing document (same original or archive checksum), the new copy is
+still consumed and a warning is logged.
 
-To review duplicates, open a document and switch to the **Duplicates** tab on the
-document detail page. It lists other documents that share the same content, including any
-that are in the trash (shown with a badge), and links to each so you can decide which to
-keep.
+When a document has duplicates, a **Duplicates** tab appears on its detail page, listing
+the other documents you can view that share the same content (including any in the trash).
+To find all documents with duplicates, choose **Duplicates** in the document list's text
+filter dropdown, or use `has_duplicates=true` in the REST API.
 
 If you would rather reject duplicates at consumption time (the pre-v3 behavior), set
 [`PAPERLESS_CONSUMER_DELETE_DUPLICATES`](configuration.md#PAPERLESS_CONSUMER_DELETE_DUPLICATES)
 to `true`. The duplicate file is then deleted instead of consumed, and the task fails with
-a "document already exists" message.
+a "Document already exists" message linking to the existing document.
 
 ## Document Suggestions
 
@@ -472,6 +471,8 @@ In order to enable the password reset feature you will need to setup an SMTP bac
 Users can enable two-factor authentication (2FA) for their accounts from the 'My Profile' dialog. Opening the dropdown reveals a QR code that can be scanned by a 2FA app (e.g. Google Authenticator) to generate a code. The code must then be entered in the dialog to enable 2FA. If the code is accepted and 2FA is enabled, the user will be shown a set of 10 recovery codes that can be used to login in the event that the 2FA device is lost or unavailable. These codes should be stored securely and cannot be retrieved again. Once enabled, users will be required to enter a code from their 2FA app when logging in.
 
 Should a user lose access to their 2FA device and all recovery codes, a superuser can disable 2FA for the user from the 'Users & Groups' management screen.
+
+If users log in via an OpenID Connect provider which already enforces multi-factor authentication, see [`PAPERLESS_SOCIAL_ACCOUNT_MFA_TRUSTED_AMR`](configuration.md#PAPERLESS_SOCIAL_ACCOUNT_MFA_TRUSTED_AMR) to skip the Paperless-ngx prompt for those logins.
 
 ## Workflows
 
@@ -725,6 +726,7 @@ applied. You can use the following placeholders in the template with any trigger
 - `{{added_time}}`: added time in HH:MM format
 - `{{original_filename}}`: original file name without extension
 - `{{filename}}`: current file name without extension (for "added" workflows this may not be final yet, you can use `{{original_filename}}`)
+- `{{custom_fields}}`: Custom field names mapped to their type and value, as in [file name templates](advanced_usage.md#additional-variables). For example, `{{ custom_fields.Invoice.value }}` or `{{ custom_fields | get_cf_value("Invoice", "") }}` for a fallback when the field is missing. In title assignments, fields assigned by the same action are available.
 - `{{doc_title}}`: current document title (cannot be used in title assignment)
 
 The following placeholders are only available for "added" or "updated" triggers
@@ -1060,6 +1062,20 @@ notes.user:alice notes.note:insurance
 ```
 
 The bare `notes:` prefix is shorthand for `notes.note:`.
+
+#### Searching barcodes
+
+If [barcode contents are stored](advanced_usage.md#barcode-contents), they can be searched by
+content or type, but only with a field name:
+
+```
+barcodes.value:DE89370400440532013000
+barcodes.format:qrcode
+barcodes:wifi barcodes:guest
+```
+
+`barcodes:` is shorthand for `barcodes.value:`. Separators are stripped, so each part of e.g.
+`WIFI:S:Guest;P:secret;;` can be searched on its own.
 
 All of these can be combined. Syntax not described here may not work as expected, and an unknown field name is searched as ordinary text.
 

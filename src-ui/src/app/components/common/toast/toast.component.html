@@ -1,38 +1,55 @@
 <ngb-toast
-  [autohide]="autohide"
-  [delay]="toast.delay"
-  [class]="toast.classname"
-  [class.mb-2]="true"
+  [autohide]="false"
+  [class.mb-2]="autohide"
+  [class.toast-list-item]="!autohide"
+  [class.toast-new]="isNew"
+  [class.toast-success]="toast.level === ToastLevel.Success"
+  [class.toast-error]="toast.level === ToastLevel.Error"
+  (mouseenter)="setHovered(true)"
+  (mouseleave)="setHovered(false)"
+  (focusin)="setFocused(true)"
+  (focusout)="setFocused(false)"
   (shown)="onShown(toast)"
   (hidden)="hidden.emit(toast)"
 >
   @if (autohide) {
     <ngb-progressbar
-      class="position-absolute h-100 w-100 top-90 start-0 bottom-0 end-0 pe-none"
-      type="dark"
+      class="position-absolute w-100 start-0 bottom-0 pe-none"
       [max]="toast.delay"
-      [value]="toast.delayRemaining"
+      [value]="delayRemaining()"
     ></ngb-progressbar>
     <span class="visually-hidden"
-      >{{ toast.delayRemaining / 1000 | number: '1.0-0' }} seconds</span
+      >{{ delayRemaining() / 1000 | number: '1.0-0' }} seconds</span
     >
   }
   <div class="d-flex align-items-top">
-    @if (!toast.error) {
-      <lucide-icon
-        width="0.9em"
-        height="0.9em"
-        name="info-circle"
-      ></lucide-icon>
+    @switch (toast.level) {
+      @case (ToastLevel.Success) {
+        <lucide-icon
+          width="0.9em"
+          height="0.9em"
+          name="check-circle"
+          class="toast-icon"
+        ></lucide-icon>
+      }
+      @case (ToastLevel.Error) {
+        <lucide-icon
+          width="0.9em"
+          height="0.9em"
+          name="exclamation-triangle"
+          class="toast-icon"
+        ></lucide-icon>
+      }
+      @default {
+        <lucide-icon
+          width="0.9em"
+          height="0.9em"
+          name="info-circle"
+          class="toast-icon"
+        ></lucide-icon>
+      }
     }
-    @if (toast.error) {
-      <lucide-icon
-        width="0.9em"
-        height="0.9em"
-        name="exclamation-triangle"
-      ></lucide-icon>
-    }
-    <div>
+    <div class="toast-content">
       <p class="ms-2 mb-0 text-break">{{ toast.content }}</p>
       @if (toast.error) {
         <details class="ms-2">
@@ -72,16 +89,20 @@
         </details>
       }
       @if (toast.action) {
-        <p class="mb-0 mt-2">
-          <button
-            class="btn btn-sm btn-outline-secondary"
-            (click)="closed.emit(toast); toast.action()"
-          >
-            {{ toast.actionName }}
-          </button>
-        </p>
+        <button
+          class="btn btn-sm toast-action ms-2 mt-2"
+          (click)="actioned.emit(toast); toast.action()"
+        >
+          {{ toast.actionName }}
+        </button>
       }
     </div>
+    @if (!autohide && toast.timestamp) {
+      <span
+        class="toast-time small text-body-secondary text-nowrap ms-auto ps-2"
+        >{{ relativeTimestamp }}</span
+      >
+    }
     <button
       type="button"
       class="btn-close ms-auto flex-shrink-0"

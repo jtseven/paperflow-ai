@@ -15,7 +15,6 @@ import {
   NgbModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { routes } from 'src/app/app-routing.module'
 import { MailAccount, MailAccountType } from 'src/app/data/mail-account'
@@ -77,7 +76,6 @@ describe('MailComponent', () => {
         ReactiveFormsModule,
         NgbAlertModule,
         NgSelectModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         MailComponent,
         PageHeaderComponent,
         IfPermissionsDirective,
@@ -185,7 +183,7 @@ describe('MailComponent', () => {
     component.editMailAccount(mailAccounts[0] as MailAccount)
     let editDialog = modal.componentInstance as MailAccountEditDialogComponent
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     editDialog.failed.emit()
     expect(toastErrorSpy).toHaveBeenCalled()
     editDialog.succeeded.emit(mailAccounts[0] as any)
@@ -204,7 +202,7 @@ describe('MailComponent', () => {
     const deleteDialog = modal.componentInstance as ConfirmDialogComponent
     const deleteSpy = jest.spyOn(mailAccountService, 'delete')
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     const listAllSpy = jest.spyOn(mailAccountService, 'listAll')
     deleteSpy.mockReturnValueOnce(
       throwError(() => new Error('error deleting mail account'))
@@ -243,7 +241,7 @@ describe('MailComponent', () => {
     component.editMailRule(mailRules[0] as MailRule)
     const editDialog = modal.componentInstance as MailRuleEditDialogComponent
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     editDialog.failed.emit()
     expect(toastErrorSpy).toHaveBeenCalled()
     editDialog.succeeded.emit(mailRules[0] as any)
@@ -273,7 +271,7 @@ describe('MailComponent', () => {
     const deleteDialog = modal.componentInstance as ConfirmDialogComponent
     const deleteSpy = jest.spyOn(mailRuleService, 'delete')
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     const listAllSpy = jest.spyOn(mailRuleService, 'listAll')
     deleteSpy.mockReturnValueOnce(
       throwError(() => new Error('error deleting mail rule "rule1"'))
@@ -304,7 +302,7 @@ describe('MailComponent', () => {
     let modal: NgbModalRef
     modalService.activeInstances.subscribe((refs) => (modal = refs[0]))
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     const rulePatchSpy = jest.spyOn(mailRuleService, 'patch')
     component.editPermissions(mailRules[0] as MailRule)
     expect(modal).not.toBeUndefined()
@@ -357,7 +355,7 @@ describe('MailComponent', () => {
       By.css('input[type="checkbox"]')
     )
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     // fail first
     patchSpy.mockReturnValueOnce(
       throwError(() => new Error('Error getting config'))
@@ -381,7 +379,7 @@ describe('MailComponent', () => {
     jest
       .spyOn(activatedRoute, 'queryParamMap', 'get')
       .mockReturnValue(of(convertToParamMap(queryParams)))
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     completeSetup()
     expect(toastInfoSpy).toHaveBeenCalled()
   })

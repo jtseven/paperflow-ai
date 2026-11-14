@@ -7,7 +7,6 @@ import {
 } from '@angular/forms'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first } from 'rxjs'
 import { CheckComponent } from 'src/app/components/common/input/check/check.component'
 import { DateComponent } from 'src/app/components/common/input/date/date.component'
@@ -39,9 +38,8 @@ import { TextAreaComponent } from '../../../common/input/textarea/textarea.compo
     UrlComponent,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     TextAreaComponent,
+    LucideAngularModule,
   ],
 })
 export class CustomFieldsBulkEditDialogComponent {

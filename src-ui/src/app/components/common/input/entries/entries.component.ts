@@ -5,7 +5,6 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -19,12 +18,7 @@ import { AbstractInputComponent } from '../abstract-input'
   selector: 'pngx-input-entries',
   templateUrl: './entries.component.html',
   styleUrl: './entries.component.scss',
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-  ],
+  imports: [FormsModule, ReactiveFormsModule, LucideAngularModule],
 })
 export class EntriesComponent extends AbstractInputComponent<object> {
   entries = []

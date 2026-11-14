@@ -197,31 +197,50 @@
     </button>
   }
 
-  <ngb-pagination
-    [pageSize]="pageSize"
-    [collectionSize]="totalTasks()"
-    [page]="page"
-    [maxSize]="5"
-    [rotate]="true"
-    size="sm"
-    aria-label="Tasks pagination"
-    (pageChange)="setPage($event)"
-  >
-  </ngb-pagination>
+  @if (selectedSection !== TaskSection.All && totalTasks() > pageSize) {
+    <ngb-pagination
+      [pageSize]="pageSize"
+      [collectionSize]="totalTasks()"
+      [page]="page"
+      [maxSize]="5"
+      [rotate]="true"
+      size="sm"
+      aria-label="Tasks pagination"
+      (pageChange)="setPage($event)"
+    >
+    </ngb-pagination>
+  }
 </div>
 
 <ng-template let-tasks="tasks" let-section="section" #tasksTemplate>
-  <div
-    class="section-header d-flex align-items-center justify-content-between mb-2"
-  >
-    <div>
-      <h5 class="mb-0">{{ sectionLabel(section) }}</h5>
-      <div class="small text-muted">
-        <ng-container i18n>{tasks.length, plural,
+  <div class="section-header mb-2">
+    <h5 class="mb-0">{{ sectionLabel(section) }}</h5>
+    @let count = sectionCount(section);
+    @let hasMore = selectedSection === TaskSection.All && count > tasks.length;
+    <div class="small text-muted">
+      @if (hasMore) {
+        <ng-container i18n
+          >{{ tasks.length }} of {{ count }} tasks</ng-container
+        >
+        <button
+          class="btn btn-link show-all p-0 ms-2 align-baseline"
+          type="button"
+          (click)="setSection(section)"
+        >
+          <ng-container i18n>Show all</ng-container
+          ><lucide-icon
+            class="ms-1"
+            width="1em"
+            height="1em"
+            name="arrow-right"
+          ></lucide-icon>
+        </button>
+      } @else {
+        <ng-container i18n>{count, plural,
           =1 {1 task}
-          other {{{tasks.length}} tasks}
+          other {{{count}} tasks}
         }</ng-container>
-      </div>
+      }
     </div>
   </div>
 
@@ -285,10 +304,17 @@
               <div>{{ taskDisplayName(task) }}</div>
               <div class="small text-muted">
                 @if (taskShowsSeparateTypeLabel(task)) {
-                  <span>{{ task.task_type_display }}</span>
-                  <span class="mx-1">&bull;</span>
+                  <span class="me-2">{{ task.task_type_display }}</span>
                 }
-                <span>{{ task.trigger_source_display }}</span>
+                <span class="text-nowrap"
+                  ><lucide-icon
+                    class="me-1"
+                    width="1em"
+                    height="1em"
+                    name="box-arrow-in-right"
+                  ></lucide-icon
+                  >{{ task.trigger_source_display }}</span
+                >
               </div>
             </td>
             <td class="d-none d-lg-table-cell created-col">
@@ -418,7 +444,8 @@
                       </div>
                       <pre
                         class="detail-block border border-dark bg-body p-3 rounded-2 mb-0"
-                        >{{ taskResultMessage(task) }}</pre>
+                        >{{ taskResultMessage(task) }}</pre
+                      >
                     </div>
                   }
 
@@ -462,7 +489,8 @@
                         </div>
                         <pre
                           class="detail-block border border-dark bg-body p-3 rounded-2 mb-0"
-                          >{{ task.input_data | json }}</pre>
+                          >{{ task.input_data | json }}</pre
+                        >
                       </div>
                     </div>
                     <div class="col-12 col-xl-6">
@@ -475,7 +503,8 @@
                         </div>
                         <pre
                           class="detail-block border border-dark bg-body p-3 rounded-2 mb-0"
-                          >{{ task.result_data ?? {} | json }}</pre>
+                          >{{ task.result_data ?? {} | json }}</pre
+                        >
                       </div>
                     </div>
                   </div>

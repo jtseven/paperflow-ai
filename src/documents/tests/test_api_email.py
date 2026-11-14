@@ -2,16 +2,19 @@ import json
 import shutil
 from unittest import mock
 
-from django.contrib.auth.models import Permission
-from django.contrib.auth.models import User
 from django.core import mail
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from documents.models import Document
-from documents.tests.utils import DirectoriesMixin
 from documents.tests.utils import SampleDirMixin
+from paperless_testing.dirs import DirectoriesMixin
+from paperless_testing.factories import UserFactory
+from paperless_testing.permissions import grant_global
+from paperless_testing.samples import MULTI_PAGE_DIGITAL_PDF
+from paperless_testing.samples import SIMPLE_DIGITAL_PDF
+from paperless_testing.samples import WITH_FORM_PDF
 
 
 class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
@@ -20,7 +23,7 @@ class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
     def setUp(self) -> None:
         super().setUp()
 
-        self.user = User.objects.create_superuser(username="temp_admin")
+        self.user = UserFactory(username="temp_admin", superuser=True)
         self.client.force_authenticate(user=self.user)
 
         self.doc1 = Document.objects.create(
@@ -42,15 +45,15 @@ class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
 
         # Copy sample files to document paths (using different files to distinguish versions)
         shutil.copy(
-            self.SAMPLE_DIR / "documents" / "originals" / "0000001.pdf",
+            SIMPLE_DIGITAL_PDF,
             self.doc1.archive_path,
         )
         shutil.copy(
-            self.SAMPLE_DIR / "documents" / "originals" / "0000002.pdf",
+            MULTI_PAGE_DIGITAL_PDF,
             self.doc1.source_path,
         )
         shutil.copy(
-            self.SAMPLE_DIR / "documents" / "originals" / "0000003.pdf",
+            WITH_FORM_PDF,
             self.doc2.source_path,
         )
 
@@ -303,8 +306,8 @@ class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
         THEN:
             - Forbidden response is returned
         """
-        user1 = User.objects.create_user(username="test1")
-        user1.user_permissions.add(*Permission.objects.filter(codename="view_document"))
+        user1 = UserFactory(username="test1")
+        grant_global(user1, "view_document")
 
         doc_owned = Document.objects.create(
             title="owned_doc",
@@ -338,8 +341,8 @@ class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
         THEN:
             - Request succeeds
         """
-        user1 = User.objects.create_user(username="test1")
-        user1.user_permissions.add(*Permission.objects.filter(codename="view_document"))
+        user1 = UserFactory(username="test1")
+        grant_global(user1, "view_document")
 
         self.client.force_authenticate(user1)
 
@@ -377,7 +380,7 @@ class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
             checksum="3",
             filename="test3.pdf",
         )
-        shutil.copy(self.SAMPLE_DIR / "simple.pdf", doc3.source_path)
+        shutil.copy(self.SIMPLE_PDF, doc3.source_path)
 
         doc4 = Document.objects.create(
             title="test1",
@@ -386,7 +389,7 @@ class TestEmail(DirectoriesMixin, SampleDirMixin, APITestCase):
             checksum="4",
             filename="test4.pdf",
         )
-        shutil.copy(self.SAMPLE_DIR / "simple.pdf", doc4.source_path)
+        shutil.copy(self.SIMPLE_PDF, doc4.source_path)
 
         response = self.client.post(
             self.ENDPOINT,

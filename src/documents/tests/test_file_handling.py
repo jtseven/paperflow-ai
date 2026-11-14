@@ -8,7 +8,6 @@ from unittest import mock
 import pytest
 from auditlog.context import disable_auditlog
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.db import DatabaseError
 from django.db import connection
 from django.test import TestCase
@@ -30,9 +29,11 @@ from documents.models import DocumentType
 from documents.models import StoragePath
 from documents.serialisers import DocumentSerializer
 from documents.tasks import empty_trash
-from documents.tests.factories import DocumentFactory
-from documents.tests.utils import DirectoriesMixin
-from documents.tests.utils import FileSystemAssertsMixin
+from paperless_testing.assertions import FileSystemAssertsMixin
+from paperless_testing.dirs import DirectoriesMixin
+from paperless_testing.dirs import PaperlessDirs
+from paperless_testing.factories import DocumentFactory
+from paperless_testing.factories import UserFactory
 
 
 class TestFileHandling(DirectoriesMixin, FileSystemAssertsMixin, TestCase):
@@ -1323,7 +1324,7 @@ class TestFilenameGeneration(DirectoriesMixin, TestCase):
             - Document without owner returns "none"
         """
 
-        u1 = User.objects.create_user("user1")
+        u1 = UserFactory(username="user1")
 
         owned_doc = Document.objects.create(
             title="The Title",
@@ -2134,3 +2135,28 @@ class TestPathDateLocalization:
         with override_settings(FILENAME_FORMAT=filename_format):
             filename = generate_filename(document)
             assert filename == Path(expected_filename)
+
+
+@pytest.mark.django_db
+def test_refresh_failure_surfaces_database_error(
+    paperless_dirs: PaperlessDirs,
+) -> None:
+    """
+    GIVEN:
+        - A document with a stored filename
+    WHEN:
+        - Saving it triggers a filename update and refreshing it from the database fails
+    THEN:
+        - The database error is raised, not an unbound variable error from the rollback
+    """
+    document = DocumentFactory(filename="some.pdf")
+
+    with (
+        mock.patch.object(
+            Document,
+            "refresh_from_db",
+            side_effect=DatabaseError("database is locked"),
+        ),
+        pytest.raises(DatabaseError, match="database is locked"),
+    ):
+        document.save()

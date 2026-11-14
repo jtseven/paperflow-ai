@@ -2,7 +2,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop'
 import { NgTemplateOutlet } from '@angular/common'
 import { AfterViewInit, Component, input, signal } from '@angular/core'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
+import { BootstrapIconComponent } from 'src/app/components/common/bootstrap-icon/bootstrap-icon.component'
 
 @Component({
   selector: 'pngx-widget-frame',
@@ -10,9 +10,9 @@ import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
   styleUrls: ['./widget-frame.component.scss'],
   imports: [
     DragDropModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
+    BootstrapIconComponent,
     NgTemplateOutlet,
+    LucideAngularModule,
   ],
 })
 export class WidgetFrameComponent implements AfterViewInit {

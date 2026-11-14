@@ -7,7 +7,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { By } from '@angular/platform-browser'
 import { jest } from '@jest/globals'
 import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { Subject, of, throwError } from 'rxjs'
 import { SavedView } from 'src/app/data/saved-view'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
@@ -55,7 +54,6 @@ describe('SavedViewsComponent', () => {
     TestBed.configureTestingModule({
       imports: [
         NgbModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         ReactiveFormsModule,
         FormsModule,
         DragDropModule,
@@ -228,7 +226,7 @@ describe('SavedViewsComponent', () => {
   })
 
   it('should support delete saved view', () => {
-    const toastSpy = jest.spyOn(toastService, 'showInfo')
+    const toastSpy = jest.spyOn(toastService, 'showSuccess')
     const deleteSpy = jest.spyOn(savedViewService, 'delete')
     deleteSpy.mockReturnValue(of(true))
     component.deleteSavedView(savedViews[0] as SavedView)

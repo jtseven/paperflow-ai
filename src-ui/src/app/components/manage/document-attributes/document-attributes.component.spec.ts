@@ -7,8 +7,6 @@ import {
   Router,
 } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
-import { jest } from '@jest/globals'
-import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject } from 'rxjs'
 import {
   PermissionAction,
@@ -42,7 +40,6 @@ describe('DocumentAttributesComponent', () => {
     TestBed.configureTestingModule({
       imports: [
         RouterTestingModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         DocumentAttributesComponent,
         DummySectionComponent,
       ],

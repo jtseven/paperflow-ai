@@ -21,7 +21,6 @@ import {
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, filter, first, merge, takeUntil } from 'rxjs'
 import { NEGATIVE_NULL_FILTER_VALUE } from 'src/app/data/filter-rule-type'
 import { MatchingModel } from 'src/app/data/matching-model'
@@ -707,11 +706,10 @@ export class FilterableDropdownSelectionModel {
     ToggleableDropdownButtonComponent,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     NgbDropdownModule,
     NgClass,
     ScrollingModule,
+    LucideAngularModule,
   ],
 })
 export class FilterableDropdownComponent

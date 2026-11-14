@@ -8,6 +8,7 @@ import {
   OnInit,
 } from '@angular/core'
 import { NgbTooltipModule } from '@ng-bootstrap/ng-bootstrap'
+import { LucideAngularModule } from 'lucide-angular'
 import { takeUntil } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import { DisplayField, Document } from 'src/app/data/document'
@@ -21,7 +22,13 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
   selector: 'pngx-custom-field-display',
   templateUrl: './custom-field-display.component.html',
   styleUrl: './custom-field-display.component.scss',
-  imports: [CustomDatePipe, CurrencyPipe, NgbTooltipModule, SlicePipe],
+  imports: [
+    CustomDatePipe,
+    CurrencyPipe,
+    NgbTooltipModule,
+    SlicePipe,
+    LucideAngularModule,
+  ],
 })
 export class CustomFieldDisplayComponent
   extends LoadingComponentWithPermissions

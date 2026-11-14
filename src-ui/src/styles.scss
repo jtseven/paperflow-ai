@@ -350,6 +350,7 @@ a.btn-link:active,
 a.btn-link:focus-visible,
 .btn-link:hover,
 .btn-link:active,
+.btn-link.show,
 .btn-link:focus-visible {
   color: var(--pngx-primary-lighten-10) !important;
   .primary-light & {
@@ -653,6 +654,7 @@ ul.pagination {
 }
 
 .dropdown-menu {
+  --bs-dropdown-font-size: var(--pngx-body-font-size);
   background-color: var(--bs-body-bg);
 
   .dropdown-divider {
@@ -966,7 +968,8 @@ canvas.hiddenCanvasElement {
 }
 
 // bs icons
-.btn-sm lucide-icon svg {
+.btn-sm lucide-icon svg,
+.btn-sm pngx-bs-icon svg {
   vertical-align: text-bottom;
 }
 
@@ -985,7 +988,8 @@ canvas.hiddenCanvasElement {
     border-color: var(--pngx-card-hover-border) !important;
   }
 
-  .card-footer lucide-icon svg {
+  .card-footer lucide-icon svg,
+  .card-footer pngx-bs-icon svg {
     vertical-align: middle;
   }
 }

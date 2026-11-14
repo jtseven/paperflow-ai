@@ -13,7 +13,6 @@ import {
 import { FormsModule } from '@angular/forms'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { merge, of, Subject } from 'rxjs'
 import {
   filter,
@@ -45,12 +44,11 @@ import { AddExistingDocumentVersionDialogComponent } from './add-existing-docume
   imports: [
     FormsModule,
     NgbDropdownModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     ConfirmButtonComponent,
     IfPermissionsDirective,
     SlicePipe,
     CustomDatePipe,
+    LucideAngularModule,
   ],
 })
 export class DocumentVersionDropdownComponent
@@ -322,7 +320,7 @@ export class DocumentVersionDropdownComponent
               }
               this.newVersionLabel = ''
               modal.close()
-              this.toastService.showInfo(
+              this.toastService.showSuccess(
                 $localize`Existing document added as a version.`
               )
             },

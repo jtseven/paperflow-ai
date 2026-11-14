@@ -18,6 +18,7 @@ from django.utils import timezone
 from filelock import FileLock
 from rest_framework.reverse import reverse
 
+from documents.barcodes import read_barcode_values
 from documents.classifier import load_classifier
 from documents.data_models import ConsumableDocument
 from documents.data_models import ConsumeFileSuccessResult
@@ -31,12 +32,14 @@ from documents.models import Correspondent
 from documents.models import CustomField
 from documents.models import CustomFieldInstance
 from documents.models import Document
+from documents.models import DocumentBarcode
 from documents.models import DocumentType
 from documents.models import StoragePath
 from documents.models import Tag
 from documents.models import WorkflowTrigger
 from documents.parsers import ParseError
-from documents.permissions import set_permissions_for_object
+from documents.permissions import PermissionsSpec
+from documents.permissions import set_permissions_for_objects
 from documents.plugins.base import AlwaysRunPluginMixin
 from documents.plugins.base import ConsumeTaskPlugin
 from documents.plugins.base import NoCleanupPluginMixin
@@ -53,6 +56,7 @@ from documents.utils import compute_checksum
 from documents.utils import copy_basic_file_stats
 from documents.utils import copy_file_with_basic_stats
 from documents.utils import run_subprocess
+from paperless.config import BarcodeConfig
 from paperless.config import OcrConfig
 from paperless.config import RemoteOCRConfig
 from paperless.models import ArchiveFileGenerationChoices
@@ -504,6 +508,13 @@ class ConsumerPlugin(
                     f"Parser: {document_parser.name} v{document_parser.version}",
                 )
 
+                # New versions skip the barcode plugin, so read their barcodes here
+                if (
+                    self.input_doc.root_document_id is not None
+                    and self.metadata.barcodes is None
+                ):
+                    self._read_version_barcodes(mime_type, Path(tmpdir))
+
                 # Parse the document. This may take some time.
 
                 text = None
@@ -630,6 +641,8 @@ class ConsumerPlugin(
                                     original_document.save()
                             else:
                                 original_document.save()
+
+                            self._store_barcodes(original_document)
 
                             # Adding a version changes the effective document, so update root modified
                             Document.objects.filter(pk=root_doc.pk).update(
@@ -834,6 +847,19 @@ class ConsumerPlugin(
             local_added,
             self.filename,
             self.filename,
+            custom_fields=[
+                CustomFieldInstance(
+                    field=field,
+                    **{
+                        CustomFieldInstance.get_value_field_name(
+                            field.data_type,
+                        ): self.metadata.custom_fields[field.pk],
+                    },
+                )
+                for field in CustomField.objects.filter(
+                    pk__in=self.metadata.custom_fields or {},
+                )
+            ],
         )
 
     def _store(
@@ -857,8 +883,9 @@ class ConsumerPlugin(
             self.log.debug(f"Creation date from parse_date: {create_date}")
         else:
             stats = Path(self.input_doc.original_file).stat()
-            create_date = timezone.make_aware(
-                datetime.datetime.fromtimestamp(stats.st_mtime),
+            create_date = datetime.datetime.fromtimestamp(
+                stats.st_mtime,
+                tz=timezone.get_current_timezone(),
             )
             self.log.debug(f"Creation date from st_mtime: {create_date}")
 
@@ -935,7 +962,7 @@ class ConsumerPlugin(
             or self.metadata.change_users is not None
             or self.metadata.change_groups is not None
         ):
-            permissions = {
+            permissions: PermissionsSpec = {
                 "view": {
                     "users": self.metadata.view_users or [],
                     "groups": self.metadata.view_groups or [],
@@ -945,7 +972,7 @@ class ConsumerPlugin(
                     "groups": self.metadata.change_groups or [],
                 },
             }
-            set_permissions_for_object(permissions=permissions, object=document)
+            set_permissions_for_objects(permissions, Document, [document.pk])
 
         if self.metadata.custom_fields:
             for field in CustomField.objects.filter(
@@ -960,6 +987,32 @@ class ConsumerPlugin(
                     value_field_name: self.metadata.custom_fields.get(field.id, None),
                 }
                 CustomFieldInstance.objects.create(**args)  # adds to document
+
+        self._store_barcodes(document)
+
+    def _read_version_barcodes(self, mime_type: str, work_dir: Path) -> None:
+        barcode_settings = BarcodeConfig()
+        if not barcode_settings.barcode_store_values:
+            return
+        try:
+            self.metadata.barcodes = (
+                read_barcode_values(
+                    self.working_copy,
+                    mime_type,
+                    barcode_settings,
+                    work_dir,
+                )
+                or None
+            )
+        except Exception as e:
+            self.log.warning(f"Could not read barcodes of {self.filename}: {e}")
+
+    def _store_barcodes(self, document: Document) -> None:
+        if self.metadata.barcodes:
+            DocumentBarcode.objects.bulk_create(
+                DocumentBarcode(document=document, **barcode)
+                for barcode in self.metadata.barcodes
+            )
 
     def _write(self, source, target) -> None:
         with (

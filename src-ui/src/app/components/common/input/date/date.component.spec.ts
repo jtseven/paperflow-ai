@@ -5,7 +5,6 @@ import { NG_VALUE_ACCESSOR } from '@angular/forms'
 import { RouterModule } from '@angular/router'
 import { jest } from '@jest/globals'
 import { NgbDateParserFormatter } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { routes } from 'src/app/app-routing.module'
 import { LocalizedDateParserFormatter } from 'src/app/utils/ngb-date-parser-formatter'
 import { DateComponent } from './date.component'
@@ -17,10 +16,7 @@ describe('DateComponent', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [
-        NgxBootstrapIconsModule.pick(allIcons),
-        RouterModule.forRoot(routes),
-      ],
+      imports: [RouterModule.forRoot(routes)],
       providers: [
         {
           provide: NgbDateParserFormatter,

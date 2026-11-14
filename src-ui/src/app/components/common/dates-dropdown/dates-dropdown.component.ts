@@ -17,7 +17,6 @@ import {
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, Subscription } from 'rxjs'
 import { debounceTime } from 'rxjs/operators'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
@@ -58,8 +57,6 @@ export enum RelativeDate {
   imports: [
     ClearableBadgeComponent,
     CustomDatePipe,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     NgbDatepickerModule,
     NgbDropdownModule,
     NgSelectModule,
@@ -67,6 +64,7 @@ export enum RelativeDate {
     ReactiveFormsModule,
     NgClass,
     NgTemplateOutlet,
+    LucideAngularModule,
   ],
 })
 export class DatesDropdownComponent implements OnInit, OnDestroy {

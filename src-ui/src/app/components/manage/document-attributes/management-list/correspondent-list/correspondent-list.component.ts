@@ -7,7 +7,6 @@ import {
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { CorrespondentEditDialogComponent } from 'src/app/components/common/edit-dialog/correspondent-edit-dialog/correspondent-edit-dialog.component'
 import { Correspondent } from 'src/app/data/correspondent'
 import { FILTER_HAS_CORRESPONDENT_ANY } from 'src/app/data/filter-rule-type'
@@ -33,7 +32,6 @@ import { ManagementListComponent } from '../management-list.component'
     NgTemplateOutlet,
     NgbDropdownModule,
     NgbPaginationModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

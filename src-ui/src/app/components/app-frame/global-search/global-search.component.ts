@@ -20,7 +20,6 @@ import {
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, debounceTime, filter } from 'rxjs'
 import { DataType } from 'src/app/data/datatype'
 import {
@@ -69,10 +68,9 @@ import { WorkflowEditDialogComponent } from '../../common/edit-dialog/workflow-e
     CustomDatePipe,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     NgbDropdownModule,
     NgTemplateOutlet,
+    LucideAngularModule,
   ],
 })
 export class GlobalSearchComponent implements OnInit {
@@ -284,7 +282,7 @@ export class GlobalSearchComponent implements OnInit {
       modalRef.componentInstance.dialogMode.set(EditDialogMode.EDIT)
       modalRef.componentInstance.object = object
       modalRef.componentInstance.succeeded.subscribe(() => {
-        this.toastService.showInfo($localize`Successfully updated object.`)
+        this.toastService.showSuccess($localize`Successfully updated object.`)
       })
       modalRef.componentInstance.failed.subscribe((e) => {
         this.toastService.showError($localize`Error occurred saving object.`, e)
@@ -322,7 +320,7 @@ export class GlobalSearchComponent implements OnInit {
       modalRef.componentInstance.dialogMode.set(EditDialogMode.EDIT)
       modalRef.componentInstance.object = object
       modalRef.componentInstance.succeeded.subscribe(() => {
-        this.toastService.showInfo($localize`Successfully updated object.`)
+        this.toastService.showSuccess($localize`Successfully updated object.`)
       })
       modalRef.componentInstance.failed.subscribe((e) => {
         this.toastService.showError($localize`Error occurred saving object.`, e)

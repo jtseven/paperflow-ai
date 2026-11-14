@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common'
 import { Component, inject, signal } from '@angular/core'
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Document } from 'src/app/data/document'
 import {
   FileVersion,
@@ -27,10 +26,9 @@ import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.compone
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     FileSizePipe,
     DocumentTitlePipe,
+    LucideAngularModule,
   ],
   providers: [],
 })

@@ -225,7 +225,7 @@
         <div class="views-list overflow-y-auto">
           @for (view of savedViewService.allViews; track view.id) {
             <button ngbDropdownItem (click)="loadViewConfig(view.id)">
-              <i-bs class="me-2" [name]="view.icon || 'funnel'"></i-bs
+              <pngx-bs-icon class="me-2" [name]="view.icon || 'funnel'"></pngx-bs-icon
               >{{ view.name }}
             </button>
           }
@@ -453,6 +453,7 @@
               </th>
             }
             @if (activeDisplayFields.includes(DisplayField.TITLE)) {
+              <th style="width: 2rem"><!-- Preview --></th>
               <th
                 class="cursor-pointer"
                 pngxSortable="title"
@@ -659,34 +660,36 @@
                   }
                 </td>
               }
+              @if (activeDisplayFields.includes(DisplayField.TITLE)) {
+                <td
+                  class="pe-0 text-end align-baseline"
+                  (mouseleave)="popupPreview.close()"
+                >
+                  <pngx-preview-popup
+                    [document]="d"
+                    linkClasses="btn btn-sm btn-link text-secondary px-1"
+                    linkTitle="Preview document"
+                    (click)="$event.stopPropagation()"
+                    i18n-linkTitle
+                    #popupPreview
+                  >
+                    <lucide-icon name="eye"></lucide-icon>
+                  </pngx-preview-popup>
+                </td>
+              }
               @if (
                 activeDisplayFields.includes(DisplayField.TITLE) ||
                 activeDisplayFields.includes(DisplayField.TAGS)
               ) {
-                <td width="30%">
+                <td width="30%" class="align-baseline">
                   @if (activeDisplayFields.includes(DisplayField.TITLE)) {
-                    <div
-                      class="d-inline-block"
-                      (mouseleave)="popupPreview.close()"
+                    <a
+                      routerLink="/documents/{{ d.id }}"
+                      title="Edit document"
+                      i18n-title
+                      style="overflow-wrap: anywhere"
+                      >{{ d.title | documentTitle }}</a
                     >
-                      <a
-                        routerLink="/documents/{{ d.id }}"
-                        title="Edit document"
-                        i18n-title
-                        style="overflow-wrap: anywhere"
-                        >{{ d.title | documentTitle }}</a
-                      >
-                      <pngx-preview-popup
-                        [document]="d"
-                        linkClasses="btn btn-sm btn-link text-secondary"
-                        linkTitle="Preview document"
-                        (click)="$event.stopPropagation()"
-                        i18n-linkTitle
-                        #popupPreview
-                      >
-                        <lucide-icon name="eye"></lucide-icon>
-                      </pngx-preview-popup>
-                    </div>
                   }
                   @if (activeDisplayFields.includes(DisplayField.TAGS)) {
                     @for (tagID of d.tags; track tagID) {

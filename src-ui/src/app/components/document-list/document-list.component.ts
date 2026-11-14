@@ -22,9 +22,9 @@ import {
   NgbPaginationModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { filter, first, map, Subject, switchMap, takeUntil } from 'rxjs'
+import { BootstrapIconComponent } from 'src/app/components/common/bootstrap-icon/bootstrap-icon.component'
 import {
   DEFAULT_DISPLAY_FIELDS,
   DisplayField,
@@ -95,8 +95,7 @@ import { SaveViewConfigDialogComponent } from './save-view-config-dialog/save-vi
     CorrespondentNamePipe,
     DocumentTypeNamePipe,
     StoragePathNamePipe,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
+    BootstrapIconComponent,
     AsyncPipe,
     FormsModule,
     ReactiveFormsModule,
@@ -106,6 +105,7 @@ import { SaveViewConfigDialogComponent } from './save-view-config-dialog/save-vi
     NgClass,
     RouterModule,
     TourNgBootstrap,
+    LucideAngularModule,
   ],
 })
 export class DocumentListComponent
@@ -272,9 +272,12 @@ export class DocumentListComponent
         this.list.reload()
       })
 
-    this.websocketStatusService.onDocumentDeleted().subscribe(() => {
-      this.list.reload()
-    })
+    this.websocketStatusService
+      .onDocumentDeleted()
+      .pipe(takeUntil(this.unsubscribeNotifier))
+      .subscribe(() => {
+        this.list.reload()
+      })
 
     this.route.paramMap
       .pipe(
@@ -410,6 +413,7 @@ export class DocumentListComponent
         display_mode: this.list.displayMode,
         display_fields: this.activeDisplayFields,
       }
+      const title = this.list.activeSavedViewTitle
       this.savedViewService
         .patch(savedView)
         .pipe(first())
@@ -417,14 +421,14 @@ export class DocumentListComponent
           next: (view) => {
             this.activeSavedView = view
             this.unmodifiedSavedView = view
-            this.toastService.showInfo(
-              $localize`View "${this.list.activeSavedViewTitle}" saved successfully.`
+            this.toastService.showSuccess(
+              $localize`View "${view.name ?? title}" saved successfully.`
             )
             this.unmodifiedFilterRules.set(this.list.filterRules)
           },
           error: (err) => {
             this.toastService.showError(
-              $localize`Failed to save view "${this.list.activeSavedViewTitle}".`,
+              $localize`Failed to save view "${title}".`,
               err
             )
           },
@@ -492,7 +496,7 @@ export class DocumentListComponent
               .subscribe({
                 next: () => {
                   modal.close()
-                  this.toastService.showInfo(
+                  this.toastService.showSuccess(
                     $localize`View "${savedView.name}" created successfully.`
                   )
                 },

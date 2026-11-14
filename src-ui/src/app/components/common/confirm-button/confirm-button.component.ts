@@ -7,13 +7,12 @@ import {
 } from '@angular/core'
 import { NgbPopover, NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 
 @Component({
   selector: 'pngx-confirm-button',
   templateUrl: './confirm-button.component.html',
   styleUrl: './confirm-button.component.scss',
-  imports: [NgbPopoverModule, NgxBootstrapIconsModule, LucideAngularModule],
+  imports: [NgbPopoverModule, LucideAngularModule],
 })
 export class ConfirmButtonComponent {
   @Input()

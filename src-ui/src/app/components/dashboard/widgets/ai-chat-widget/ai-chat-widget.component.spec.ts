@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { RouterTestingModule } from '@angular/router/testing'
-import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { provideMarkdown } from 'ngx-markdown'
 import { EMPTY, of } from 'rxjs'
 import { ChatService } from 'src/app/services/chat.service'
@@ -12,11 +11,7 @@ describe('AiChatWidgetComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        AiChatWidgetComponent,
-        NgxBootstrapIconsModule.pick(allIcons),
-        RouterTestingModule,
-      ],
+      imports: [AiChatWidgetComponent, RouterTestingModule],
       providers: [
         provideMarkdown(),
         {

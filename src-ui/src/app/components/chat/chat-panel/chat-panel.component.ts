@@ -14,7 +14,6 @@ import {
 import { FormsModule } from '@angular/forms'
 import { Router, RouterModule } from '@angular/router'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { MarkdownModule } from 'ngx-markdown'
 import { Subscription } from 'rxjs'
 import { ChatHistoryService } from 'src/app/services/chat-history.service'
@@ -51,7 +50,6 @@ const CHAT_HISTORY_TURNS = 6
     CommonModule,
     FormsModule,
     RouterModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
     MarkdownModule,
   ],
