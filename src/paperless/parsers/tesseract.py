@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import importlib.resources
 import logging
 import os
@@ -19,7 +20,7 @@ from documents.parsers import ParseError
 from documents.parsers import make_thumbnail_from_pdf
 from documents.utils import copy_file_with_basic_stats
 from documents.utils import maybe_override_pixel_limit
-from documents.utils import run_subprocess
+from documents.utils import remove_alpha_channel
 from paperless.config import OcrConfig
 from paperless.models import CleanChoices
 from paperless.models import ModeChoices
@@ -39,9 +40,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("paperless.parsing.tesseract")
 
-_SRGB_ICC_DATA: Final[bytes] = (
-    importlib.resources.files("ocrmypdf.data").joinpath("sRGB.icc").read_bytes()
-)
+
+@functools.cache
+def _srgb_icc_data() -> bytes:
+    # Read on first use, importing ocrmypdf.data pulls in the whole ocrmypdf package
+    return importlib.resources.files("ocrmypdf.data").joinpath("sRGB.icc").read_bytes()
+
 
 _SUPPORTED_MIME_TYPES: Final[dict[str, str]] = {
     "application/pdf": ".pdf",
@@ -197,18 +201,7 @@ class RasterisedDocumentParser:
             return im.mode in ("RGBA", "LA")
 
     def remove_alpha(self, image_path: Path) -> Path:
-        no_alpha_image = Path(self.tempdir) / "image-no-alpha"
-        run_subprocess(
-            [
-                settings.CONVERT_BINARY,
-                "-alpha",
-                "off",
-                str(image_path),
-                str(no_alpha_image),
-            ],
-            logger=self.log,
-        )
-        return no_alpha_image
+        return remove_alpha_channel(image_path, Path(self.tempdir) / "image-no-alpha")
 
     def get_dpi(self, image: Path) -> int | None:
         try:
@@ -394,7 +387,11 @@ class RasterisedDocumentParser:
 
         plain_pdf_path = Path(self.tempdir) / "image_plain.pdf"
         try:
-            convert_kwargs: dict = {}
+            convert_kwargs: dict = {
+                # Ignore invalid EXIF orientation values (e.g. 0) instead of
+                # aborting the conversion; valid values are still applied
+                "rotation": img2pdf.Rotation.ifvalid,
+            }
             if self.settings.image_dpi is not None:
                 convert_kwargs["layout_fun"] = img2pdf.get_fixed_dpi_layout_fun(
                     (self.settings.image_dpi, self.settings.image_dpi),
@@ -410,7 +407,7 @@ class RasterisedDocumentParser:
         pdfa_path = Path(self.tempdir) / "archive.pdf"
         try:
             with pikepdf.open(plain_pdf_path) as pdf:
-                cs = pdf.make_stream(_SRGB_ICC_DATA)
+                cs = pdf.make_stream(_srgb_icc_data())
                 cs["/N"] = 3
                 output_intent = pikepdf.Dictionary(
                     Type=pikepdf.Name("/OutputIntent"),

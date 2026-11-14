@@ -30,11 +30,18 @@ from documents.models import Tag
 from documents.parsers import ParseError
 from documents.plugins.helpers import ProgressStatusOptions
 from documents.tasks import sanity_check
-from documents.tests.utils import DirectoriesMixin
-from documents.tests.utils import DummyProgressManager
-from documents.tests.utils import FileSystemAssertsMixin
 from documents.tests.utils import GetConsumerMixin
 from paperless_mail.models import MailRule
+from paperless_testing.assertions import FileSystemAssertsMixin
+from paperless_testing.dirs import DirectoriesMixin
+from paperless_testing.factories import DocumentFactory
+from paperless_testing.factories import TagFactory
+from paperless_testing.factories import UserFactory
+from paperless_testing.fakes.progress import FakeProgressManager
+from paperless_testing.permissions import grant_object
+from paperless_testing.samples import MULTI_PAGE_DIGITAL_PDF
+from paperless_testing.samples import MULTI_PAGE_IMAGES_PDF
+from paperless_testing.samples import SIMPLE_DIGITAL_PDF
 
 
 class _BaseNewStyleParser:
@@ -111,9 +118,7 @@ class _BaseNewStyleParser:
 
 
 class DummyParser(_BaseNewStyleParser):
-    _ARCHIVE_SRC = (
-        Path(__file__).parent / "samples" / "documents" / "archive" / "0000001.pdf"
-    )
+    _ARCHIVE_SRC = MULTI_PAGE_IMAGES_PDF
 
     def parse(self, document_path, mime_type, *, produce_archive: bool = True) -> None:
         self._text = "The Text"
@@ -199,33 +204,19 @@ class TestConsumer(
         self.addCleanup(patcher.stop)
 
     def get_test_file(self):
-        src = (
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000001.pdf"
-        )
+        src = SIMPLE_DIGITAL_PDF
         dst = self.dirs.scratch_dir / "sample.pdf"
         shutil.copy(src, dst)
         return dst
 
     def get_test_file2(self):
-        src = (
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000002.pdf"
-        )
+        src = MULTI_PAGE_DIGITAL_PDF
         dst = self.dirs.scratch_dir / "sample2.pdf"
         shutil.copy(src, dst)
         return dst
 
     def get_test_archive_file(self):
-        src = (
-            Path(__file__).parent / "samples" / "documents" / "archive" / "0000001.pdf"
-        )
+        src = MULTI_PAGE_IMAGES_PDF
         dst = self.dirs.scratch_dir / "sample_archive.pdf"
         shutil.copy(src, dst)
         return dst
@@ -513,6 +504,65 @@ class TestConsumer(
         self.assertTrue(group_checker.has_perm("view_document", document))
         self._assert_first_last_send_progress()
 
+    def testInboxTagsScopedToOwner(self) -> None:
+        """
+        GIVEN:
+            - Inbox tags that are owned by the document owner, unowned, owned by
+              another user but shared with the document owner, and owned by
+              another user and not shared
+            - A non-inbox tag owned by the document owner
+        WHEN:
+            - A document is consumed with that owner
+        THEN:
+            - The document gets the owned, unowned and shared inbox tags only
+        """
+        owner = UserFactory()
+        other = UserFactory()
+        owned = TagFactory(is_inbox_tag=True, owner=owner)
+        unowned = TagFactory(is_inbox_tag=True, owner=None)
+        shared = TagFactory(is_inbox_tag=True, owner=other)
+        grant_object(owner, shared, "view_tag")
+        TagFactory(is_inbox_tag=True, owner=other)
+        TagFactory(is_inbox_tag=False, owner=owner)
+
+        with self.get_consumer(
+            self.get_test_file(),
+            DocumentMetadataOverrides(owner_id=owner.pk),
+        ) as consumer:
+            consumer.run()
+
+            document = Document.objects.first()
+            assert document is not None
+
+        self.assertCountEqual(document.tags.all(), [owned, unowned, shared])
+        self._assert_first_last_send_progress()
+
+    def testInboxTagsUnownedDocument(self) -> None:
+        """
+        GIVEN:
+            - Inbox tags owned by two different users, an unowned inbox tag and
+              a non-inbox tag
+        WHEN:
+            - A document is consumed with no owner
+        THEN:
+            - The document gets every inbox tag
+        """
+        inbox_tags = [
+            TagFactory(is_inbox_tag=True, owner=UserFactory()),
+            TagFactory(is_inbox_tag=True, owner=UserFactory()),
+            TagFactory(is_inbox_tag=True, owner=None),
+        ]
+        TagFactory(is_inbox_tag=False)
+
+        with self.get_consumer(self.get_test_file()) as consumer:
+            consumer.run()
+
+            document = Document.objects.first()
+            assert document is not None
+
+        self.assertCountEqual(document.tags.all(), inbox_tags)
+        self._assert_first_last_send_progress()
+
     def testNotAFile(self) -> None:
         with self.assertRaisesMessage(ConsumerError, "File not found"):
             with self.get_consumer(Path("non-existing-file")) as consumer:
@@ -769,14 +819,14 @@ class TestConsumer(
 
         original_modified = timezone.now() - datetime.timedelta(days=1)
         Document.objects.filter(pk=root_doc.pk).update(modified=original_modified)
-        actor = User.objects.create_user(
+        actor = UserFactory(
             username="actor",
             email="actor@example.com",
             password="password",
         )
 
         version_file = self.get_test_file2()
-        status = DummyProgressManager(version_file.name, None)
+        status = FakeProgressManager(version_file.name, None)
         overrides = DocumentMetadataOverrides(
             version_label="v2",
             actor_id=actor.pk,
@@ -839,7 +889,7 @@ class TestConsumer(
         assert root_doc is not None
 
         version_file = self.get_test_file2()
-        status = DummyProgressManager(version_file.name, None)
+        status = FakeProgressManager(version_file.name, None)
         overrides = DocumentMetadataOverrides(
             filename="valid_pdf_version-upload",
             actor_id=999999,
@@ -896,7 +946,7 @@ class TestConsumer(
         assert root_doc is not None
 
         def consume_version(version_file: Path) -> Document:
-            status = DummyProgressManager(version_file.name, None)
+            status = FakeProgressManager(version_file.name, None)
             overrides = DocumentMetadataOverrides()
             doc = ConsumableDocument(
                 DocumentSource.ApiUpload,
@@ -1061,7 +1111,7 @@ class TestConsumer(
     @mock.patch("documents.consumer.get_parser_registry")
     def test_similar_filenames(self, m) -> None:
         shutil.copy(
-            Path(__file__).parent / "samples" / "simple.pdf",
+            SIMPLE_DIGITAL_PDF,
             settings.CONSUMPTION_DIR / "simple.pdf",
         )
         shutil.copy(
@@ -1602,13 +1652,7 @@ class TestConsumerRemoteOCR(
         self.addCleanup(patcher.stop)
 
     def _consume(self, *, overrides: DocumentMetadataOverrides | None = None) -> bool:
-        src = (
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000001.pdf"
-        )
+        src = SIMPLE_DIGITAL_PDF
         dst = self.dirs.scratch_dir / "sample.pdf"
         shutil.copy(src, dst)
 
@@ -1681,6 +1725,32 @@ class TestMetadataOverrides(TestCase):
         base.update(incoming)
         self.assertEqual(base.actor_id, 2)
         self.assertEqual(base.version_label, "v2")
+
+    def test_from_document_copies_user_and_group_grants_separately(self) -> None:
+        """
+        GIVEN:
+            - A document with view and change granted directly to one user and
+              to a group with another user as a member
+        WHEN:
+            - Overrides are built from the document
+        THEN:
+            - The user lists hold only the directly granted user
+            - The group lists hold the group
+        """
+        direct_user = UserFactory()
+        group_member = UserFactory()
+        group = Group.objects.create(name="group")
+        group_member.groups.add(group)
+        document = DocumentFactory()
+        grant_object(direct_user, document, "view_document", "change_document")
+        grant_object(group, document, "view_document", "change_document")
+
+        overrides = DocumentMetadataOverrides.from_document(document)
+
+        self.assertEqual(overrides.view_users, [direct_user.pk])
+        self.assertEqual(overrides.change_users, [direct_user.pk])
+        self.assertEqual(overrides.view_groups, [group.pk])
+        self.assertEqual(overrides.change_groups, [group.pk])
 
 
 class TestBarcodeApplyDetectedASN(TestCase):

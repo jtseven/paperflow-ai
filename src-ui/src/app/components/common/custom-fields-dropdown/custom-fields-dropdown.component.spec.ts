@@ -11,7 +11,6 @@ import {
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of } from 'rxjs'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
@@ -50,7 +49,6 @@ describe('CustomFieldsDropdownComponent', () => {
         ReactiveFormsModule,
         NgbModalModule,
         NgbDropdownModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         CustomFieldsDropdownComponent,
         SelectComponent,
       ],
@@ -111,7 +109,7 @@ describe('CustomFieldsDropdownComponent', () => {
     let modal: NgbModalRef
     modalService.activeInstances.subscribe((m) => (modal = m[m.length - 1]))
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastInfoSpy = jest.spyOn(toastService, 'showSuccess')
     const getFieldsSpy = jest.spyOn(
       CustomFieldsDropdownComponent.prototype as any,
       'getFields'

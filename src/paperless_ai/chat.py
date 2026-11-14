@@ -208,6 +208,7 @@ def stream_chat_with_documents(
     *,
     unrestricted: bool = False,
     output_language: str | None = None,
+    model: str | None = None,
 ):
     """Stream a per-document RAG answer as NDJSON events.
 
@@ -223,6 +224,7 @@ def stream_chat_with_documents(
             chat_history or [],
             unrestricted=unrestricted,
             output_language=output_language,
+            **({"model": model} if model else {}),
         )
     except Exception as e:
         logger.exception("Failed to stream document chat response: %s", e)
@@ -238,6 +240,7 @@ def _stream_chat_with_documents(
     *,
     unrestricted: bool = False,
     output_language: str | None = None,
+    model: str | None = None,
 ):
     if not documents:
         yield token_event(CHAT_NO_CONTENT_MESSAGE)
@@ -271,7 +274,7 @@ def _stream_chat_with_documents(
             yield token_event(CHAT_NO_CONTENT_MESSAGE)
             return
 
-        client = AIClient()
+        client = AIClient(model=model) if model else AIClient()
 
         for citation in _citations_from_nodes(documents, top_nodes):
             yield chat_event(EVENT_CITATION, **citation)

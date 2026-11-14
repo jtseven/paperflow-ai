@@ -11,6 +11,7 @@ import {
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
 } from '@angular/forms'
+import { LucideAngularModule } from 'lucide-angular'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -24,7 +25,7 @@ import { AbstractInputComponent } from '../abstract-input'
   selector: 'pngx-input-file',
   templateUrl: './file.component.html',
   styleUrl: './file.component.scss',
-  imports: [FormsModule, ReactiveFormsModule],
+  imports: [FormsModule, ReactiveFormsModule, LucideAngularModule],
 })
 export class FileComponent extends AbstractInputComponent<string> {
   @Output()

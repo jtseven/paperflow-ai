@@ -8,10 +8,11 @@ on:
       - 'translations**'
   workflow_dispatch:
 concurrency:
-  group: backend-${{ github.event.pull_request.number || github.ref }}
+  # Let dev/main commits finish, PR and feature-branch runs supersede older ones
+  group: backend-${{ github.event.pull_request.number || ((github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main') && github.run_id) || github.ref }}
   cancel-in-progress: true
 env:
-  DEFAULT_UV_VERSION: "0.12.x"
+  DEFAULT_UV_VERSION: "0.13.x"
   DEFAULT_PYTHON: "3.14"
   # Match the Docker image: nltk refuses to read hardlinked data files, such as
   # the copy bundled with llama-index when uv links packages from its cache
@@ -78,7 +79,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend_changed == 'true'
     name: Python 3.14
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -96,24 +97,20 @@ jobs:
         with:
           python-version: "${{ env.DEFAULT_PYTHON }}"
       - name: Install uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: ${{ env.DEFAULT_UV_VERSION }}
           enable-cache: true
           python-version: ${{ steps.setup-python.outputs.python-version }}
+      - name: Remove unused Microsoft apt feed
+        # Preconfigured on some GitHub runners but not needed by this project; a
+        # transient 403 from it makes apt update fail before dependencies install.
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
       - name: Install system dependencies
-        timeout-minutes: 10
-        run: |
-          # The Microsoft package feed is preconfigured on some GitHub runners
-          # but is not needed by this project. A transient 403 from it makes
-          # apt update fail before Paperflow's dependencies are installed.
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
-          sudo apt-get update -qq
-          sudo apt-get install -qq --no-install-recommends \
-            unpaper tesseract-ocr imagemagick ghostscript poppler-utils
-      - name: Configure ImageMagick
-        run: |
-          sudo cp docker/rootfs/etc/ImageMagick-6/paperless-policy.xml /etc/ImageMagick-6/policy.xml
+        timeout-minutes: 12
+        uses: $/.github/actions/apt-install
+        with:
+          packages: unpaper tesseract-ocr ghostscript poppler-utils qpdf
       - name: Install Python dependencies
         env:
           PYTHON_VERSION: ${{ steps.setup-python.outputs.python-version }}
@@ -137,13 +134,13 @@ jobs:
             pytest
       - name: Upload test results to Codecov
         if: always()
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           flags: backend-python-${{ env.DEFAULT_PYTHON }}
           files: junit.xml
           report_type: test_results
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           flags: backend-python-${{ env.DEFAULT_PYTHON }}
           files: coverage.xml
@@ -157,7 +154,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend_changed == 'true'
     name: Check project typing
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     env:
@@ -173,7 +170,7 @@ jobs:
         with:
           python-version: "${{ env.DEFAULT_PYTHON }}"
       - name: Install uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: ${{ env.DEFAULT_UV_VERSION }}
           enable-cache: true

@@ -44,7 +44,7 @@
 }
 
 .document-card-check {
-  display: none;
+  opacity: 0;
   position: absolute;
   top: 0;
   left: 0;
@@ -60,12 +60,21 @@
 
     .form-check-input {
       margin-left: 0;
+      pointer-events: auto;
     }
   }
 }
 
-.document-card:hover .document-card-check {
-  display: block;
+.document-card:hover .document-card-check,
+.document-card:focus-within .document-card-check,
+.card-selected .document-card-check {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .document-card .document-card-check {
+    opacity: 1;
+  }
 }
 
 .card-info {

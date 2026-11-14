@@ -10,7 +10,6 @@ import { By } from '@angular/platform-browser'
 import { Router } from '@angular/router'
 import { jest } from '@jest/globals'
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap'
-import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { Correspondent } from 'src/app/data/correspondent'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
@@ -40,6 +39,7 @@ import { TagService } from 'src/app/services/rest/tag.service'
 import { UserService } from 'src/app/services/rest/user.service'
 import { SettingsService } from 'src/app/services/settings.service'
 import { ToastService } from 'src/app/services/toast.service'
+import { TrashService } from 'src/app/services/trash.service'
 import { environment } from 'src/environments/environment'
 import { CorrespondentEditDialogComponent } from '../../common/edit-dialog/correspondent-edit-dialog/correspondent-edit-dialog.component'
 import { CustomFieldEditDialogComponent } from '../../common/edit-dialog/custom-field-edit-dialog/custom-field-edit-dialog.component'
@@ -75,6 +75,7 @@ describe('BulkEditorComponent', () => {
   let documentListViewService: DocumentListViewService
   let documentService: DocumentService
   let toastService: ToastService
+  let trashService: TrashService
   let modalService: NgbModal
   let tagService: TagService
   let correspondentsService: CorrespondentService
@@ -87,7 +88,7 @@ describe('BulkEditorComponent', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [BulkEditorComponent, NgxBootstrapIconsModule.pick(allIcons)],
+      imports: [BulkEditorComponent],
       providers: [
         PermissionsService,
         {
@@ -186,6 +187,7 @@ describe('BulkEditorComponent', () => {
     documentListViewService = TestBed.inject(DocumentListViewService)
     documentService = TestBed.inject(DocumentService)
     toastService = TestBed.inject(ToastService)
+    trashService = TestBed.inject(TrashService)
     modalService = TestBed.inject(NgbModal)
     tagService = TestBed.inject(TagService)
     correspondentsService = TestBed.inject(CorrespondentService)
@@ -1165,10 +1167,14 @@ describe('BulkEditorComponent', () => {
     let req = httpTestingController.expectOne(
       `${environment.apiBaseUrl}documents/delete/`
     )
+    const notifySpy = jest
+      .spyOn(trashService, 'notifyMovedToTrash')
+      .mockImplementation(() => {})
     req.flush(true)
     expect(req.request.body).toEqual({
       documents: [3, 4],
     })
+    expect(notifySpy).toHaveBeenCalledWith(expect.any(String), [3, 4])
     httpTestingController.match(
       `${environment.apiBaseUrl}documents/?page=1&page_size=50&ordering=-created&truncate_content=true&include_selection_data=true`
     ) // list reload
@@ -1178,10 +1184,19 @@ describe('BulkEditorComponent', () => {
 
     component.showConfirmationDialogs = false
     fixture.detectChanges()
+    jest
+      .spyOn(documentListViewService, 'allSelected', 'get')
+      .mockReturnValue(true)
     component.applyDelete()
     req = httpTestingController.expectOne(
       `${environment.apiBaseUrl}documents/delete/`
     )
+    req.flush(true)
+    // ids aren't known when all matching documents are selected, so no undo
+    expect(notifySpy).toHaveBeenLastCalledWith(expect.any(String), null)
+    httpTestingController.match(
+      `${environment.apiBaseUrl}documents/?page=1&page_size=50&ordering=-created&truncate_content=true&include_selection_data=true`
+    ) // list reload
   })
 
   it('should not be accessible with insufficient global permissions', () => {
@@ -1417,7 +1432,7 @@ describe('BulkEditorComponent', () => {
     const mergeAsVersionsSpy = jest
       .spyOn(documentService, 'mergeDocumentsAsVersions')
       .mockReturnValue(of(true))
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastSuccessSpy = jest.spyOn(toastService, 'showSuccess')
     fixture.detectChanges()
 
     component.mergeSelectedAsVersions()
@@ -1433,7 +1448,9 @@ describe('BulkEditorComponent', () => {
       `${environment.apiBaseUrl}documents/?page=1&page_size=100000&fields=id`
     )
     expect(documentListViewService.selected.size).toEqual(0)
-    expect(toastInfoSpy).toHaveBeenCalledWith('Documents merged as versions.')
+    expect(toastSuccessSpy).toHaveBeenCalledWith(
+      'Documents merged as versions.'
+    )
   })
 
   it('should not report success when merging documents as versions fails', () => {
@@ -1459,7 +1476,7 @@ describe('BulkEditorComponent', () => {
     jest
       .spyOn(documentService, 'mergeDocumentsAsVersions')
       .mockReturnValue(throwError(() => new Error('failed')))
-    const toastInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastSuccessSpy = jest.spyOn(toastService, 'showSuccess')
     const toastErrorSpy = jest.spyOn(toastService, 'showError')
     fixture.detectChanges()
 
@@ -1468,7 +1485,7 @@ describe('BulkEditorComponent', () => {
     modal.componentInstance.confirm()
 
     expect(toastErrorSpy).toHaveBeenCalled()
-    expect(toastInfoSpy).not.toHaveBeenCalled()
+    expect(toastSuccessSpy).not.toHaveBeenCalled()
   })
 
   it('should support bulk download with archive, originals or both and file formatting', () => {
@@ -1847,7 +1864,7 @@ describe('BulkEditorComponent', () => {
       .spyOn(documentListViewService, 'selected', 'get')
       .mockReturnValue(new Set([3, 4]))
     fixture.detectChanges()
-    const toastServiceShowInfoSpy = jest.spyOn(toastService, 'showInfo')
+    const toastServiceShowInfoSpy = jest.spyOn(toastService, 'showSuccess')
     const toastServiceShowErrorSpy = jest.spyOn(toastService, 'showError')
     const listReloadSpy = jest.spyOn(documentListViewService, 'reload')
 

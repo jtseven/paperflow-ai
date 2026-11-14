@@ -5,7 +5,10 @@
 
 .chat-toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   margin-bottom: 0.25rem;
 }
 
@@ -291,4 +294,18 @@
 
 .chat-form {
   margin-top: 10px;
+}
+
+.model-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+
+  select {
+    width: auto;
+    min-width: 0;
+    max-width: 18rem;
+  }
 }

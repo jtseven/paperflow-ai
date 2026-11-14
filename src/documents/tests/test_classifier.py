@@ -1,5 +1,4 @@
 import pickle
-import re
 import warnings
 from datetime import UTC
 from datetime import datetime
@@ -15,6 +14,7 @@ from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from pytest_django.fixtures import Settings
 from pytest_mock import MockerFixture
+from sklearn.neural_network import MLPClassifier
 
 from documents.classifier import ClassifierModelCorruptError
 from documents.classifier import DocumentClassifier
@@ -28,21 +28,13 @@ from documents.models import DocumentType
 from documents.models import MatchingModel
 from documents.models import StoragePath
 from documents.models import Tag
-from documents.tests.factories import DocumentFactory
-from documents.tests.factories import TagFactory
-from documents.tests.utils import DirectoriesMixin
+from documents.tests.helpers import dummy_preprocess
 from paperless.settings import CLASSIFIER_LANGUAGES
 from paperless.signed_pickle import HMAC_SIZE
 from paperless.signed_pickle import signed_pickle_dumps
-
-
-def dummy_preprocess(content: str) -> str:
-    """
-    Simpler, faster pre-processing for testing purposes
-    """
-    content = content.lower().strip()
-    content = re.sub(r"\s+", " ", content)
-    return content
+from paperless_testing.dirs import DirectoriesMixin
+from paperless_testing.factories import DocumentFactory
+from paperless_testing.factories import TagFactory
 
 
 class TestClassifier(DirectoriesMixin, TestCase):
@@ -1043,6 +1035,49 @@ def test_classifier_match_threshold_default() -> None:
         - The classifier match threshold defaults to 0.3
     """
     assert settings.CLASSIFIER_MATCH_THRESHOLD == 0.3
+
+
+class TestPredictWithThresholdSingleClass:
+    @pytest.fixture
+    def single_class_model(self) -> tuple[MLPClassifier, np.ndarray]:
+        X = np.random.default_rng(0).random((2, 5))
+        return MLPClassifier(tol=0.01, random_state=0).fit(X, [3, 3]), X[:1]
+
+    def test_returns_only_class(
+        self,
+        single_class_model: tuple[MLPClassifier, np.ndarray],
+    ) -> None:
+        """
+        GIVEN:
+            - A classifier fitted on a single class (every document shares one label)
+        WHEN:
+            - A prediction is requested with the threshold disabled
+        THEN:
+            - No error is raised and the only class is returned
+        """
+        classifier, X = single_class_model
+
+        assert _predict_with_threshold(classifier, X, threshold=0.0) == 3
+
+    def test_applies_threshold(
+        self,
+        single_class_model: tuple[MLPClassifier, np.ndarray],
+    ) -> None:
+        """
+        GIVEN:
+            - A classifier fitted on a single class
+        WHEN:
+            - A prediction is requested
+        THEN:
+            - The class's confidence is still compared against the threshold
+        """
+        classifier, X = single_class_model
+        confidence = classifier.predict_proba(X)[0][0]
+
+        assert _predict_with_threshold(classifier, X, threshold=confidence - 0.01) == 3
+        assert (
+            _predict_with_threshold(classifier, X, threshold=confidence + 0.01) is None
+        )
 
 
 class TestPreprocessContent:

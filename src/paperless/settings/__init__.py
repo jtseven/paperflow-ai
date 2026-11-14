@@ -1,5 +1,4 @@
 import datetime
-import json
 import logging
 import logging.config
 import math
@@ -24,6 +23,7 @@ from paperless.settings.parsers import get_bool_from_env
 from paperless.settings.parsers import get_choice_from_env
 from paperless.settings.parsers import get_float_from_env
 from paperless.settings.parsers import get_int_from_env
+from paperless.settings.parsers import get_json_from_env
 from paperless.settings.parsers import get_list_from_env
 from paperless.settings.parsers import get_path_from_env
 
@@ -237,6 +237,7 @@ SPECTACULAR_SETTINGS = {
     },
     "ENUM_NAME_OVERRIDES": {
         "MatchingAlgorithm": "documents.models.MatchingModel.MATCHING_ALGORITHMS",
+        "BarcodeFormatEnum": "documents.models.DocumentBarcode.Format",
     },
     "SCHEMA_PATH_PREFIX_INSERT": FORCE_SCRIPT_NAME or "",
 }
@@ -299,7 +300,7 @@ if _CHANNELS_BACKEND.startswith("channels_redis."):
 ###############################################################################
 
 EMAIL_HOST: Final[str] = os.getenv("PAPERLESS_EMAIL_HOST", "localhost")
-EMAIL_PORT: Final[int] = int(os.getenv("PAPERLESS_EMAIL_PORT", 25))
+EMAIL_PORT: Final[int] = get_int_from_env("PAPERLESS_EMAIL_PORT", 25)
 EMAIL_HOST_USER: Final[str] = os.getenv("PAPERLESS_EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD: Final[str] = os.getenv("PAPERLESS_EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL: Final[str] = os.getenv("PAPERLESS_EMAIL_FROM", EMAIL_HOST_USER)
@@ -338,8 +339,10 @@ SOCIALACCOUNT_ALLOW_SIGNUPS = get_bool_from_env(
     "yes",
 )
 SOCIALACCOUNT_AUTO_SIGNUP = get_bool_from_env("PAPERLESS_SOCIAL_AUTO_SIGNUP")
-SOCIALACCOUNT_PROVIDERS = json.loads(
-    os.getenv("PAPERLESS_SOCIALACCOUNT_PROVIDERS", "{}"),
+SOCIALACCOUNT_PROVIDERS = get_json_from_env(
+    "PAPERLESS_SOCIALACCOUNT_PROVIDERS",
+    {},
+    dict,
 )
 SOCIAL_ACCOUNT_DEFAULT_GROUPS = get_list_from_env(
     "PAPERLESS_SOCIAL_ACCOUNT_DEFAULT_GROUPS",
@@ -354,6 +357,10 @@ SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP: Final[str | None] = os.getenv(
 )
 SOCIAL_ACCOUNT_SYNC_STAFF_GROUP: Final[str | None] = os.getenv(
     "PAPERLESS_SOCIAL_ACCOUNT_SYNC_STAFF_GROUP",
+)
+SOCIAL_ACCOUNT_MFA_TRUSTED_AMR = get_list_from_env(
+    "PAPERLESS_SOCIAL_ACCOUNT_MFA_TRUSTED_AMR",
+    "mfa",
 )
 
 HEADLESS_TOKEN_STRATEGY = "paperless.adapter.DrfTokenStrategy"
@@ -386,8 +393,9 @@ ACCOUNT_SESSION_REMEMBER = get_bool_from_env(
     "True",
 )
 SESSION_EXPIRE_AT_BROWSER_CLOSE = not ACCOUNT_SESSION_REMEMBER
-SESSION_COOKIE_AGE = int(
-    os.getenv("PAPERLESS_SESSION_COOKIE_AGE", 60 * 60 * 24 * 7 * 3),
+SESSION_COOKIE_AGE = get_int_from_env(
+    "PAPERLESS_SESSION_COOKIE_AGE",
+    60 * 60 * 24 * 7 * 3,
 )
 # https://docs.djangoproject.com/en/5.1/ref/settings/#std-setting-SESSION_ENGINE
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
@@ -462,9 +470,14 @@ def _parse_paperless_url():
     global CSRF_TRUSTED_ORIGINS, CORS_ALLOWED_ORIGINS, ALLOWED_HOSTS
     url = os.getenv("PAPERLESS_URL")
     if url:
+        hostname = urlparse(url).hostname
+        if not hostname:
+            raise ImproperlyConfigured(
+                f"PAPERLESS_URL {url!r} has no hostname, expected a URL like https://example.com",
+            )
         CSRF_TRUSTED_ORIGINS.append(url)
         CORS_ALLOWED_ORIGINS.append(url)
-        ALLOWED_HOSTS.append(urlparse(url).hostname)
+        ALLOWED_HOSTS.append(hostname)
 
     return url
 
@@ -494,7 +507,7 @@ ALLAUTH_TRUSTED_CLIENT_IP_HEADER = os.getenv(
 USE_X_FORWARDED_HOST = get_bool_from_env("PAPERLESS_USE_X_FORWARD_HOST", "false")
 USE_X_FORWARDED_PORT = get_bool_from_env("PAPERLESS_USE_X_FORWARD_PORT", "false")
 SECURE_PROXY_SSL_HEADER = (
-    tuple(json.loads(os.environ["PAPERLESS_PROXY_SSL_HEADER"]))
+    tuple(get_json_from_env("PAPERLESS_PROXY_SSL_HEADER", [], list))
     if os.getenv("PAPERLESS_PROXY_SSL_HEADER")  # empty string treated as unset
     else None
 )
@@ -619,8 +632,8 @@ USE_TZ = True
 
 LOGGING_DIR.mkdir(parents=True, exist_ok=True)
 
-LOGROTATE_MAX_SIZE = os.getenv("PAPERLESS_LOGROTATE_MAX_SIZE", 1024 * 1024)
-LOGROTATE_MAX_BACKUPS = os.getenv("PAPERLESS_LOGROTATE_MAX_BACKUPS", 20)
+LOGROTATE_MAX_SIZE = get_int_from_env("PAPERLESS_LOGROTATE_MAX_SIZE", 1024 * 1024)
+LOGROTATE_MAX_BACKUPS = get_int_from_env("PAPERLESS_LOGROTATE_MAX_BACKUPS", 20)
 
 LOGGING = {
     "version": 1,
@@ -685,6 +698,9 @@ logging.config.dictConfig(LOGGING)
 ###############################################################################
 
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html
+
+# Tasks outside tasks.py must be loaded even when Django skips checks
+CELERY_IMPORTS = ("documents.bulk_edit",)
 
 CELERY_BROKER_URL = _CELERY_REDIS_URL
 CELERY_RESULT_BACKEND = _CELERY_REDIS_URL
@@ -804,7 +820,7 @@ def default_threads_per_worker(task_workers) -> int:
         return 1
 
 
-THREADS_PER_WORKER = os.getenv(
+THREADS_PER_WORKER = get_int_from_env(
     "PAPERLESS_THREADS_PER_WORKER",
     default_threads_per_worker(CELERY_WORKER_CONCURRENCY),
 )
@@ -825,32 +841,26 @@ IGNORABLE_FILES: Final[list[str]] = [
     "Thumbs.db",
 ]
 
-CONSUMER_POLLING_INTERVAL = float(os.getenv("PAPERLESS_CONSUMER_POLLING_INTERVAL", 0))
+CONSUMER_POLLING_INTERVAL = get_float_from_env("PAPERLESS_CONSUMER_POLLING_INTERVAL", 0)
 
-CONSUMER_STABILITY_DELAY = float(os.getenv("PAPERLESS_CONSUMER_STABILITY_DELAY", 5))
+CONSUMER_STABILITY_DELAY = get_float_from_env("PAPERLESS_CONSUMER_STABILITY_DELAY", 5)
 
 CONSUMER_DELETE_DUPLICATES = get_bool_from_env("PAPERLESS_CONSUMER_DELETE_DUPLICATES")
 
 CONSUMER_RECURSIVE = get_bool_from_env("PAPERLESS_CONSUMER_RECURSIVE")
 
 # Ignore regex patterns, matched against filename only
-CONSUMER_IGNORE_PATTERNS = list(
-    json.loads(
-        os.getenv(
-            "PAPERLESS_CONSUMER_IGNORE_PATTERNS",
-            json.dumps([]),
-        ),
-    ),
+CONSUMER_IGNORE_PATTERNS = get_json_from_env(
+    "PAPERLESS_CONSUMER_IGNORE_PATTERNS",
+    [],
+    list,
 )
 
 # Directories to always ignore.  These are matched by directory name, not full path
-CONSUMER_IGNORE_DIRS = list(
-    json.loads(
-        os.getenv(
-            "PAPERLESS_CONSUMER_IGNORE_DIRS",
-            json.dumps([]),
-        ),
-    ),
+CONSUMER_IGNORE_DIRS = get_json_from_env(
+    "PAPERLESS_CONSUMER_IGNORE_DIRS",
+    [],
+    list,
 )
 
 CONSUMER_SUBDIRS_AS_TAGS = get_bool_from_env("PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS")
@@ -900,17 +910,18 @@ CONSUMER_ENABLE_TAG_BARCODE: Final[bool] = get_bool_from_env(
     "PAPERLESS_CONSUMER_ENABLE_TAG_BARCODE",
 )
 
-CONSUMER_TAG_BARCODE_MAPPING = dict(
-    json.loads(
-        os.getenv(
-            "PAPERLESS_CONSUMER_TAG_BARCODE_MAPPING",
-            '{"TAG:(.*)": "\\\\g<1>"}',
-        ),
-    ),
+CONSUMER_TAG_BARCODE_MAPPING = get_json_from_env(
+    "PAPERLESS_CONSUMER_TAG_BARCODE_MAPPING",
+    {"TAG:(.*)": "\\g<1>"},
+    dict,
 )
 
 CONSUMER_TAG_BARCODE_SPLIT: Final[bool] = get_bool_from_env(
     "PAPERLESS_CONSUMER_TAG_BARCODE_SPLIT",
+)
+
+CONSUMER_STORE_BARCODE_VALUES: Final[bool] = get_bool_from_env(
+    "PAPERLESS_CONSUMER_STORE_BARCODE_VALUES",
 )
 
 CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED: Final[bool] = get_bool_from_env(
@@ -985,13 +996,6 @@ MAX_IMAGE_PIXELS: Final[int | None] = get_int_from_env(
 
 # GNUPG needs a home directory for some reason
 GNUPG_HOME = os.getenv("HOME", "/tmp")
-
-# Convert is part of the ImageMagick package
-CONVERT_BINARY = os.getenv("PAPERLESS_CONVERT_BINARY", "convert")
-CONVERT_TMPDIR = os.getenv("PAPERLESS_CONVERT_TMPDIR")
-CONVERT_MEMORY_LIMIT = os.getenv("PAPERLESS_CONVERT_MEMORY_LIMIT")
-
-GS_BINARY = os.getenv("PAPERLESS_GS_BINARY", "gs")
 
 # Fallback layout for .eml consumption
 EMAIL_PARSE_DEFAULT_LAYOUT = get_int_from_env(
@@ -1225,6 +1229,7 @@ LLM_EMBEDDING_BACKEND = get_choice_from_env(
     {"huggingface", "openai-like", "ollama"},
 )
 LLM_EMBEDDING_MODEL = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_MODEL")
+LLM_EMBEDDING_API_KEY = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_API_KEY")
 LLM_EMBEDDING_ENDPOINT = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT")
 LLM_EMBEDDING_CHUNK_SIZE = get_int_from_env(
     "PAPERLESS_AI_LLM_EMBEDDING_CHUNK_SIZE",
@@ -1250,3 +1255,5 @@ LLM_ALLOW_INTERNAL_ENDPOINTS = get_bool_from_env(
     "PAPERLESS_AI_LLM_ALLOW_INTERNAL_ENDPOINTS",
     "true",
 )
+# JSON object passed straight through to the LLM backend's request body
+LLM_EXTRA_PARAMS = get_json_from_env("PAPERLESS_AI_LLM_EXTRA_PARAMS", {}, dict)

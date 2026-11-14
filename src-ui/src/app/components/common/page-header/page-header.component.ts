@@ -3,7 +3,6 @@ import { Component, effect, inject, input, signal } from '@angular/core'
 import { Title } from '@angular/platform-browser'
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { environment } from 'src/environments/environment'
 
@@ -11,12 +10,7 @@ import { environment } from 'src/environments/environment'
   selector: 'pngx-page-header',
   templateUrl: './page-header.component.html',
   styleUrls: ['./page-header.component.scss'],
-  imports: [
-    NgbPopoverModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-    TourNgBootstrap,
-  ],
+  imports: [NgbPopoverModule, TourNgBootstrap, LucideAngularModule],
 })
 export class PageHeaderComponent {
   private titleService = inject(Title)
@@ -33,7 +27,10 @@ export class PageHeaderComponent {
 
   constructor() {
     effect(() => {
-      this.titleService.setTitle(`${this.title()} - ${environment.appTitle}`)
+      const title = this.title()
+      this.titleService.setTitle(
+        title ? `${title} - ${environment.appTitle}` : environment.appTitle
+      )
     })
   }
 

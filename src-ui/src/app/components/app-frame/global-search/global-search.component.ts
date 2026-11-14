@@ -1,6 +1,7 @@
 import { LocationStrategy, NgTemplateOutlet } from '@angular/common'
 import {
   Component,
+  DestroyRef,
   ElementRef,
   OnInit,
   QueryList,
@@ -9,6 +10,7 @@ import {
   inject,
   signal,
 } from '@angular/core'
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { Router } from '@angular/router'
 import {
@@ -18,8 +20,7 @@ import {
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
-import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs'
+import { Subject, debounceTime, filter } from 'rxjs'
 import { DataType } from 'src/app/data/datatype'
 import {
   FILTER_FULLTEXT_QUERY,
@@ -67,15 +68,16 @@ import { WorkflowEditDialogComponent } from '../../common/edit-dialog/workflow-e
     CustomDatePipe,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     NgbDropdownModule,
     NgTemplateOutlet,
+    LucideAngularModule,
   ],
 })
 export class GlobalSearchComponent implements OnInit {
   searchService = inject(SearchService)
   private router = inject(Router)
+  private destroyRef = inject(DestroyRef)
+  private searchVersion = 0
   private modalService = inject(NgbModal)
   private documentService = inject(DocumentService)
   private documentListViewService = inject(DocumentListViewService)
@@ -129,8 +131,8 @@ export class GlobalSearchComponent implements OnInit {
     this.queryDebounce
       .pipe(
         debounceTime(400),
-        filter((query) => !query?.length || query?.length > 2),
-        distinctUntilChanged()
+        filter((query) => !query?.length || query?.trim().length > 2),
+        takeUntilDestroyed(this.destroyRef)
       )
       .subscribe((text) => {
         this.query.set(text)
@@ -140,6 +142,11 @@ export class GlobalSearchComponent implements OnInit {
 
   public onQueryChange(text: string) {
     // set immediately so Enter / the full search button work without waiting for the debounce
+    this.searchVersion++
+    this.loading.set(false)
+    this.semanticLoading.set(false)
+    this.searchResults.set(null)
+    this.semanticResults.set([])
     this.query.set(text)
     this.queryDebounce.next(text)
   }
@@ -147,18 +154,34 @@ export class GlobalSearchComponent implements OnInit {
   public ngOnInit() {
     this.hotkeyService
       .addShortcut({ keys: '/', description: $localize`Global search` })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.searchInput.nativeElement.focus()
       })
   }
 
   private search(query: string) {
+    const version = ++this.searchVersion
     this.loading.set(true)
-    this.searchService.globalSearch(query.trim()).subscribe((results) => {
-      this.searchResults.set(results)
-      this.loading.set(false)
-      this.resultsDropdown.open()
-    })
+    this.searchService
+      .globalSearch(query.trim())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (results) => {
+          if (version !== this.searchVersion) return
+          this.searchResults.set(results)
+          this.loading.set(false)
+          this.resultsDropdown.open()
+        },
+        error: (error) => {
+          if (version !== this.searchVersion) return
+          this.loading.set(false)
+          this.toastService.showError(
+            $localize`Unable to search. Please try again.`,
+            error
+          )
+        },
+      })
 
     // Fire the embedding-based search in parallel; only when AI is enabled so
     // installs without it never pay the cost. Failures are silent — the keyword
@@ -166,16 +189,22 @@ export class GlobalSearchComponent implements OnInit {
     this.semanticResults.set([])
     if (this.aiEnabled) {
       this.semanticLoading.set(true)
-      this.searchService.semanticSearch(query.trim()).subscribe({
-        next: (results) => {
-          this.semanticResults.set(results.documents ?? [])
-          this.semanticLoading.set(false)
-        },
-        error: () => {
-          this.semanticResults.set([])
-          this.semanticLoading.set(false)
-        },
-      })
+      this.searchService
+        .semanticSearch(query.trim())
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (results) => {
+            if (version !== this.searchVersion) return
+            this.semanticResults.set(results.documents ?? [])
+            if (this.semanticResults().length) this.resultsDropdown.open()
+            this.semanticLoading.set(false)
+          },
+          error: () => {
+            if (version !== this.searchVersion) return
+            this.semanticResults.set([])
+            this.semanticLoading.set(false)
+          },
+        })
     }
   }
 
@@ -253,7 +282,7 @@ export class GlobalSearchComponent implements OnInit {
       modalRef.componentInstance.dialogMode.set(EditDialogMode.EDIT)
       modalRef.componentInstance.object = object
       modalRef.componentInstance.succeeded.subscribe(() => {
-        this.toastService.showInfo($localize`Successfully updated object.`)
+        this.toastService.showSuccess($localize`Successfully updated object.`)
       })
       modalRef.componentInstance.failed.subscribe((e) => {
         this.toastService.showError($localize`Error occurred saving object.`, e)
@@ -291,7 +320,7 @@ export class GlobalSearchComponent implements OnInit {
       modalRef.componentInstance.dialogMode.set(EditDialogMode.EDIT)
       modalRef.componentInstance.object = object
       modalRef.componentInstance.succeeded.subscribe(() => {
-        this.toastService.showInfo($localize`Successfully updated object.`)
+        this.toastService.showSuccess($localize`Successfully updated object.`)
       })
       modalRef.componentInstance.failed.subscribe((e) => {
         this.toastService.showError($localize`Error occurred saving object.`, e)
@@ -300,6 +329,10 @@ export class GlobalSearchComponent implements OnInit {
   }
 
   private reset(close: boolean = false) {
+    this.searchVersion++
+    this.loading.set(false)
+    this.semanticLoading.set(false)
+    this.semanticResults.set([])
     this.queryDebounce.next(null)
     this.query.set(null)
     this.searchResults.set(null)
@@ -337,7 +370,7 @@ export class GlobalSearchComponent implements OnInit {
   public searchInputKeyDown(event: KeyboardEvent) {
     if (
       event.key === 'ArrowDown' &&
-      this.searchResults()?.total &&
+      this.resultItems.length &&
       this.resultsDropdown.isOpen()
     ) {
       event.preventDefault()
@@ -345,14 +378,15 @@ export class GlobalSearchComponent implements OnInit {
       this.setCurrentItem()
     } else if (
       event.key === 'ArrowUp' &&
-      this.searchResults()?.total &&
+      this.resultItems.length &&
       this.resultsDropdown.isOpen()
     ) {
       event.preventDefault()
-      this.currentItemIndex = this.searchResults()?.total - 1
+      this.currentItemIndex = this.resultItems.length - 1
       this.setCurrentItem()
     } else if (event.key === 'Enter') {
-      if (this.searchResults()?.total === 1 && this.resultsDropdown.isOpen()) {
+      event.preventDefault()
+      if (this.resultItems.length === 1 && this.resultsDropdown.isOpen()) {
         this.primaryButtons.first.nativeElement.click()
         this.searchInput.nativeElement.blur()
       } else if (this.query()?.length) {
@@ -370,14 +404,14 @@ export class GlobalSearchComponent implements OnInit {
 
   public dropdownKeyDown(event: KeyboardEvent) {
     if (
-      this.searchResults()?.total &&
+      this.resultItems.length &&
       this.resultsDropdown.isOpen() &&
       document.activeElement !== this.searchInput.nativeElement
     ) {
       if (event.key === 'ArrowDown') {
         event.preventDefault()
         event.stopImmediatePropagation()
-        if (this.currentItemIndex < this.searchResults()?.total - 1) {
+        if (this.currentItemIndex < this.resultItems.length - 1) {
           this.currentItemIndex++
           this.setCurrentItem()
         } else {
@@ -397,7 +431,10 @@ export class GlobalSearchComponent implements OnInit {
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
         event.stopImmediatePropagation()
-        this.secondaryButtons.get(this.domIndex)?.nativeElement.focus()
+        this.primaryButtons
+          .get(this.domIndex)
+          ?.nativeElement.parentElement.querySelector('button:nth-child(2)')
+          ?.focus()
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault()
         event.stopImmediatePropagation()

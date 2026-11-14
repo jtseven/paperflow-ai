@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core'
 import { Meta } from '@angular/platform-browser'
 import { CookieService } from 'ngx-cookie-service'
-import { Observable } from 'rxjs'
+import { defer, Observable } from 'rxjs'
 import { environment } from 'src/environments/environment'
 
 /**
@@ -60,6 +60,17 @@ export type ChatEvent =
   | ChatErrorEvent
   | ChatDoneEvent
 
+export interface ChatModel {
+  id: string
+  provider: string
+  name: string
+}
+
+export interface ChatModels {
+  models: ChatModel[]
+  default_model: string | null
+}
+
 /** A prior conversation turn sent to the backend for short-term memory. */
 export interface ChatHistoryTurn {
   role: 'user' | 'assistant'
@@ -77,6 +88,7 @@ export interface Citation {
 /** A single retrieval the agent performed, shown live then collapsed. */
 export interface ChatStep {
   id: string
+  name?: string
   query: string
   status: 'running' | 'done'
   count?: number
@@ -100,6 +112,19 @@ export class ChatService {
   private cookieService: CookieService = inject(CookieService)
   private meta: Meta = inject(Meta)
 
+  getModels(): Observable<ChatModels> {
+    return defer(async () => {
+      const response = await fetch(
+        `${environment.apiBaseUrl}documents/chat/models/`,
+        {
+          credentials: 'include',
+        }
+      )
+      if (!response.ok) throw new Error('Unable to load chat models')
+      return (await response.json()) as ChatModels
+    })
+  }
+
   /**
    * Stream a chat answer as structured events.
    *
@@ -115,13 +140,16 @@ export class ChatService {
   streamChat(
     documentId: number | null,
     prompt: string,
-    history: ChatHistoryTurn[] = []
+    history: ChatHistoryTurn[] = [],
+    model?: string
   ): Observable<ChatEvent> {
     const body: {
       q: string
+      model?: string
       document_id?: number
       history?: ChatHistoryTurn[]
     } = { q: prompt }
+    if (model) body.model = model
     if (documentId != null) {
       body.document_id = documentId
     }

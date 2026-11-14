@@ -16,7 +16,6 @@ import {
 import { NgbModal, NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap'
 import { dirtyCheck } from '@ngneat/dirty-check-forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { BehaviorSubject, Observable, of, switchMap, takeUntil } from 'rxjs'
 import { PermissionsDialogComponent } from 'src/app/components/common/permissions-dialog/permissions-dialog.component'
 import { DisplayMode } from 'src/app/data/document'
@@ -57,7 +56,6 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
     ReactiveFormsModule,
     AsyncPipe,
     NgbPaginationModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })
@@ -185,7 +183,7 @@ export class SavedViewsComponent
       this.savedViews.update((savedViews) =>
         savedViews.filter((view) => view !== savedView)
       )
-      this.toastService.showInfo(
+      this.toastService.showSuccess(
         $localize`Saved view "${savedView.name}" deleted.`
       )
       this.savedViewService.clearCache()
@@ -264,7 +262,7 @@ export class SavedViewsComponent
 
     saveOperation.subscribe({
       next: () => {
-        this.toastService.showInfo($localize`Views saved successfully.`)
+        this.toastService.showSuccess($localize`Views saved successfully.`)
         this.savedViewService.clearCache()
         this.reloadViews()
       },
@@ -317,7 +315,7 @@ export class SavedViewsComponent
       view['set_permissions'] = permissions.set_permissions
       this.savedViewService.patch(view as SavedView).subscribe({
         next: () => {
-          this.toastService.showInfo($localize`Permissions updated`)
+          this.toastService.showSuccess($localize`Permissions updated`)
           modal.close()
           this.reloadViews()
         },

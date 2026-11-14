@@ -47,10 +47,12 @@ CONFIG_SETTINGS_MAP: dict[str, str] = {
     "barcode_enable_tag": "CONSUMER_ENABLE_TAG_BARCODE",
     "barcode_tag_mapping": "CONSUMER_TAG_BARCODE_MAPPING",
     "barcode_tag_split": "CONSUMER_TAG_BARCODE_SPLIT",
+    "barcode_store_values": "CONSUMER_STORE_BARCODE_VALUES",
     # AI
     "ai_enabled": "AI_ENABLED",
     "llm_embedding_backend": "LLM_EMBEDDING_BACKEND",
     "llm_embedding_model": "LLM_EMBEDDING_MODEL",
+    "llm_embedding_api_key": "LLM_EMBEDDING_API_KEY",
     "llm_embedding_endpoint": "LLM_EMBEDDING_ENDPOINT",
     "llm_embedding_chunk_size": "LLM_EMBEDDING_CHUNK_SIZE",
     "llm_context_size": "LLM_CONTEXT_SIZE",
@@ -67,7 +69,9 @@ CONFIG_SETTINGS_MAP: dict[str, str] = {
 }
 
 # Fields whose inherited value must never be exposed verbatim to the frontend.
-_SECRET_CONFIG_FIELDS = frozenset({"llm_api_key", "remote_ocr_api_key"})
+_SECRET_CONFIG_FIELDS = frozenset(
+    {"llm_api_key", "llm_embedding_api_key", "remote_ocr_api_key"},
+)
 _SECRET_PLACEHOLDER = "********"
 
 
@@ -217,6 +221,7 @@ class BarcodeConfig(BaseConfig):
     barcode_enable_tag: bool = dataclasses.field(init=False)
     barcode_tag_mapping: dict[str, str] = dataclasses.field(init=False)
     barcode_tag_split: bool = dataclasses.field(init=False)
+    barcode_store_values: bool = dataclasses.field(init=False)
 
     # Resolved via _coalesce (not `or`) so a barcode toggle switched off in the
     # UI is honoured even when the matching CONSUMER_* env var enables it — the
@@ -235,6 +240,7 @@ class BarcodeConfig(BaseConfig):
         "barcode_max_pages",
         "barcode_enable_tag",
         "barcode_tag_split",
+        "barcode_store_values",
     )
 
     def __post_init__(self) -> None:
@@ -318,6 +324,7 @@ class AIConfig(BaseConfig):
     ai_enabled: bool = dataclasses.field(init=False)
     llm_embedding_backend: str = dataclasses.field(init=False)
     llm_embedding_model: str = dataclasses.field(init=False)
+    llm_embedding_api_key: str = dataclasses.field(init=False)
     llm_embedding_endpoint: str = dataclasses.field(init=False)
     llm_embedding_chunk_size: int = dataclasses.field(init=False)
     llm_context_size: int = dataclasses.field(init=False)
@@ -328,6 +335,7 @@ class AIConfig(BaseConfig):
     llm_endpoint: str = dataclasses.field(init=False)
     llm_output_language: str = dataclasses.field(init=False)
     llm_allow_internal_endpoints: bool = dataclasses.field(init=False)
+    llm_extra_params: dict[str, Any] = dataclasses.field(init=False)
 
     # The AI fields all resolve the same way (DB override → settings fallback)
     # and map 1:1 onto CONFIG_SETTINGS_MAP, so resolve them in a loop. Using
@@ -337,6 +345,7 @@ class AIConfig(BaseConfig):
         "ai_enabled",
         "llm_embedding_backend",
         "llm_embedding_model",
+        "llm_embedding_api_key",
         "llm_embedding_endpoint",
         "llm_embedding_chunk_size",
         "llm_context_size",
@@ -361,6 +370,7 @@ class AIConfig(BaseConfig):
                 ),
             )
         self.llm_allow_internal_endpoints = settings.LLM_ALLOW_INTERNAL_ENDPOINTS
+        self.llm_extra_params = settings.LLM_EXTRA_PARAMS
 
     @property
     def llm_index_enabled(self) -> bool:

@@ -15,7 +15,6 @@ import {
 import { RouterModule } from '@angular/router'
 import { NgSelectModule } from '@ng-select/ng-select'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { CustomField, CustomFieldDataType } from 'src/app/data/custom-field'
 import { CustomFieldsService } from 'src/app/services/rest/custom-fields.service'
 import { AbstractInputComponent } from '../abstract-input'
@@ -53,9 +52,8 @@ import { UrlComponent } from '../url/url.component'
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     TextAreaComponent,
+    LucideAngularModule,
   ],
 })
 export class CustomFieldsValuesComponent extends AbstractInputComponent<Object> {

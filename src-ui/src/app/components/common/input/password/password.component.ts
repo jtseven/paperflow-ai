@@ -5,7 +5,6 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -19,12 +18,7 @@ import { AbstractInputComponent } from '../abstract-input'
   selector: 'pngx-input-password',
   templateUrl: './password.component.html',
   styleUrls: ['./password.component.scss'],
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-  ],
+  imports: [FormsModule, ReactiveFormsModule, LucideAngularModule],
 })
 export class PasswordComponent extends AbstractInputComponent<string> {
   @Input()

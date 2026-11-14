@@ -13,7 +13,6 @@ import {
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { NgbDropdownModule, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first, takeUntil } from 'rxjs'
 import { CustomField, DATA_TYPE_LABELS } from 'src/app/data/custom-field'
 import { CustomFieldInstance } from 'src/app/data/custom-field-instance'
@@ -35,10 +34,9 @@ import { CustomFieldEditDialogComponent } from '../edit-dialog/custom-field-edit
   styleUrls: ['./custom-fields-dropdown.component.scss'],
   imports: [
     NgbDropdownModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     FormsModule,
     ReactiveFormsModule,
+    LucideAngularModule,
   ],
 })
 export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissions {
@@ -131,7 +129,9 @@ export class CustomFieldsDropdownComponent extends LoadingComponentWithPermissio
     modal.componentInstance.succeeded
       .pipe(takeUntil(this.unsubscribeNotifier))
       .subscribe((newField) => {
-        this.toastService.showInfo($localize`Saved field "${newField.name}".`)
+        this.toastService.showSuccess(
+          $localize`Saved field "${newField.name}".`
+        )
         this.customFieldsService.clearCache()
         this.getFields()
         this.created.emit(newField)

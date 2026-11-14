@@ -71,14 +71,14 @@
             }
             <span class="ng-value-label" [title]="item[bindLabel]">
               @if (iconField && item[iconField]) {
-                <i-bs class="me-2" [name]="item[iconField]"></i-bs>
+                <pngx-bs-icon class="me-2" [name]="item[iconField]"></pngx-bs-icon>
               }
               {{ item[bindLabel] }}
             </span>
           </ng-template>
           <ng-template ng-option-tmp let-item="item">
             @if (iconField && item[iconField]) {
-              <i-bs class="me-2" [name]="item[iconField]"></i-bs>
+              <pngx-bs-icon class="me-2" [name]="item[iconField]"></pngx-bs-icon>
             }
             <span [title]="item[bindLabel]">{{ item[bindLabel] }}</span>
           </ng-template>

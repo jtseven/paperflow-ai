@@ -12,7 +12,6 @@ import {
 import { Router, RouterModule } from '@angular/router'
 import { NgbPopover } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { Subject, takeUntil } from 'rxjs'
 import { CustomFieldDisplayComponent } from 'src/app/components/common/custom-field-display/custom-field-display.component'
 import { PreviewPopupComponent } from 'src/app/components/common/preview-popup/preview-popup.component'
@@ -81,7 +80,6 @@ import { WidgetFrameComponent } from '../widget-frame/widget-frame.component'
     NgClass,
     NgStyle,
     RouterModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

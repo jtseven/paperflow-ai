@@ -303,6 +303,12 @@ class ApplicationConfiguration(AbstractSingletonModel):
         null=True,
     )
 
+    # PAPERLESS_CONSUMER_STORE_BARCODE_VALUES
+    barcode_store_values = models.BooleanField(
+        verbose_name=_("Stores the values of detected barcodes"),
+        null=True,
+    )
+
     """
     Settings for the remote OCR parser
     """
@@ -350,6 +356,15 @@ class ApplicationConfiguration(AbstractSingletonModel):
         null=True,
     )
 
+    chat_openai_api_key = models.CharField(blank=True, null=True, max_length=1024)
+    chat_openai_models = models.CharField(blank=True, null=True, max_length=2048)
+
+    chat_anthropic_api_key = models.CharField(blank=True, null=True, max_length=1024)
+    chat_anthropic_models = models.CharField(blank=True, null=True, max_length=2048)
+
+    chat_mistral_api_key = models.CharField(blank=True, null=True, max_length=1024)
+    chat_mistral_models = models.CharField(blank=True, null=True, max_length=2048)
+
     llm_embedding_backend = models.CharField(
         verbose_name=_("Sets the LLM embedding backend"),
         blank=True,
@@ -363,6 +378,13 @@ class ApplicationConfiguration(AbstractSingletonModel):
         blank=True,
         null=True,
         max_length=128,
+    )
+
+    llm_embedding_api_key = models.CharField(
+        verbose_name=_("Sets the LLM embedding API key"),
+        blank=True,
+        null=True,
+        max_length=1024,
     )
 
     llm_embedding_endpoint = models.CharField(

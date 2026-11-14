@@ -97,6 +97,30 @@ describe('ChatService', () => {
     })
   })
 
+  it('sends the selected provider model', (done) => {
+    fetchMock.mockResolvedValue(fakeResponse(['{"type":"done"}\n']))
+    service.streamChat(null, 'hello', [], 'anthropic:claude').subscribe({
+      complete: () => {
+        const init = fetchMock.mock.calls[0][1] as RequestInit
+        expect(JSON.parse(init.body as string).model).toBe('anthropic:claude')
+        done()
+      },
+    })
+  })
+
+  it('loads models with authenticated credentials', (done) => {
+    const models = { models: [], default_model: null }
+    fetchMock.mockResolvedValue({ ok: true, json: async () => models })
+    service.getModels().subscribe((result) => {
+      expect(result).toEqual(models)
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${environment.apiBaseUrl}documents/chat/models/`,
+        { credentials: 'include' }
+      )
+      done()
+    })
+  })
+
   it('includes document_id when provided', (done) => {
     fetchMock.mockResolvedValue(fakeResponse(['{"type":"done"}\n']))
 

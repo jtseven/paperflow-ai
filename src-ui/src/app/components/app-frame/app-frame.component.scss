@@ -71,6 +71,7 @@
 }
 
 .search-container {
+  min-width: 0;
   padding-left: 1rem;
   padding-right: 1rem;
 }
@@ -146,8 +147,8 @@ main {
       padding-left: 0;
       padding-right: 0;
 
-      i-bs,
-      lucide-icon {
+      lucide-icon,
+      pngx-bs-icon {
         margin-right: 0 !important;
       }
     }
@@ -284,7 +285,7 @@ main {
     }
   }
 
-  i-bs {
+  pngx-bs-icon {
     position: relative;
     top: -1px;
   }
@@ -295,8 +296,8 @@ main {
   align-items: center;
   min-width: 0;
 
-  > i-bs,
-  > lucide-icon {
+  > lucide-icon,
+  > pngx-bs-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -397,11 +398,13 @@ main {
     width: 1.8rem;
     height: 100%;
 
-    lucide-icon {
+    lucide-icon,
+    pngx-bs-icon {
       opacity: 0.5;
     }
 
-    &:hover lucide-icon {
+    &:hover lucide-icon,
+    &:hover pngx-bs-icon {
       opacity: 1;
     }
   }
@@ -416,7 +419,8 @@ main {
       text-decoration: underline;
     }
 
-    lucide-icon {
+    lucide-icon,
+    pngx-bs-icon {
       margin-bottom: 2px;
     }
   }
@@ -536,6 +540,11 @@ main {
 
 // true center the search with equal flex widths
 @media (min-width: 768px) {
+  .search-container {
+    // Prevent input padding and the conditional search button from resizing
+    flex-basis: 55rem;
+  }
+
   .navbar-brand-container,
   .navbar > ul {
     display: flex; // so the brand link stays as wide as its contents
@@ -571,7 +580,36 @@ main {
 
 .header-search {
   width: 100%;
-  max-width: 55rem;
+  max-width: 50rem;
+}
+
+.header-search pngx-global-search {
+  min-width: 0;
+}
+
+// light w shadow to stand out against search
+.header-upload {
+  --bs-btn-bg: rgba(255, 255, 255, .15);
+  --bs-btn-hover-bg: rgba(255, 255, 255, .22);
+  --bs-btn-active-bg: rgba(255, 255, 255, .3);
+  color: var(--pngx-primary-text-contrast) !important; // .navbar .dropdown > .btn in styles.scss
+
+  & + & {
+    border-left: 1px solid rgba(255, 255, 255, .2) !important;
+  }
+
+  &:focus {
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .5);
+  }
+}
+
+.header-upload-group {
+  border-radius: var(--bs-border-radius-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35), 0 1px 1px rgba(0, 0, 0, .2);
 }
 
 @media screen and (max-width: 575.98px) {
@@ -693,15 +731,16 @@ main {
 }
 
 .dropdown-toggle::after {
-  margin-left: 0.4em;
-  vertical-align: 0.155em;
+  display: none;
 }
 
 .navbar .dropdown-menu {
   font-size: 0.875rem; // body size
 
   a lucide-icon,
-  button lucide-icon {
+  a pngx-bs-icon,
+  button lucide-icon,
+  button pngx-bs-icon {
     opacity: 0.6;
   }
 }
@@ -729,7 +768,8 @@ main {
   cursor: move;
 }
 
-::ng-deep .navItemDrag .position-absolute lucide-icon {
+::ng-deep .navItemDrag .position-absolute lucide-icon,
+::ng-deep .navItemDrag .position-absolute pngx-bs-icon {
   display: none;
 }
 
@@ -801,4 +841,8 @@ lucide-icon {
 #userDropdown lucide-icon svg {
   width: 1.3rem;
   height: 1.3rem;
+}
+
+.smaller {
+  font-size: 0.75rem;
 }

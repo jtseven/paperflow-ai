@@ -36,7 +36,7 @@
           type: PermissionType.MailAccount,
         }"
       >
-        <i-bs name="google" class="me-1"></i-bs
+        <pngx-bs-icon name="google" class="me-1"></pngx-bs-icon
         ><ng-container i18n>Connect Gmail Account</ng-container>
       </a>
     }
@@ -49,7 +49,7 @@
           type: PermissionType.MailAccount,
         }"
       >
-        <i-bs name="microsoft" class="me-1"></i-bs
+        <pngx-bs-icon name="microsoft" class="me-1"></pngx-bs-icon
         ><ng-container i18n>Connect Outlook Account</ng-container>
       </a>
     }
@@ -95,10 +95,10 @@
                   ></lucide-icon>
                 }
                 @case (MailAccountType.Gmail_OAuth) {
-                  <i-bs name="google" class="ms-2"></i-bs>
+                  <pngx-bs-icon name="google" class="ms-2"></pngx-bs-icon>
                 }
                 @case (MailAccountType.Outlook_OAuth) {
-                  <i-bs name="microsoft" class="ms-2"></i-bs>
+                  <pngx-bs-icon name="microsoft" class="ms-2"></pngx-bs-icon>
                 }
               }
             </button>

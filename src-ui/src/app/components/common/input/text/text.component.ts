@@ -6,7 +6,6 @@ import {
 } from '@angular/forms'
 import { RouterLink } from '@angular/router'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { AbstractInputComponent } from '../abstract-input'
 
 @Component({
@@ -20,13 +19,7 @@ import { AbstractInputComponent } from '../abstract-input'
   selector: 'pngx-input-text',
   templateUrl: './text.component.html',
   styleUrls: ['./text.component.scss'],
-  imports: [
-    FormsModule,
-    ReactiveFormsModule,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
-    RouterLink,
-  ],
+  imports: [FormsModule, ReactiveFormsModule, RouterLink, LucideAngularModule],
 })
 export class TextComponent extends AbstractInputComponent<string> {
   @Input()

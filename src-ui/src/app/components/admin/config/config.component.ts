@@ -10,7 +10,6 @@ import {
 import { NgbNavModule } from '@ng-bootstrap/ng-bootstrap'
 import { DirtyComponent, dirtyCheck } from '@ngneat/dirty-check-forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import {
   BehaviorSubject,
   Observable,
@@ -53,7 +52,6 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
     NgbNavModule,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })
@@ -199,7 +197,7 @@ export class ConfigComponent
           this.initialize(config)
           this.store.next(this.initialConfig)
           this.settingsService.initializeSettings().subscribe()
-          this.toastService.showInfo($localize`Configuration updated`)
+          this.toastService.showSuccess($localize`Configuration updated`)
         },
         error: (e) => {
           this.loading.set(false)
@@ -226,7 +224,7 @@ export class ConfigComponent
           this.initialize(config)
           this.store.next(this.initialConfig)
           this.settingsService.initializeSettings().subscribe()
-          this.toastService.showInfo($localize`File successfully updated`)
+          this.toastService.showSuccess($localize`File successfully updated`)
         },
         error: (e) => {
           this.loading.set(false)

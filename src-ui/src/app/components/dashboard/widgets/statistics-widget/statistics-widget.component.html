@@ -1,5 +1,11 @@
 <pngx-widget-frame title="Statistics" [loading]="loading()" i18n-title>
   <ng-container content>
+    @if (loadFailed()) {
+      <div class="alert alert-warning mb-0" role="alert">
+        <p i18n>Statistics could not be loaded.</p>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="reload()" i18n>Try again</button>
+      </div>
+    } @else {
     <div class="list-group border-light placeholder-glow">
       @if (loading()) {
         <div class="list-group-item d-flex">
@@ -136,5 +142,6 @@
         }
       </ng-container>
     </div>
+    }
   </ng-container>
 </pngx-widget-frame>

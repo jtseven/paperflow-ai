@@ -2,7 +2,6 @@ import { Clipboard } from '@angular/cdk/clipboard'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { jest } from '@jest/globals'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { FileVersion } from 'src/app/data/share-link'
 import {
   ShareLinkBundleStatus,
@@ -30,10 +29,7 @@ describe('ShareLinkBundleDialogComponent', () => {
     toastService = new MockToastService()
 
     TestBed.configureTestingModule({
-      imports: [
-        ShareLinkBundleDialogComponent,
-        NgxBootstrapIconsModule.pick(allIcons),
-      ],
+      imports: [ShareLinkBundleDialogComponent],
       providers: [
         NgbActiveModal,
         { provide: ToastService, useValue: toastService },

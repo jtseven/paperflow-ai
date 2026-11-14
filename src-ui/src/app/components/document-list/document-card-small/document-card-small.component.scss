@@ -33,7 +33,7 @@
 }
 
 .document-card-check {
-  display: none;
+  opacity: 0;
   position: absolute;
   top: 0;
   left: 0;
@@ -49,12 +49,21 @@
 
     .form-check-input {
       margin-left: 0;
+      pointer-events: auto;
     }
   }
 }
 
-.document-card:hover .document-card-check {
-  display: block;
+.document-card:hover .document-card-check,
+.document-card:focus-within .document-card-check,
+.card-selected .document-card-check {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .document-card .document-card-check {
+    opacity: 1;
+  }
 }
 
 .document-card-notes {
@@ -83,7 +92,7 @@
 }
 
 .card-footer .btn {
-  padding-top: .10rem;
+  padding-top: 0.1rem;
 }
 
 ::ng-deep .tooltip-inner {
@@ -96,10 +105,10 @@ a {
 }
 
 .tags {
-  top: .2rem;
+  top: 0.2rem;
   right: 0;
   max-width: 80%;
-  row-gap: .2rem;
+  row-gap: 0.2rem;
   line-height: 1;
 
   &.tags-no-wrap {

@@ -14,7 +14,6 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { DocumentNote } from 'src/app/data/document-note'
 import { User } from 'src/app/data/user'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
@@ -33,7 +32,6 @@ import { ComponentWithPermissions } from '../with-permissions/with-permissions.c
     CustomDatePipe,
     FormsModule,
     ReactiveFormsModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

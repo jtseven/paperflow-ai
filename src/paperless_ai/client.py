@@ -48,8 +48,13 @@ class AIClient:
     A client for interacting with an LLM backend.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, model: str | None = None) -> None:
         self.settings = AIConfig()
+        self.chat_model = model
+        if model:
+            from paperless_ai.providers import apply_chat_model
+
+            apply_chat_model(self.settings, model)
         self.llm = self.get_llm()
 
     def get_llm(self) -> "Ollama | OpenAILike":
@@ -75,6 +80,7 @@ class AIClient:
                 context_window=self.settings.llm_context_size,
                 request_timeout=self.settings.llm_request_timeout,
                 system_prompt=LLM_SYSTEM_PROMPT,
+                additional_kwargs=self.settings.llm_extra_params,
                 client=Client(
                     host=endpoint,
                     timeout=self.settings.llm_request_timeout,
@@ -108,9 +114,21 @@ class AIClient:
                 api_base=endpoint,
                 api_key=self.settings.llm_api_key or PLACEHOLDER_API_KEY,
                 timeout=self.settings.llm_request_timeout,
+                **(
+                    {
+                        "context_window": self.settings.llm_context_size,
+                        "max_tokens": min(
+                            4096,
+                            max(1, self.settings.llm_context_size // 4),
+                        ),
+                    }
+                    if self.chat_model
+                    else {}
+                ),
                 is_chat_model=True,
                 is_function_calling_model=True,
                 system_prompt=LLM_SYSTEM_PROMPT,
+                additional_kwargs=self.settings.llm_extra_params,
                 http_client=http_client,
                 async_http_client=async_http_client,
             )

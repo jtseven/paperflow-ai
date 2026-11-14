@@ -15,7 +15,6 @@ from django.test import TestCase
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
-from guardian.shortcuts import assign_perm
 from rest_framework import status
 
 from documents.caching import get_llm_suggestion_cache
@@ -29,11 +28,14 @@ from documents.models import StoragePath
 from documents.models import Tag
 from documents.models import UiSettings
 from documents.signals.handlers import update_llm_suggestions_cache
-from documents.tests.utils import DirectoriesMixin
-from documents.tests.utils import read_streaming_response
 from paperless.models import ApplicationConfiguration
 from paperless_ai.exceptions import LLMProviderError
 from paperless_ai.exceptions import LLMTimeoutError
+from paperless_testing.dirs import DirectoriesMixin
+from paperless_testing.factories import UserFactory
+from paperless_testing.http import read_streaming_response
+from paperless_testing.permissions import grant_global
+from paperless_testing.permissions import grant_object
 
 
 class TestViews(DirectoriesMixin, TestCase):
@@ -43,7 +45,7 @@ class TestViews(DirectoriesMixin, TestCase):
         ApplicationConfiguration.objects.get_or_create()
 
     def setUp(self) -> None:
-        self.user = User.objects.create_user("testuser")
+        self.user = UserFactory(username="testuser")
         super().setUp()
 
     def test_login_redirect(self) -> None:
@@ -141,9 +143,7 @@ class TestViews(DirectoriesMixin, TestCase):
             codename__contains="sharelink",
         )
         self.user.user_permissions.add(*sharelink_permissions)
-        self.user.user_permissions.add(
-            Permission.objects.get(codename="view_document"),
-        )
+        grant_global(self.user, "view_document")
         self.user.save()
 
         self.client.force_login(self.user)
@@ -205,9 +205,7 @@ class TestViews(DirectoriesMixin, TestCase):
             codename__contains="sharelink",
         )
         self.user.user_permissions.add(*sharelink_permissions)
-        self.user.user_permissions.add(
-            Permission.objects.get(codename="view_document"),
-        )
+        grant_global(self.user, "view_document")
         self.client.force_login(self.user)
 
         create_response = self.client.post(
@@ -240,16 +238,16 @@ class TestViews(DirectoriesMixin, TestCase):
         group2 = Group.objects.create(name="group2")
         group3 = Group.objects.create(name="group3")
         t1 = Tag.objects.create(name="invoice", pk=1)
-        assign_perm("view_tag", self.user, t1)
-        assign_perm("view_tag", user2, t1)
-        assign_perm("view_tag", user3, t1)
-        assign_perm("view_tag", group1, t1)
-        assign_perm("view_tag", group2, t1)
-        assign_perm("view_tag", group3, t1)
-        assign_perm("change_tag", self.user, t1)
-        assign_perm("change_tag", user2, t1)
-        assign_perm("change_tag", group1, t1)
-        assign_perm("change_tag", group2, t1)
+        grant_object(self.user, t1, "view_tag")
+        grant_object(user2, t1, "view_tag")
+        grant_object(user3, t1, "view_tag")
+        grant_object(group1, t1, "view_tag")
+        grant_object(group2, t1, "view_tag")
+        grant_object(group3, t1, "view_tag")
+        grant_object(self.user, t1, "change_tag")
+        grant_object(user2, t1, "change_tag")
+        grant_object(group1, t1, "change_tag")
+        grant_object(group2, t1, "change_tag")
 
         Tag.objects.create(name="bank statement", pk=2)
         d1 = Document.objects.create(
@@ -293,6 +291,33 @@ class TestViews(DirectoriesMixin, TestCase):
                 }
             else:
                 assert False, f"Unexpected tag found: {tag['name']}"
+
+    def test_retrieve_with_full_permissions(self) -> None:
+        """
+        GIVEN:
+            - A tag with view granted to two groups and change granted to only
+              one of them
+        WHEN:
+            - The single tag is requested with full permissions
+        THEN:
+            - Each action lists only the groups granted that action
+        """
+        view_only = Group.objects.create(name="view_only")
+        view_and_change = Group.objects.create(name="view_and_change")
+        tag = Tag.objects.create(name="invoice")
+        grant_object(view_only, tag, "view_tag")
+        grant_object(view_and_change, tag, "view_tag", "change_tag")
+        grant_global(self.user, "view_tag")
+
+        self.client.force_login(self.user)
+        response = self.client.get(f"/api/tags/{tag.pk}/?full_perms=true")
+
+        assert response.status_code == 200
+        permissions = response.json()["permissions"]
+        assert sorted(permissions["view"]["groups"]) == sorted(
+            [view_only.pk, view_and_change.pk],
+        )
+        assert permissions["change"]["groups"] == [view_and_change.pk]
 
     def test_list_no_n_plus_1_queries(self) -> None:
         """
@@ -338,7 +363,7 @@ class TestViews(DirectoriesMixin, TestCase):
 
 class TestAISuggestions(DirectoriesMixin, TestCase):
     def setUp(self) -> None:
-        self.user = User.objects.create_superuser(username="testuser")
+        self.user = UserFactory(username="testuser", superuser=True)
         self.document = Document.objects.create(
             title="Test Document",
             filename="test.pdf",
@@ -425,14 +450,10 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
               requester; the invisible tag id does not leak into either the
               matched or suggested tags
         """
-        tag_owner = User.objects.create_user(username="cache_tag_owner")
+        tag_owner = UserFactory(username="cache_tag_owner")
         invisible_tag = Tag.objects.create(name="cache_restricted", owner=tag_owner)
-        requester = User.objects.create_user(username="cache_requester")
-        requester.user_permissions.add(
-            *Permission.objects.filter(
-                codename__in=["view_document", "change_document", "view_tag"],
-            ),
-        )
+        requester = UserFactory(username="cache_requester")
+        grant_global(requester, "view_document", "change_document", "view_tag")
         mock_get_cache.return_value = MagicMock(
             suggestions={
                 "title": "Untitled",
@@ -453,7 +474,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
         self.assertEqual(response.json()["tags"], [])
         self.assertEqual(response.json()["suggested_tags"], [])
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -503,7 +524,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             None,
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -541,7 +562,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             "KI Title",
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -580,7 +601,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             "Titre IA",
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -616,7 +637,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             ),
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -637,7 +658,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             - The classification runs with the second user's visibility
               context without evicting the first user's result
         """
-        second_user = User.objects.create_superuser(username="second_user")
+        second_user = UserFactory(username="second_user", superuser=True)
         empty_choices = {
             "tags": {"existing_ids": [], "new_names": []},
             "correspondents": {"existing_ids": [], "new_names": []},
@@ -688,7 +709,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             ),
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="openai-like",
@@ -717,7 +738,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             get_llm_suggestion_cache(self.document.pk, backend="openai-like"),
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="openai-like",
@@ -744,7 +765,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             get_llm_suggestion_cache(self.document.pk, backend="openai-like"),
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="openai-like",
@@ -776,7 +797,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
             get_llm_suggestion_cache(self.document.pk, backend="openai-like"),
         )
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -814,7 +835,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
         self.assertEqual(response.json()["tags"], [self.tag1.pk])
         self.assertEqual(response.json()["suggested_tags"], ["Follow-up"])
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -853,7 +874,7 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
         self.assertEqual(response.json()["tags"], [self.tag1.pk])
         self.assertEqual(response.json()["suggested_tags"], [])
 
-    @patch("documents.views.get_ai_document_classification")
+    @patch("paperless_ai.ai_classifier.get_ai_document_classification")
     @override_settings(
         AI_ENABLED=True,
         LLM_BACKEND="mock_backend",
@@ -875,14 +896,10 @@ class TestAISuggestions(DirectoriesMixin, TestCase):
               permission filtering survives the full request path
             - it does not appear in either the matched or suggested tags
         """
-        tag_owner = User.objects.create_user(username="tagowner")
+        tag_owner = UserFactory(username="tagowner")
         invisible_tag = Tag.objects.create(name="restricted", owner=tag_owner)
-        requester = User.objects.create_user(username="requester")
-        requester.user_permissions.add(
-            *Permission.objects.filter(
-                codename__in=["view_document", "change_document", "view_tag"],
-            ),
-        )
+        requester = UserFactory(username="requester")
+        grant_global(requester, "view_document", "change_document", "view_tag")
 
         mock_get_ai_classification.return_value = {
             "title": "Untitled",
@@ -956,7 +973,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
     ENDPOINT = "/api/documents/chat/"
 
     def setUp(self) -> None:
-        self.user = User.objects.create_user(username="testuser", password="pass")
+        self.user = UserFactory(username="testuser", password="pass")
         self.client.force_login(user=self.user)
         self.document = Document.objects.create(
             title="Test Document",
@@ -966,9 +983,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         super().setUp()
 
     def grant_view_document_permission(self) -> None:
-        self.user.user_permissions.add(
-            *Permission.objects.filter(codename="view_document"),
-        )
+        grant_global(self.user, "view_document")
 
     @override_settings(AI_ENABLED=False)
     def test_post_ai_disabled(self) -> None:
@@ -981,7 +996,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn(b"AI is required for this feature", response.content)
 
-    @patch("documents.views.stream_agentic_chat")
+    @patch("paperless_ai.agent_chat.stream_agentic_chat")
     @patch("documents.views.permitted_document_ids")
     @override_settings(AI_ENABLED=True)
     def test_post_no_document_id(self, mock_permitted_ids, mock_stream_chat) -> None:
@@ -1001,7 +1016,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         self.assertEqual(list(call_kwargs["documents"]), [self.document])
         self.assertIsNone(call_kwargs["output_language"])
 
-    @patch("documents.views.stream_agentic_chat")
+    @patch("paperless_ai.agent_chat.stream_agentic_chat")
     @patch("documents.views.permitted_document_ids")
     @override_settings(AI_ENABLED=True)
     def test_post_uses_user_display_language(
@@ -1027,7 +1042,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         self.assertEqual(list(call_kwargs["documents"]), [self.document])
         self.assertEqual(call_kwargs["output_language"], "de-de")
 
-    @patch("documents.views.stream_chat_with_documents")
+    @patch("paperless_ai.chat.stream_chat_with_documents")
     @override_settings(AI_ENABLED=True)
     def test_post_with_document_id(self, mock_stream_chat) -> None:
         self.grant_view_document_permission()
@@ -1064,7 +1079,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn(b"Insufficient permissions", response.content)
 
-    @patch("documents.views.stream_chat_with_documents")
+    @patch("paperless_ai.chat.stream_chat_with_documents")
     @override_settings(AI_ENABLED=True)
     def test_post_no_document_id_requires_view_document_permission(
         self,
@@ -1078,7 +1093,7 @@ class TestAIChatStreamingView(DirectoriesMixin, TestCase):
         self.assertEqual(response.status_code, 403)
         mock_stream_chat.assert_not_called()
 
-    @patch("documents.views.stream_chat_with_documents")
+    @patch("paperless_ai.chat.stream_chat_with_documents")
     @override_settings(AI_ENABLED=True)
     def test_post_with_document_id_requires_view_document_permission(
         self,

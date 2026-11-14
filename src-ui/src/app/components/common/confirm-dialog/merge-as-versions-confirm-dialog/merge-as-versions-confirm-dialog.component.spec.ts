@@ -3,7 +3,6 @@ import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { jest } from '@jest/globals'
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of } from 'rxjs'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { MergeAsVersionsConfirmDialogComponent } from './merge-as-versions-confirm-dialog.component'
@@ -15,10 +14,7 @@ describe('MergeAsVersionsConfirmDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        NgxBootstrapIconsModule.pick(allIcons),
-        MergeAsVersionsConfirmDialogComponent,
-      ],
+      imports: [MergeAsVersionsConfirmDialogComponent],
       providers: [
         NgbActiveModal,
         provideHttpClient(withInterceptorsFromDi()),

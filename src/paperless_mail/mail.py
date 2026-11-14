@@ -169,9 +169,9 @@ class TagMailAction(BaseMailAction):
         # The custom tag should look like "apple:<color>"
         if "apple:" in parameter.lower():
             _, self.color = parameter.split(":")
-            self.color = self.color.strip()
+            self.color = self.color.strip().lower()
 
-            if self.color.lower() not in APPLE_MAIL_TAG_COLORS:
+            if self.color not in APPLE_MAIL_TAG_COLORS:
                 raise MailError("Not a valid AppleMail tag color.")
 
             self.keyword = None
@@ -347,6 +347,7 @@ def error_callback(
         uid=message_uid,
         uid_validity=uid_validity,
         defaults={
+            "owner": rule.owner,
             "subject": message_subject[:256],
             "received": received,
             "status": "FAILED",
@@ -947,6 +948,7 @@ class MailAccountHandler(LoggingMixin):
             folder=rule.folder,
             uid_validity=self._current_uid_validity,
             defaults={
+                "owner": rule.owner,
                 "subject": message.subject[:256],
                 "received": make_aware(message.date)
                 if is_naive(message.date)

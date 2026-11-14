@@ -67,6 +67,9 @@
             "index": "src/index.html",
             "polyfills": ["src/polyfills.ts"],
             "tsConfig": "tsconfig.app.json",
+            "loader": {
+              ".svg": "text"
+            },
             "localize": true,
             "assets": [
               "src/apple-touch-icon.png",
@@ -89,6 +92,11 @@
                 "glob": "**/*",
                 "input": "node_modules/pdfjs-dist/iccs/",
                 "output": "/assets/iccs/"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/pdfjs-dist/cmaps/",
+                "output": "/assets/cmaps/"
               }
             ],
             "styles": ["src/styles.scss"],

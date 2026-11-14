@@ -14,7 +14,6 @@ import {
 import { FormsModule } from '@angular/forms'
 import { Router, RouterModule } from '@angular/router'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { MarkdownModule } from 'ngx-markdown'
 import { Subscription } from 'rxjs'
 import { ChatHistoryService } from 'src/app/services/chat-history.service'
@@ -22,6 +21,7 @@ import {
   ChatEvent,
   ChatHistoryTurn,
   ChatMessage,
+  ChatModel,
   ChatService,
   Citation,
 } from 'src/app/services/chat.service'
@@ -50,7 +50,6 @@ const CHAT_HISTORY_TURNS = 6
     CommonModule,
     FormsModule,
     RouterModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
     MarkdownModule,
   ],
@@ -68,6 +67,12 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
   public messages: ChatMessage[] = []
   public input = ''
   public loading = false
+  public models: ChatModel[] = []
+  public selectedModel = ''
+  public modelsError = false
+  public modelsLoading = true
+  private modelsSub?: Subscription
+  private followOutput = true
 
   public hoveredCitation: Citation | null = null
   public popoverTop = 0
@@ -83,19 +88,79 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnInit(): void {
     this.loadHistory()
+    this.loadModels()
   }
 
   ngOnDestroy(): void {
     this.destroyed = true
+    this.stop()
     this.streamSub?.unsubscribe()
+    this.modelsSub?.unsubscribe()
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     // The per-document chat reuses one panel and swaps documentId as the user
     // navigates; load that document's thread when it changes.
     if (changes['documentId'] && !changes['documentId'].firstChange) {
+      this.stop(false)
+      this.history.save(
+        this.history.key(changes['documentId'].previousValue),
+        this.messages
+      )
+      this.input = ''
+      this.hoveredCitation = null
       this.loadHistory()
     }
+  }
+
+  public loadModels(): void {
+    this.modelsLoading = true
+    this.modelsError = false
+    this.modelsSub?.unsubscribe()
+    this.modelsSub = this.chatService.getModels().subscribe({
+      next: (result) => {
+        this.models = result.models
+        if (!this.models.some((model) => model.id === this.selectedModel)) {
+          this.selectedModel = result.default_model ?? this.models[0]?.id ?? ''
+        }
+        this.modelsLoading = false
+        this.render()
+      },
+      error: () => {
+        this.modelsLoading = false
+        this.modelsError = true
+        this.render()
+      },
+    })
+  }
+
+  public stop(persist = true): void {
+    if (!this.loading) return
+    this.streamSub?.unsubscribe()
+    const message = this.messages[this.messages.length - 1]
+    if (message?.role === 'assistant') {
+      message.isStreaming = false
+      message.error = true
+      if (!message.content) message.content = $localize`Response stopped.`
+    }
+    this.loading = false
+    if (persist) this.persist()
+  }
+
+  public retry(): void {
+    if (this.loading) return
+    const last = this.messages[this.messages.length - 1]
+    const question = this.messages[this.messages.length - 2]
+    if (last?.role !== 'assistant' || question?.role !== 'user') return
+    this.messages.splice(-2)
+    this.input = question.content
+    this.sendMessage()
+  }
+
+  public onScroll(): void {
+    const element = this.chatContainer.nativeElement
+    this.followOutput =
+      element.scrollHeight - element.scrollTop - element.clientHeight < 64
   }
 
   private loadHistory(): void {
@@ -157,6 +222,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     // excludes the question we're about to ask.
     const history = this.buildHistory()
 
+    this.followOutput = true
     this.messages.push({ role: 'user', content: prompt })
     this.input = ''
     this.focusInput()
@@ -172,35 +238,41 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.loading = true
     this.scrollToBottom()
 
-    this.streamSub = this.chatService
-      .streamChat(this.documentId ?? null, prompt, history)
-      .subscribe({
-        next: (event) => {
-          this.handleEvent(event, assistantMessage)
-          this.render()
-          this.scrollToBottom()
-        },
-        error: () => {
-          if (!assistantMessage.content) {
-            assistantMessage.content = $localize`⚠️ Sorry, there was an error processing your message. Please try again.`
-          }
-          assistantMessage.error = true
-          assistantMessage.isStreaming = false
-          this.loading = false
-          this.persist()
-          this.render()
-          this.scrollToBottom()
-          this.focusInput()
-        },
-        complete: () => {
-          assistantMessage.isStreaming = false
-          this.loading = false
-          this.persist()
-          this.render()
-          this.scrollToBottom()
-          this.focusInput()
-        },
-      })
+    const stream = this.selectedModel
+      ? this.chatService.streamChat(
+          this.documentId ?? null,
+          prompt,
+          history,
+          this.selectedModel
+        )
+      : this.chatService.streamChat(this.documentId ?? null, prompt, history)
+    this.streamSub = stream.subscribe({
+      next: (event) => {
+        this.handleEvent(event, assistantMessage)
+        this.render()
+        this.scrollToBottom()
+      },
+      error: () => {
+        if (!assistantMessage.content) {
+          assistantMessage.content = $localize`⚠️ Sorry, there was an error processing your message. Please try again.`
+        }
+        assistantMessage.error = true
+        assistantMessage.isStreaming = false
+        this.loading = false
+        this.persist()
+        this.render()
+        this.scrollToBottom()
+        this.focusInput()
+      },
+      complete: () => {
+        assistantMessage.isStreaming = false
+        this.loading = false
+        this.persist()
+        this.render()
+        this.scrollToBottom()
+        this.focusInput()
+      },
+    })
   }
 
   /**
@@ -227,6 +299,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
         message.steps = message.steps ?? []
         message.steps.push({
           id: event.id,
+          name: event.name,
           query: event.query,
           status: 'running',
         })
@@ -388,7 +461,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   private scrollToBottom(): void {
     setTimeout(() => {
-      if (this.chatContainer) {
+      if (!this.destroyed && this.followOutput && this.chatContainer) {
         this.chatContainer.nativeElement.scrollTop =
           this.chatContainer.nativeElement.scrollHeight
       }

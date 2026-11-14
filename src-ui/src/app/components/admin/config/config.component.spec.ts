@@ -7,7 +7,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { BrowserModule } from '@angular/platform-browser'
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
 import { NgSelectModule } from '@ng-select/ng-select'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import {
   ConfigCategory,
@@ -41,7 +40,6 @@ describe('ConfigComponent', () => {
         NgSelectModule,
         FormsModule,
         ReactiveFormsModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         ConfigComponent,
         TextComponent,
         SelectComponent,
@@ -206,5 +204,22 @@ describe('ConfigComponent', () => {
       'remote_ocr_endpoint',
       'remote_ocr_mode',
     ])
+  })
+  it('saves independently configured chat providers together', () => {
+    const providers = {
+      chat_openai_api_key: 'openai-test-key',
+      chat_openai_models: 'first-model, second-model',
+      chat_anthropic_api_key: 'claude-test-key',
+      chat_anthropic_models: 'claude-model',
+      chat_mistral_api_key: 'mistral-test-key',
+      chat_mistral_models: 'mistral-model',
+    }
+    component.configForm.patchValue(providers)
+    const save = jest
+      .spyOn(configService, 'saveConfig')
+      .mockReturnValue(of(providers as any))
+    jest.spyOn(settingService, 'initializeSettings').mockReturnValue(of(true))
+    component.saveConfig()
+    expect(save).toHaveBeenCalledWith(expect.objectContaining(providers))
   })
 })

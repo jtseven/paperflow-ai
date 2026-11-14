@@ -11,7 +11,6 @@ import {
 } from '@angular/forms'
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
 import {
   PermissionAction,
@@ -34,11 +33,10 @@ import { ComponentWithPermissions } from '../../with-permissions/with-permission
   styleUrls: ['./permissions-select.component.scss'],
   imports: [
     KeyValuePipe,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     NgbPopoverModule,
     FormsModule,
     ReactiveFormsModule,
+    LucideAngularModule,
   ],
 })
 export class PermissionsSelectComponent

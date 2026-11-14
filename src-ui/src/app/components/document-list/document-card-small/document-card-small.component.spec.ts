@@ -4,8 +4,6 @@ import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { By } from '@angular/platform-browser'
 import { RouterTestingModule } from '@angular/router/testing'
-import { jest } from '@jest/globals'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { TagComponent } from '../../common/tag/tag.component'
 import { DocumentCardSmallComponent } from './document-card-small.component'
 
@@ -33,11 +31,7 @@ describe('DocumentCardSmallComponent', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [
-        RouterTestingModule,
-        NgxBootstrapIconsModule.pick(allIcons),
-        DocumentCardSmallComponent,
-      ],
+      imports: [RouterTestingModule, DocumentCardSmallComponent],
       providers: [
         DatePipe,
         provideHttpClient(withInterceptorsFromDi()),
@@ -50,6 +44,15 @@ describe('DocumentCardSmallComponent', () => {
     fixture.componentRef.setInput('document', Object.assign({}, doc))
     fixture.detectChanges()
     jest.useFakeTimers()
+  })
+
+  it('selects only once when the checkbox click bubbles', () => {
+    const selectSpy = jest.spyOn(component.toggleSelected, 'emit')
+    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[type="checkbox"]'
+    )
+    checkbox.click()
+    expect(selectSpy).toHaveBeenCalledTimes(1)
   })
 
   it('should show the card', () => {

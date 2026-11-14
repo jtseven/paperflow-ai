@@ -14,14 +14,12 @@ import {
   NgbTooltipModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import {
   DEFAULT_DISPLAY_FIELDS,
   DisplayField,
   Document,
 } from 'src/app/data/document'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
-import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { CorrespondentNamePipe } from 'src/app/pipes/correspondent-name.pipe'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
 import { DocumentTitlePipe } from 'src/app/pipes/document-title.pipe'
@@ -52,12 +50,10 @@ import { LoadingComponentWithPermissions } from '../../loading-component/loading
     CorrespondentNamePipe,
     DocumentTypeNamePipe,
     StoragePathNamePipe,
-    IfPermissionsDirective,
     CustomDatePipe,
     RouterModule,
     NgbTooltipModule,
     NgbProgressbarModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

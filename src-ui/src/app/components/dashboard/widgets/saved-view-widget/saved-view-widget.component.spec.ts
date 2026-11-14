@@ -12,7 +12,6 @@ import { Router } from '@angular/router'
 import { RouterTestingModule } from '@angular/router/testing'
 import { jest } from '@jest/globals'
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { Subject, of, throwError } from 'rxjs'
 import { routes } from 'src/app/app-routing.module'
 import { CustomFieldDisplayComponent } from 'src/app/components/common/custom-field-display/custom-field-display.component'
@@ -122,7 +121,6 @@ describe('SavedViewWidgetComponent', () => {
         NgbModule,
         RouterTestingModule.withRoutes(routes),
         DragDropModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         SavedViewWidgetComponent,
         WidgetFrameComponent,
         IfPermissionsDirective,

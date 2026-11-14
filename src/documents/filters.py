@@ -11,6 +11,7 @@ from decimal import InvalidOperation
 from typing import TYPE_CHECKING
 from typing import Any
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Case
 from django.db.models import CharField
@@ -25,6 +26,7 @@ from django.db.models import Value
 from django.db.models import When
 from django.db.models.functions import Cast
 from django.db.models.functions import NullIf
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django_filters import DateFilter
 from django_filters.rest_framework import BooleanFilter
@@ -50,12 +52,14 @@ from documents.models import ShareLink
 from documents.models import ShareLinkBundle
 from documents.models import StoragePath
 from documents.models import Tag
+from documents.permissions import annotate_authorizing_fields
 from documents.permissions import permitted_document_ids
 from documents.permissions import permitted_object_ids
 from documents.versioning import annotate_effective_content
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from datetime import datetime
 
 CHAR_KWARGS = ["istartswith", "iendswith", "icontains", "iexact"]
 ID_KWARGS = ["in", "exact"]
@@ -321,6 +325,53 @@ class MonetaryAmountField(serializers.Field):
         return str(value)
 
 
+class DateQueryField(serializers.DateField):
+    """
+    Accepts either a fixed date or a relative date expression using `dateparser` and
+    resolves it against the provided reference datetime.
+    """
+
+    default_error_messages = {
+        "expression": _(
+            'Expected a date or a relative date such as "today" or "in 30 days".',
+        ),
+    }
+
+    def __init__(self, *, reference_datetime: datetime, **kwargs):
+        super().__init__(**kwargs)
+        self.reference_datetime = reference_datetime
+
+    def to_internal_value(self, value):
+        try:
+            # Let the parent class handle fixed-date formats and string validation first
+            return super().to_internal_value(value)
+        except serializers.ValidationError:
+            if not isinstance(value, str):
+                raise
+
+        import dateparser
+
+        try:
+            parsed = dateparser.parse(
+                value,
+                # The UI always builds English expressions
+                locales=[*settings.DATE_PARSER_LANGUAGES, "en"]
+                if settings.DATE_PARSER_LANGUAGES
+                else None,
+                settings={
+                    "PARSERS": ["relative-time"],
+                    "RELATIVE_BASE": self.reference_datetime,
+                    "TIMEZONE": str(self.reference_datetime.tzinfo),
+                    "RETURN_AS_TIMEZONE_AWARE": True,
+                },
+            )
+        except (ValueError, OverflowError):
+            self.fail("expression")
+        if parsed is None:
+            self.fail("expression")
+        return parsed.astimezone(self.reference_datetime.tzinfo).date()
+
+
 class SelectField(serializers.CharField):
     def __init__(self, custom_field: CustomField) -> None:
         self._options = custom_field.extra_data["select_options"]
@@ -462,6 +513,8 @@ class CustomFieldQueryParser:
             raise serializers.ValidationError(
                 {self._validation_prefix: [_("Value must be valid JSON.")]},
             )
+        # Save the current local time as the reference for the query
+        self._reference_datetime = timezone.localtime()
         return (
             self._parse_expr(expr, validation_prefix=self._validation_prefix),
             self._annotations,
@@ -648,6 +701,8 @@ class CustomFieldQueryParser:
         ):
             # DateField admits queries in the form of `year__exact`, etc. These take integers.
             field = serializers.IntegerField()
+        elif custom_field.data_type == CustomField.FieldDataType.DATE:
+            field = DateQueryField(reference_datetime=self._reference_datetime)
         elif custom_field.data_type == CustomField.FieldDataType.DOCUMENTLINK:
             # We can be more specific here and make sure the value is a list.
             field = serializers.ListField(child=serializers.IntegerField())
@@ -1075,6 +1130,9 @@ class PermittedObjectsFilter(BaseFilterBackend):
 
     include_granted: bool = True
     perm_codename: str | None = None
+    # A self-referencing foreign key whose target authorizes a row, so a row is
+    # judged by its parent's owner and grants (``Document.root_document``).
+    parent_field: str | None = None
 
     def filter_queryset(self, request, queryset, view):
         # Before the superuser and owner-only paths, neither of which consults
@@ -1086,11 +1144,23 @@ class PermittedObjectsFilter(BaseFilterBackend):
         if request.user.is_superuser:
             return queryset
         if not self.include_granted:
-            return queryset.filter(Q(owner=request.user) | Q(owner__isnull=True))
+            owner_field = "owner"
+            if self.parent_field is not None:
+                queryset = annotate_authorizing_fields(queryset, self.parent_field)
+                owner_field = "authorizing_owner"
+            return queryset.filter(
+                Q(**{owner_field: request.user.pk})
+                | Q(**{f"{owner_field}__isnull": True}),
+            )
         model = queryset.model
         perm = self.perm_codename or f"view_{model._meta.model_name}"
         return queryset.filter(
-            id__in=permitted_object_ids(request.user, model, perm),
+            id__in=permitted_object_ids(
+                request.user,
+                model,
+                perm,
+                parent_field=self.parent_field,
+            ),
         )
 
 

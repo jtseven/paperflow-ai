@@ -1,8 +1,6 @@
 import { Clipboard } from '@angular/cdk/clipboard'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { RouterTestingModule } from '@angular/router/testing'
-import { jest } from '@jest/globals'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { FileVersion, ShareLink } from 'src/app/data/share-link'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
@@ -16,7 +14,7 @@ describe('ShareLinkListComponent', () => {
   let fixture: ComponentFixture<ShareLinkListComponent>
   let service: jest.Mocked<Pick<ShareLinkService, 'list' | 'delete'>>
   let clipboard: Clipboard
-  let toastService: jest.Mocked<Pick<ToastService, 'showInfo' | 'showError'>>
+  let toastService: jest.Mocked<Pick<ToastService, 'showSuccess' | 'showError'>>
 
   const link = {
     id: 1,
@@ -34,16 +32,12 @@ describe('ShareLinkListComponent', () => {
       delete: jest.fn().mockReturnValue(of(true)),
     }
     toastService = {
-      showInfo: jest.fn(),
+      showSuccess: jest.fn(),
       showError: jest.fn(),
     }
 
     TestBed.configureTestingModule({
-      imports: [
-        ShareLinkListComponent,
-        NgxBootstrapIconsModule.pick(allIcons),
-        RouterTestingModule,
-      ],
+      imports: [ShareLinkListComponent, RouterTestingModule],
       providers: [
         { provide: ShareLinkService, useValue: service },
         { provide: ToastService, useValue: toastService },
@@ -131,7 +125,7 @@ describe('ShareLinkListComponent', () => {
 
     expect(component.copiedID()).toBe(link.id)
     expect(fixture.nativeElement.querySelector('.badge.show')).not.toBeNull()
-    expect(toastService.showInfo).not.toHaveBeenCalled()
+    expect(toastService.showSuccess).not.toHaveBeenCalled()
 
     jest.advanceTimersByTime(3000)
     expect(component.copiedID()).toBeNull()
@@ -143,7 +137,7 @@ describe('ShareLinkListComponent', () => {
 
     expect(service.delete).toHaveBeenCalledWith(link)
     expect(service.list).toHaveBeenCalledTimes(2)
-    expect(toastService.showInfo).toHaveBeenCalled()
+    expect(toastService.showSuccess).toHaveBeenCalled()
   })
 
   it('shows an error when loading fails', () => {

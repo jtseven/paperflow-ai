@@ -19,7 +19,6 @@ import {
   NgbTypeaheadModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { TourNgBootstrap } from 'ngx-ui-tour-ng-bootstrap'
 import { Observable, Subject, from } from 'rxjs'
 import {
@@ -267,13 +266,12 @@ const DUPLICATES_FILTER_MODIFIER_OPTIONS = [
     CustomFieldsQueryDropdownComponent,
     DatesDropdownComponent,
     PermissionsFilterDropdownComponent,
-    NgxBootstrapIconsModule,
-    LucideAngularModule,
     NgbDropdownModule,
     NgbTypeaheadModule,
     FormsModule,
     ReactiveFormsModule,
     TourNgBootstrap,
+    LucideAngularModule,
   ],
 })
 export class FilterEditorComponent
@@ -1084,23 +1082,6 @@ export class FilterEditorComponent
       let existingRule = filterRules.find(
         (fr) => fr.rule_type == FILTER_FULLTEXT_QUERY
       )
-
-      // if had a title / content search and added a relative date we need to carry it over...
-      if (
-        !existingRule &&
-        this._textFilter?.length > 0 &&
-        (this.textFilterTarget == TEXT_FILTER_TARGET_TITLE_CONTENT ||
-          this.textFilterTarget == TEXT_FILTER_TARGET_TITLE)
-      ) {
-        existingRule = filterRules.find(
-          (fr) =>
-            fr.rule_type == FILTER_TITLE_CONTENT ||
-            fr.rule_type == FILTER_SIMPLE_TEXT ||
-            fr.rule_type == FILTER_TITLE ||
-            fr.rule_type == FILTER_SIMPLE_TITLE
-        )
-        existingRule.rule_type = FILTER_FULLTEXT_QUERY
-      }
 
       let queryArgs = existingRule?.value.split(',') ?? []
       if (this.dateCreatedRelativeDate !== null) {

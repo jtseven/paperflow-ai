@@ -164,10 +164,8 @@
             (click)="createClicked()"
             [disabled]="disabled"
           >
-            <small class="ms-2"
-              ><ng-container i18n>Create</ng-container> "{{
-                filterText
-              }}"</small
+            <span class="ms-2"
+              ><ng-container i18n>Create</ng-container> "{{ filterText }}"</span
             >
             <lucide-icon width="1.5em" height="1em" name="plus"></lucide-icon>
           </button>
@@ -178,8 +176,8 @@
             (click)="applyClicked()"
             [disabled]="!modelIsDirty() || disabled"
           >
-            <small class="ms-2" [ngClass]="{ 'fw-bold': modelIsDirty() }" i18n
-              >Apply</small
+            <span class="ms-2" [ngClass]="{ 'fw-bold': modelIsDirty() }" i18n
+              >Apply</span
             >
             <lucide-icon
               width="1.5em"
@@ -198,7 +196,7 @@
           (click)="extraButtonClicked($event)"
           [disabled]="disabled"
         >
-          <small class="ms-2 fw-bold">{{ extraButtonTitle }}</small>
+          <span class="ms-2 fw-bold">{{ extraButtonTitle }}</span>
           <lucide-icon
             width="1.5em"
             height="1em"

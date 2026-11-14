@@ -17,7 +17,24 @@ from django.db.models.functions import RowNumber
 from documents.models import Document
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from rest_framework.request import Request
+
+
+def root_document_ids(ids: Iterable[int]) -> QuerySet[int]:
+    """
+    The ids of the root documents of the given documents: a root stands for
+    itself and a version for its root. Only the indexes' bookkeeping needs
+    this, since they hold root documents only.
+    """
+    return (
+        Document.objects.filter(pk__in=ids)
+        .annotate(root_id=Coalesce("root_document_id", "id"))
+        .order_by()
+        .values_list("root_id", flat=True)
+        .distinct()
+    )
 
 
 def versions_newest_first(documents: QuerySet[Document]) -> QuerySet[Document]:
@@ -164,6 +181,25 @@ def get_latest_version_for_root(
     manager = _document_manager(include_deleted=include_deleted)
     latest = versions_newest_first(manager.filter(root_document=root_doc)).first()
     return latest or root_doc
+
+
+def latest_version(document: Document) -> Document:
+    """
+    The newest version of a root document, or the document itself if it has
+    no versions or is a version. Reads a prefetched "versions" lookup when
+    there is one and queries otherwise.
+    """
+    if document.root_document_id is not None or document.pk is None:
+        return document
+    prefetched_cache = getattr(document, "_prefetched_objects_cache", None)
+    prefetched_versions = (
+        prefetched_cache.get("versions") if isinstance(prefetched_cache, dict) else None
+    )
+    if prefetched_versions is None:
+        return get_latest_version_for_root(document)
+    if not prefetched_versions:
+        return document
+    return sort_versions_newest_first(list(prefetched_versions))[0]
 
 
 def resolve_requested_version_for_root(

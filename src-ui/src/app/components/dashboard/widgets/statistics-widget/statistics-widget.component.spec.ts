@@ -67,6 +67,25 @@ describe('StatisticsWidgetComponent', () => {
     expect(req.request.method).toEqual('GET')
   })
 
+  it('recovers from a failed load with a retry', () => {
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}statistics/`)
+      .flush({}, { status: 503, statusText: 'Unavailable' })
+    fixture.detectChanges()
+    expect(component.loading()).toBe(false)
+    expect(component.loadFailed()).toBe(true)
+    const retry: HTMLButtonElement =
+      fixture.nativeElement.querySelector('button')
+    retry.click()
+    expect(component.loadFailed()).toBe(false)
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}statistics/`)
+      .flush({ documents_total: 10 })
+    fixture.detectChanges()
+    expect(component.loading()).toBe(false)
+    expect(component.statistics().documents_total).toBe(10)
+  })
+
   it('should reload after doc is consumed', () => {
     const reloadSpy = jest.spyOn(component, 'reload')
     fileStatusSubject.next(new FileStatus())

@@ -16,7 +16,6 @@ import {
 } from '@angular/forms'
 import { NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { takeUntil } from 'rxjs'
 import {
   CustomField,
@@ -42,7 +41,6 @@ const SELECT_OPTION_PAGE_SIZE = 8
     FormsModule,
     ReactiveFormsModule,
     NgbPaginationModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

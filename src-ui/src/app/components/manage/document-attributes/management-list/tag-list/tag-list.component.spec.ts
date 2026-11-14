@@ -5,7 +5,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { jest } from '@jest/globals'
 import { NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap'
-import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
 import { of } from 'rxjs'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { SortableDirective } from 'src/app/directives/sortable.directive'
@@ -25,7 +24,6 @@ describe('TagListComponent', () => {
         NgbPaginationModule,
         FormsModule,
         ReactiveFormsModule,
-        NgxBootstrapIconsModule.pick(allIcons),
         TagListComponent,
         SortableDirective,
         PageHeaderComponent,

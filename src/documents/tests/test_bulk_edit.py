@@ -1,18 +1,19 @@
 import shutil
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from unittest import mock
 
-import pikepdf
+import pytest
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
-from guardian.shortcuts import assign_perm
 from guardian.shortcuts import get_groups_with_perms
 from guardian.shortcuts import get_users_with_perms
+from pytest_mock import MockerFixture
 
 from documents import bulk_edit
 from documents.models import Correspondent
@@ -22,8 +23,15 @@ from documents.models import Document
 from documents.models import DocumentType
 from documents.models import StoragePath
 from documents.models import Tag
+from documents.pdf_ops import PageSpec
+from documents.permissions import PermissionsSpec
 from documents.permissions import set_permissions_for_objects
-from documents.tests.utils import DirectoriesMixin
+from paperless_testing.dirs import DirectoriesMixin
+from paperless_testing.factories import DocumentFactory
+from paperless_testing.permissions import grant_object
+from paperless_testing.samples import MULTI_PAGE_DIGITAL_PDF
+from paperless_testing.samples import SIMPLE_DIGITAL_PDF
+from paperless_testing.samples import WITH_FORM_PDF
 
 
 class TestBulkEdit(DirectoriesMixin, TestCase):
@@ -440,9 +448,9 @@ class TestBulkEdit(DirectoriesMixin, TestCase):
     def test_set_permissions(self, m) -> None:
         doc_ids = [self.doc1.id, self.doc2.id, self.doc3.id]
 
-        assign_perm("view_document", self.group1, self.doc1)
+        grant_object(self.group1, self.doc1, "view_document")
 
-        permissions = {
+        permissions: PermissionsSpec = {
             "view": {
                 "users": [self.user1.id, self.user2.id],
                 "groups": [self.group2.id],
@@ -482,10 +490,10 @@ class TestBulkEdit(DirectoriesMixin, TestCase):
         self.doc1.owner = self.user1
         self.doc1.save()
 
-        assign_perm("view_document", self.user1, self.doc1)
-        assign_perm("view_document", self.group1, self.doc1)
+        grant_object(self.user1, self.doc1, "view_document")
+        grant_object(self.group1, self.doc1, "view_document")
 
-        permissions = {
+        permissions: PermissionsSpec = {
             "view": {
                 "users": [self.user2.id],
                 "groups": [self.group2.id],
@@ -536,7 +544,7 @@ class TestBulkEdit(DirectoriesMixin, TestCase):
               batched call rather than one call per (document, identity)
               pair
         """
-        permissions = {
+        permissions: PermissionsSpec = {
             "view": {
                 "users": [self.user1.id, self.user2.id],
                 "groups": [self.group2.id],
@@ -609,7 +617,7 @@ class TestBulkEdit(DirectoriesMixin, TestCase):
         self.doc1.owner = self.user1
         self.doc1.save()
         self.user1.groups.add(self.group1)
-        assign_perm("view_document", self.group1, self.doc1)
+        grant_object(self.group1, self.doc1, "view_document")
 
         bulk_edit.set_permissions(
             [self.doc1.id],
@@ -643,7 +651,7 @@ class TestBulkEdit(DirectoriesMixin, TestCase):
         """
         with self.assertRaises(Permission.DoesNotExist):
             set_permissions_for_objects(
-                {"not_a_real_action": {"users": [self.user1.id], "groups": []}},
+                {"not_a_real_action": {"users": [self.user1.id], "groups": []}},  # type: ignore[bad-assignment]
                 Document,
                 [self.doc1.pk],
             )
@@ -671,7 +679,7 @@ class TestBulkEdit(DirectoriesMixin, TestCase):
             set_permissions_for_objects(
                 {
                     "view": {"users": [self.user1.id], "groups": []},
-                    "not_a_real_action": {"users": [self.user1.id], "groups": []},
+                    "not_a_real_action": {"users": [self.user1.id], "groups": []},  # type: ignore[bad-assignment]
                 },
                 Document,
                 [self.doc1.pk],
@@ -701,47 +709,27 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         super().setUp()
         sample1 = self.dirs.scratch_dir / "sample.pdf"
         shutil.copy(
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000001.pdf",
+            SIMPLE_DIGITAL_PDF,
             sample1,
         )
         sample1_archive = self.dirs.archive_dir / "sample_archive.pdf"
         shutil.copy(
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000001.pdf",
+            SIMPLE_DIGITAL_PDF,
             sample1_archive,
         )
         sample2 = self.dirs.scratch_dir / "sample2.pdf"
         shutil.copy(
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000002.pdf",
+            MULTI_PAGE_DIGITAL_PDF,
             sample2,
         )
         sample2_archive = self.dirs.archive_dir / "sample2_archive.pdf"
         shutil.copy(
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000002.pdf",
+            MULTI_PAGE_DIGITAL_PDF,
             sample2_archive,
         )
         sample3 = self.dirs.scratch_dir / "sample3.pdf"
         shutil.copy(
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000003.pdf",
+            WITH_FORM_PDF,
             sample3,
         )
         self.doc1 = Document.objects.create(
@@ -775,11 +763,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
         img_doc_archive = self.dirs.archive_dir / "sample_image.pdf"
         shutil.copy(
-            Path(__file__).parent
-            / "samples"
-            / "documents"
-            / "originals"
-            / "0000001.pdf",
+            SIMPLE_DIGITAL_PDF,
             img_doc_archive,
         )
         self.img_doc = Document.objects.create(
@@ -793,16 +777,14 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         self.img_doc.save()
 
     @staticmethod
-    def mock_password_required_pdf(
-        mock_open: mock.Mock,
-        fake_pdf: mock.Mock,
-    ) -> None:
-        password_context = mock.MagicMock()
-        password_context.__enter__.return_value = fake_pdf
-        mock_open.side_effect = [
-            pikepdf.PasswordError("password required"),
-            password_context,
-        ]
+    def fake_decrypt(
+        src: Path,
+        make_dst: Callable[[], Path],
+        password: str,
+    ) -> Path:
+        dst = make_dst()
+        dst.write_bytes(b"password removed")
+        return dst
 
     @mock.patch("documents.tasks.consume_file.s")
     def test_merge(self, mock_consume_file) -> None:
@@ -847,12 +829,12 @@ class TestPDFActions(DirectoriesMixin, TestCase):
 
         self.assertEqual(result, "OK")
 
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.PdfMerger")
     @mock.patch("documents.tasks.consume_file.s")
     def test_merge_uses_latest_version_source_for_root_selection(
         self,
         mock_consume_file,
-        mock_open_pdf,
+        mock_merger,
     ) -> None:
         version_file = self.dirs.scratch_dir / "sample2_version_merge.pdf"
         shutil.copy(self.doc2.source_path, version_file)
@@ -863,16 +845,14 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             filename=version_file,
             mime_type="application/pdf",
         )
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pdf_version = "1.7"
-        fake_pdf.pages = [mock.Mock()]
-        mock_open_pdf.return_value.__enter__.return_value = fake_pdf
+        merger = mock_merger.return_value.__enter__.return_value
+        merger.save.side_effect = lambda dst: shutil.copy(version.source_path, dst)
 
         result = bulk_edit.merge([self.doc2.id])
 
         self.assertEqual(result, "OK")
-        mock_open_pdf.assert_called_once_with(str(version.source_path))
-        mock_consume_file.assert_not_called()
+        merger.add.assert_called_once_with(version.source_path)
+        mock_consume_file.assert_called_once()
 
     @mock.patch("documents.bulk_edit.delete.si")
     @mock.patch("documents.tasks.consume_file.s")
@@ -1034,18 +1014,18 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
     @mock.patch("documents.tasks.consume_file.delay")
-    @mock.patch("pikepdf.open")
-    def test_merge_with_errors(self, mock_open_pdf, mock_consume_file) -> None:
+    @mock.patch("documents.pdf_ops.PdfMerger.add")
+    def test_merge_with_errors(self, mock_add, mock_consume_file) -> None:
         """
         GIVEN:
             - Existing documents
         WHEN:
             - Merge action is called with 2 documents
-            - Error occurs when opening both files
+            - Error occurs when adding both files
         THEN:
             - Consume file should not be called
         """
-        mock_open_pdf.side_effect = Exception("Error opening PDF")
+        mock_add.side_effect = Exception("Error opening PDF")
         doc_ids = [self.doc2.id, self.doc3.id]
 
         with self.assertLogs("paperless.bulk_edit", level="ERROR") as cm:
@@ -1082,12 +1062,12 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         self.assertEqual(result, "OK")
 
     @mock.patch("documents.bulk_edit.group")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.build_pdfs")
     @mock.patch("documents.tasks.consume_file.s")
     def test_split_uses_latest_version_source_for_root_selection(
         self,
         mock_consume_file,
-        mock_open_pdf,
+        mock_build_pdfs,
         mock_group,
     ) -> None:
         version_file = self.dirs.scratch_dir / "sample2_version_split.pdf"
@@ -1099,17 +1079,15 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             filename=version_file,
             mime_type="application/pdf",
         )
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock(), mock.Mock()]
-        mock_open_pdf.return_value.__enter__.return_value = fake_pdf
+        mock_build_pdfs.return_value = [version.source_path, version.source_path]
         mock_group.return_value.delay.return_value = None
 
         result = bulk_edit.split([self.doc2.id], [[1], [2]])
 
         self.assertEqual(result, "OK")
-        mock_open_pdf.assert_called_once_with(version.source_path)
-        mock_consume_file.assert_not_called()
-        mock_group.return_value.delay.assert_not_called()
+        self.assertEqual(mock_build_pdfs.call_args.args[0], version.source_path)
+        self.assertEqual(mock_consume_file.call_count, 2)
+        mock_group.return_value.delay.assert_called_once()
 
     @mock.patch("documents.bulk_edit.delete.si")
     @mock.patch("documents.tasks.consume_file.s")
@@ -1197,18 +1175,18 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         self.assertEqual(self.doc2.archive_serial_number, 222)
 
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.Pdf.save")
-    def test_split_with_errors(self, mock_save_pdf, mock_consume_file) -> None:
+    @mock.patch("documents.pdf_ops.build_pdfs")
+    def test_split_with_errors(self, mock_build_pdfs, mock_consume_file) -> None:
         """
         GIVEN:
             - Existing documents
         WHEN:
             - Split action is called with 1 document and 2 page groups
-            - Error occurs when saving the files
+            - Error occurs when building the files
         THEN:
             - Consume file should not be called
         """
-        mock_save_pdf.side_effect = Exception("Error saving PDF")
+        mock_build_pdfs.side_effect = Exception("Error building PDFs")
         doc_ids = [self.doc2.id]
         pages = [[1, 2], [3]]
 
@@ -1243,10 +1221,10 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         self.assertEqual(result, "OK")
 
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.Pdf.save")
+    @mock.patch("documents.pdf_ops.rotate_pdf")
     def test_rotate_with_error(
         self,
-        mock_pdf_save,
+        mock_rotate_pdf,
         mock_consume_delay,
     ) -> None:
         """
@@ -1254,11 +1232,11 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             - Existing documents
         WHEN:
             - Rotate action is called with 2 documents
-            - PikePDF raises an error
+            - Rotating the PDF raises an error
         THEN:
             - Rotate action should be called 0 times
         """
-        mock_pdf_save.side_effect = Exception("Error saving PDF")
+        mock_rotate_pdf.side_effect = Exception("Error rotating PDF")
         doc_ids = [self.doc2.id, self.doc3.id]
 
         with self.assertLogs("paperless.bulk_edit", level="ERROR") as cm:
@@ -1293,10 +1271,10 @@ class TestPDFActions(DirectoriesMixin, TestCase):
 
     @mock.patch("documents.data_models.magic.from_file", return_value="application/pdf")
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.rotate_pdf")
     def test_rotate_explicit_selection_uses_root_source_when_root_selected(
         self,
-        mock_open,
+        mock_rotate_pdf,
         mock_consume_delay,
         mock_magic,
     ) -> None:
@@ -1305,9 +1283,6 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             title="B version 1",
             root_document=self.doc2,
         )
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock()]
-        mock_open.return_value.__enter__.return_value = fake_pdf
 
         result = bulk_edit.rotate(
             [self.doc2.id],
@@ -1316,26 +1291,35 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        mock_open.assert_called_once_with(self.doc2.source_path)
+        self.assertEqual(mock_rotate_pdf.call_args.args[0], self.doc2.source_path)
         mock_consume_delay.assert_called_once()
 
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.Pdf.save")
+    @mock.patch("documents.pdf_ops.remove_pages")
     @mock.patch("documents.data_models.magic.from_file", return_value="application/pdf")
-    def test_delete_pages(self, mock_magic, mock_pdf_save, mock_consume_delay) -> None:
+    def test_delete_pages(
+        self,
+        mock_magic,
+        mock_remove_pages,
+        mock_consume_delay,
+    ) -> None:
         """
         GIVEN:
             - Existing documents
         WHEN:
             - Delete pages action is called with 1 document and 2 pages
         THEN:
-            - Save should be called once
+            - The pages are removed from the document's source PDF
             - A new version should be enqueued via consume_file
         """
         doc_ids = [self.doc2.id]
         pages = [1, 3]
         result = bulk_edit.delete_pages(doc_ids, pages)
-        mock_pdf_save.assert_called_once()
+        mock_remove_pages.assert_called_once_with(
+            self.doc2.source_path,
+            mock.ANY,
+            [1, 3],
+        )
         mock_consume_delay.assert_called_once()
         task_kwargs = mock_consume_delay.call_args.kwargs["kwargs"]
         self.assertEqual(task_kwargs["input_doc"].root_document_id, self.doc2.id)
@@ -1347,10 +1331,10 @@ class TestPDFActions(DirectoriesMixin, TestCase):
 
     @mock.patch("documents.data_models.magic.from_file", return_value="application/pdf")
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.remove_pages")
     def test_delete_pages_explicit_selection_uses_root_source_when_root_selected(
         self,
-        mock_open,
+        mock_remove_pages,
         mock_consume_delay,
         mock_magic,
     ) -> None:
@@ -1359,9 +1343,6 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             title="B version 1",
             root_document=self.doc2,
         )
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock(), mock.Mock()]
-        mock_open.return_value.__enter__.return_value = fake_pdf
 
         result = bulk_edit.delete_pages(
             [self.doc2.id],
@@ -1370,23 +1351,26 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        mock_open.assert_called_once_with(self.doc2.source_path)
+        self.assertEqual(mock_remove_pages.call_args.args[0], self.doc2.source_path)
         mock_consume_delay.assert_called_once()
 
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.Pdf.save")
-    def test_delete_pages_with_error(self, mock_pdf_save, mock_consume_delay) -> None:
+    @mock.patch("documents.pdf_ops.remove_pages")
+    def test_delete_pages_with_error(
+        self,
+        mock_remove_pages,
+        mock_consume_delay,
+    ) -> None:
         """
         GIVEN:
             - Existing documents
         WHEN:
             - Delete pages action is called with 1 document and 2 pages
-            - PikePDF raises an error
+            - Removing the pages raises an error
         THEN:
-            - Save should be called once
             - No new version should be enqueued
         """
-        mock_pdf_save.side_effect = Exception("Error saving PDF")
+        mock_remove_pages.side_effect = Exception("Error removing pages")
         doc_ids = [self.doc2.id]
         pages = [1, 3]
 
@@ -1415,6 +1399,41 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         result = bulk_edit.edit_pdf(doc_ids, operations)
         self.assertEqual(result, "OK")
         mock_group.return_value.delay.assert_called_once()
+
+    @mock.patch("documents.bulk_edit.group")
+    @mock.patch("documents.pdf_ops.build_pdfs")
+    @mock.patch("documents.tasks.consume_file.s")
+    def test_edit_pdf_maps_operations_to_outputs(
+        self,
+        mock_consume_file: mock.Mock,
+        mock_build_pdfs: mock.Mock,
+        mock_group: mock.Mock,
+    ) -> None:
+        """
+        GIVEN:
+            - Existing document
+        WHEN:
+            - edit_pdf is called with operations interleaved across two outputs,
+              some of them rotated
+        THEN:
+            - Each output is built from its own operations, in operation order,
+              with the requested rotation
+        """
+        mock_build_pdfs.return_value = [self.doc2.source_path, self.doc2.source_path]
+        mock_group.return_value.delay.return_value = None
+        operations = [
+            {"page": 3, "doc": 1},
+            {"page": 1, "doc": 0, "rotate": 90},
+            {"page": 2, "doc": 1, "rotate": 180},
+        ]
+
+        bulk_edit.edit_pdf([self.doc2.id], operations)
+
+        outputs = mock_build_pdfs.call_args.args[1]
+        self.assertEqual(
+            [specs for specs, _ in outputs],
+            [[PageSpec(1, 90)], [PageSpec(3), PageSpec(2, 180)]],
+        )
 
     @mock.patch("documents.bulk_edit.group")
     @mock.patch("documents.tasks.consume_file.s")
@@ -1531,12 +1550,10 @@ class TestPDFActions(DirectoriesMixin, TestCase):
 
     @mock.patch("documents.data_models.magic.from_file", return_value="application/pdf")
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.new")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.build_pdfs")
     def test_edit_pdf_explicit_selection_uses_root_source_when_root_selected(
         self,
-        mock_open,
-        mock_new,
+        mock_build_pdfs,
         mock_consume_delay,
         mock_magic,
     ) -> None:
@@ -1545,12 +1562,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             title="B version 1",
             root_document=self.doc2,
         )
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock()]
-        mock_open.return_value.__enter__.return_value = fake_pdf
-        output_pdf = mock.MagicMock()
-        output_pdf.pages = []
-        mock_new.return_value = output_pdf
+        mock_build_pdfs.return_value = [Path("edited.pdf")]
 
         result = bulk_edit.edit_pdf(
             [self.doc2.id],
@@ -1560,7 +1572,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        mock_open.assert_called_once_with(self.doc2.source_path)
+        self.assertEqual(mock_build_pdfs.call_args.args[0], self.doc2.source_path)
         mock_consume_delay.assert_called_once()
 
     @mock.patch("documents.bulk_edit.group")
@@ -1588,31 +1600,6 @@ class TestPDFActions(DirectoriesMixin, TestCase):
 
     @mock.patch("documents.bulk_edit.group")
     @mock.patch("documents.tasks.consume_file.s")
-    def test_edit_pdf_open_failure(
-        self,
-        mock_consume_file: mock.Mock,
-        mock_group: mock.Mock,
-    ) -> None:
-        """
-        GIVEN:
-            - Existing document
-        WHEN:
-            - edit_pdf fails to open PDF
-        THEN:
-            - Task group is not called
-        """
-        doc_ids = [self.doc2.id]
-        operations = [
-            {"page": 9999},  # invalid page, forces error during PDF load
-        ]
-        with self.assertLogs("paperless.bulk_edit", level="ERROR"):
-            with self.assertRaises(Exception):
-                bulk_edit.edit_pdf(doc_ids, operations)
-        mock_group.assert_not_called()
-        mock_consume_file.assert_not_called()
-
-    @mock.patch("documents.bulk_edit.group")
-    @mock.patch("documents.tasks.consume_file.s")
     def test_edit_pdf_multiple_outputs_with_update_flag_errors(
         self,
         mock_consume_file,
@@ -1637,23 +1624,15 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         mock_group.assert_not_called()
         mock_consume_file.assert_not_called()
 
-    @mock.patch("pikepdf.open")
-    def test_edit_pdf_rejects_invalid_operations(self, mock_open) -> None:
-        for operations in ([], [{"page": 1, "doc": 2**32}]):
-            with self.subTest(operations=operations):
-                with self.assertLogs("paperless.bulk_edit", level="ERROR"):
-                    with self.assertRaisesRegex(ValueError, "index is out of bounds"):
-                        bulk_edit.edit_pdf([self.doc2.id], operations)
-
-        mock_open.assert_not_called()
-
     @mock.patch("documents.bulk_edit.update_document_content_maybe_archive_file.delay")
     @mock.patch("documents.tasks.consume_file.apply_async")
     @mock.patch("documents.bulk_edit.tempfile.mkdtemp")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.decrypt_pdf")
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=True)
     def test_remove_password_update_document(
         self,
-        mock_open,
+        mock_needs_decrypt,
+        mock_decrypt,
         mock_mkdtemp,
         mock_consume_delay,
         mock_update_document,
@@ -1662,16 +1641,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         temp_dir = self.dirs.scratch_dir / "remove-password-update"
         temp_dir.mkdir(parents=True, exist_ok=True)
         mock_mkdtemp.return_value = str(temp_dir)
-
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock(), mock.Mock(), mock.Mock()]
-        fake_pdf.is_encrypted = True
-
-        def save_side_effect(target_path):
-            Path(target_path).write_bytes(b"new pdf content")
-
-        fake_pdf.save.side_effect = save_side_effect
-        mock_open.return_value.__enter__.return_value = fake_pdf
+        mock_decrypt.side_effect = self.fake_decrypt
 
         result = bulk_edit.remove_password(
             [doc.id],
@@ -1680,14 +1650,8 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        self.assertEqual(
-            mock_open.call_args_list,
-            [
-                mock.call(doc.source_path),
-                mock.call(doc.source_path, password="secret"),
-            ],
-        )
-        fake_pdf.remove_unreferenced_resources.assert_called_once()
+        mock_needs_decrypt.assert_called_once_with(doc.source_path)
+        mock_decrypt.assert_called_once_with(doc.source_path, mock.ANY, "secret")
         mock_update_document.assert_not_called()
         mock_consume_delay.assert_called_once()
         task_kwargs = mock_consume_delay.call_args.kwargs["kwargs"]
@@ -1700,40 +1664,15 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         self.assertEqual(task_kwargs["input_doc"].root_document_id, doc.id)
         self.assertIsNotNone(task_kwargs["overrides"])
 
-    @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("documents.bulk_edit.tempfile.mkdtemp")
-    @mock.patch("pikepdf.open")
-    def test_remove_password_update_document_skips_unencrypted_pdf(
-        self,
-        mock_open,
-        mock_mkdtemp,
-        mock_consume_delay,
-    ) -> None:
-        doc = self.doc1
-        fake_pdf = mock.MagicMock()
-        fake_pdf.is_encrypted = False
-        mock_open.return_value.__enter__.return_value = fake_pdf
-
-        result = bulk_edit.remove_password(
-            [doc.id],
-            password="secret",
-            update_document=True,
-        )
-
-        self.assertEqual(result, "OK")
-        mock_open.assert_called_once_with(doc.source_path)
-        fake_pdf.remove_unreferenced_resources.assert_not_called()
-        fake_pdf.save.assert_not_called()
-        mock_mkdtemp.assert_not_called()
-        mock_consume_delay.assert_not_called()
-
     @mock.patch("documents.bulk_edit.update_document_content_maybe_archive_file.delay")
     @mock.patch("documents.tasks.consume_file.apply_async")
     @mock.patch("documents.bulk_edit.tempfile.mkdtemp")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.decrypt_pdf")
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=True)
     def test_remove_password_update_document_uses_source_paths(
         self,
-        mock_open,
+        mock_needs_decrypt,
+        mock_decrypt,
         mock_mkdtemp,
         mock_consume_delay,
         mock_update_document,
@@ -1744,14 +1683,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         temp_dir = self.dirs.scratch_dir / "remove-password-source-file"
         temp_dir.mkdir(parents=True, exist_ok=True)
         mock_mkdtemp.return_value = str(temp_dir)
-
-        fake_pdf = mock.MagicMock()
-        self.mock_password_required_pdf(mock_open, fake_pdf)
-
-        def save_side_effect(target_path):
-            Path(target_path).write_bytes(b"new pdf content")
-
-        fake_pdf.save.side_effect = save_side_effect
+        mock_decrypt.side_effect = self.fake_decrypt
 
         result = bulk_edit.remove_password(
             [doc.id],
@@ -1761,22 +1693,19 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        self.assertEqual(
-            mock_open.call_args_list,
-            [
-                mock.call(source_file),
-                mock.call(source_file, password="secret"),
-            ],
-        )
+        mock_needs_decrypt.assert_called_once_with(source_file)
+        mock_decrypt.assert_called_once_with(source_file, mock.ANY, "secret")
         mock_update_document.assert_not_called()
         mock_consume_delay.assert_called_once()
 
     @mock.patch("documents.data_models.magic.from_file", return_value="application/pdf")
     @mock.patch("documents.tasks.consume_file.apply_async")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.decrypt_pdf")
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=True)
     def test_remove_password_explicit_selection_uses_root_source_when_root_selected(
         self,
-        mock_open,
+        mock_needs_decrypt,
+        mock_decrypt,
         mock_consume_delay,
         mock_magic,
     ) -> None:
@@ -1785,8 +1714,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
             title="A version 1",
             root_document=self.doc1,
         )
-        fake_pdf = mock.MagicMock()
-        self.mock_password_required_pdf(mock_open, fake_pdf)
+        mock_decrypt.return_value = Path("unprotected.pdf")
 
         result = bulk_edit.remove_password(
             [self.doc1.id],
@@ -1796,12 +1724,11 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        self.assertEqual(
-            mock_open.call_args_list,
-            [
-                mock.call(self.doc1.source_path),
-                mock.call(self.doc1.source_path, password="secret"),
-            ],
+        mock_needs_decrypt.assert_called_once_with(self.doc1.source_path)
+        mock_decrypt.assert_called_once_with(
+            self.doc1.source_path,
+            mock.ANY,
+            "secret",
         )
         mock_consume_delay.assert_called_once()
 
@@ -1809,10 +1736,12 @@ class TestPDFActions(DirectoriesMixin, TestCase):
     @mock.patch("documents.bulk_edit.group")
     @mock.patch("documents.tasks.consume_file.s")
     @mock.patch("documents.bulk_edit.tempfile.mkdtemp")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.decrypt_pdf")
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=True)
     def test_remove_password_creates_consumable_document(
         self,
-        mock_open: mock.Mock,
+        mock_needs_decrypt: mock.Mock,
+        mock_decrypt: mock.Mock,
         mock_mkdtemp: mock.Mock,
         mock_consume_file: mock.Mock,
         mock_group: mock.Mock,
@@ -1822,15 +1751,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         temp_dir = self.dirs.scratch_dir / "remove-password"
         temp_dir.mkdir(parents=True, exist_ok=True)
         mock_mkdtemp.return_value = str(temp_dir)
-
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock(), mock.Mock()]
-        self.mock_password_required_pdf(mock_open, fake_pdf)
-
-        def save_side_effect(target_path: Path) -> None:
-            target_path.write_bytes(b"password removed")
-
-        fake_pdf.save.side_effect = save_side_effect
+        mock_decrypt.side_effect = self.fake_decrypt
         mock_group.return_value.delay.return_value = None
 
         user = User.objects.create(username="owner")
@@ -1845,13 +1766,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        self.assertEqual(
-            mock_open.call_args_list,
-            [
-                mock.call(doc.source_path),
-                mock.call(doc.source_path, password="secret"),
-            ],
-        )
+        mock_decrypt.assert_called_once_with(doc.source_path, mock.ANY, "secret")
         mock_consume_file.assert_called_once()
         call_kwargs = mock_consume_file.call_args.kwargs
         consumable_document = call_kwargs["input_doc"]
@@ -1873,21 +1788,18 @@ class TestPDFActions(DirectoriesMixin, TestCase):
     @mock.patch("documents.bulk_edit.chord")
     @mock.patch("documents.bulk_edit.group")
     @mock.patch("documents.tasks.consume_file.s")
-    @mock.patch("documents.bulk_edit.tempfile.mkdtemp")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.decrypt_pdf")
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=False)
     def test_remove_password_skips_unencrypted_pdf_without_queueing(
         self,
-        mock_open: mock.Mock,
-        mock_mkdtemp: mock.Mock,
+        mock_needs_decrypt: mock.Mock,
+        mock_decrypt: mock.Mock,
         mock_consume_file: mock.Mock,
         mock_group: mock.Mock,
         mock_chord: mock.Mock,
         mock_delete: mock.Mock,
     ) -> None:
         doc = self.doc2
-        fake_pdf = mock.MagicMock()
-        fake_pdf.is_encrypted = False
-        mock_open.return_value.__enter__.return_value = fake_pdf
 
         result = bulk_edit.remove_password(
             [doc.id],
@@ -1897,10 +1809,8 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        mock_open.assert_called_once_with(doc.source_path)
-        fake_pdf.remove_unreferenced_resources.assert_not_called()
-        fake_pdf.save.assert_not_called()
-        mock_mkdtemp.assert_not_called()
+        mock_needs_decrypt.assert_called_once_with(doc.source_path)
+        mock_decrypt.assert_not_called()
         mock_consume_file.assert_not_called()
         mock_group.assert_not_called()
         mock_chord.assert_not_called()
@@ -1911,10 +1821,12 @@ class TestPDFActions(DirectoriesMixin, TestCase):
     @mock.patch("documents.bulk_edit.group")
     @mock.patch("documents.tasks.consume_file.s")
     @mock.patch("documents.bulk_edit.tempfile.mkdtemp")
-    @mock.patch("pikepdf.open")
+    @mock.patch("documents.pdf_ops.decrypt_pdf")
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=True)
     def test_remove_password_deletes_original(
         self,
-        mock_open: mock.Mock,
+        mock_needs_decrypt: mock.Mock,
+        mock_decrypt: mock.Mock,
         mock_mkdtemp: mock.Mock,
         mock_consume_file: mock.Mock,
         mock_group: mock.Mock,
@@ -1925,15 +1837,7 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         temp_dir = self.dirs.scratch_dir / "remove-password-delete"
         temp_dir.mkdir(parents=True, exist_ok=True)
         mock_mkdtemp.return_value = str(temp_dir)
-
-        fake_pdf = mock.MagicMock()
-        fake_pdf.pages = [mock.Mock(), mock.Mock()]
-        self.mock_password_required_pdf(mock_open, fake_pdf)
-
-        def save_side_effect(target_path: Path) -> None:
-            target_path.write_bytes(b"password removed")
-
-        fake_pdf.save.side_effect = save_side_effect
+        mock_decrypt.side_effect = self.fake_decrypt
         mock_chord.return_value.delay.return_value = None
 
         result = bulk_edit.remove_password(
@@ -1945,23 +1849,23 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         )
 
         self.assertEqual(result, "OK")
-        self.assertEqual(
-            mock_open.call_args_list,
-            [
-                mock.call(doc.source_path),
-                mock.call(doc.source_path, password="secret"),
-            ],
-        )
+        mock_decrypt.assert_called_once_with(doc.source_path, mock.ANY, "secret")
         mock_consume_file.assert_called_once()
         mock_group.assert_not_called()
         mock_chord.assert_called_once()
         mock_chord.return_value.delay.assert_called_once()
         mock_delete.si.assert_called_once_with([doc.id])
 
-    @mock.patch("pikepdf.open")
-    def test_remove_password_open_failure(self, mock_open: mock.Mock) -> None:
-        mock_open.side_effect = RuntimeError("wrong password")
-
+    @mock.patch(
+        "documents.pdf_ops.decrypt_pdf",
+        side_effect=RuntimeError("wrong password"),
+    )
+    @mock.patch("documents.pdf_ops.needs_decrypt", return_value=True)
+    def test_remove_password_failure_raises_value_error(
+        self,
+        mock_needs_decrypt: mock.Mock,
+        mock_decrypt: mock.Mock,
+    ) -> None:
         with self.assertLogs("paperless.bulk_edit", level="ERROR") as cm:
             with self.assertRaises(ValueError) as exc:
                 bulk_edit.remove_password([self.doc1.id], password="secret")
@@ -1970,18 +1874,22 @@ class TestPDFActions(DirectoriesMixin, TestCase):
         self.assertIn("Error removing password from document", cm.output[0])
 
 
-class TestBulkEditReprocess(DirectoriesMixin, TestCase):
-    def setUp(self) -> None:
-        super().setUp()
-
-        self.doc = Document.objects.create(
-            title="test",
-            checksum="A",
-            mime_type="application/pdf",
+@pytest.mark.django_db
+class TestBulkEditReprocess:
+    @pytest.fixture
+    def mock_task(self, mocker: MockerFixture) -> mock.MagicMock:
+        return mocker.patch(
+            "documents.bulk_edit.update_document_content_maybe_archive_file",
         )
 
-    @mock.patch("documents.bulk_edit.update_document_content_maybe_archive_file")
-    def test_reprocess_defaults_to_local(self, mock_task: mock.Mock) -> None:
+    @staticmethod
+    def _queued_ids(mock_task: mock.MagicMock) -> list[int]:
+        return [
+            call.kwargs["kwargs"]["document_id"]
+            for call in mock_task.apply_async.call_args_list
+        ]
+
+    def test_reprocess_defaults_to_local(self, mock_task: mock.MagicMock) -> None:
         """
         GIVEN:
             - A reprocess request that says nothing about remote OCR
@@ -1990,18 +1898,17 @@ class TestBulkEditReprocess(DirectoriesMixin, TestCase):
         THEN:
             - The task is queued without asking for the remote engine
         """
-        result = bulk_edit.reprocess([self.doc.id])
+        doc = DocumentFactory()
 
-        self.assertEqual(result, "OK")
+        assert bulk_edit.reprocess([doc.id]) == "OK"
+
         mock_task.apply_async.assert_called_once()
-        _, kwargs = mock_task.apply_async.call_args
-        self.assertEqual(
-            kwargs["kwargs"],
-            {"document_id": self.doc.id, "remote_ocr": False},
-        )
+        assert mock_task.apply_async.call_args.kwargs["kwargs"] == {
+            "document_id": doc.id,
+            "remote_ocr": False,
+        }
 
-    @mock.patch("documents.bulk_edit.update_document_content_maybe_archive_file")
-    def test_reprocess_passes_remote_ocr(self, mock_task: mock.Mock) -> None:
+    def test_reprocess_passes_remote_ocr(self, mock_task: mock.MagicMock) -> None:
         """
         GIVEN:
             - A reprocess request that explicitly asks for remote OCR
@@ -2010,14 +1917,72 @@ class TestBulkEditReprocess(DirectoriesMixin, TestCase):
         THEN:
             - The request is forwarded to the task for every document
         """
-        other = Document.objects.create(
-            title="test2",
-            checksum="B",
-            mime_type="application/pdf",
+        docs = DocumentFactory.create_batch(2)
+
+        bulk_edit.reprocess([doc.id for doc in docs], remote_ocr=True)
+
+        assert mock_task.apply_async.call_count == 2
+        for call in mock_task.apply_async.call_args_list:
+            assert call.kwargs["kwargs"]["remote_ocr"]
+
+    def test_reprocess_root_uses_latest_version(
+        self,
+        mock_task: mock.MagicMock,
+    ) -> None:
+        """
+        GIVEN:
+            - A root document with two versions
+        WHEN:
+            - reprocess is called with the root document
+        THEN:
+            - The latest version is reprocessed, not the root's original file
+        """
+        root = DocumentFactory()
+        DocumentFactory(root_document=root, version_index=1)
+        latest = DocumentFactory(root_document=root, version_index=2)
+
+        bulk_edit.reprocess([root.id])
+
+        assert self._queued_ids(mock_task) == [latest.id]
+
+    def test_reprocess_explicit_version(self, mock_task: mock.MagicMock) -> None:
+        """
+        GIVEN:
+            - A root document with two versions
+        WHEN:
+            - reprocess is called with the older version
+        THEN:
+            - That version is reprocessed
+        """
+        root = DocumentFactory()
+        older = DocumentFactory(root_document=root, version_index=1)
+        DocumentFactory(root_document=root, version_index=2)
+
+        bulk_edit.reprocess([older.id])
+
+        assert self._queued_ids(mock_task) == [older.id]
+
+    def test_reprocess_root_and_latest_version_dispatches_once(
+        self,
+        mock_task: mock.MagicMock,
+    ) -> None:
+        """
+        GIVEN:
+            - A root document with two versions, the latest created on a
+              different date than the root
+        WHEN:
+            - reprocess is called with both the root and its latest version
+        THEN:
+            - The latest version is reprocessed only once
+        """
+        root = DocumentFactory(created=date(2024, 1, 1))
+        DocumentFactory(root_document=root, version_index=1)
+        latest = DocumentFactory(
+            root_document=root,
+            version_index=2,
+            created=date(2025, 1, 1),
         )
 
-        bulk_edit.reprocess([self.doc.id, other.id], remote_ocr=True)
+        bulk_edit.reprocess([root.id, latest.id])
 
-        self.assertEqual(mock_task.apply_async.call_count, 2)
-        for call in mock_task.apply_async.call_args_list:
-            self.assertTrue(call.kwargs["kwargs"]["remote_ocr"])
+        assert self._queued_ids(mock_task) == [latest.id]

@@ -74,6 +74,13 @@ def seed_database() -> None:
         Permission.objects.get(codename="view_uisettings"),
     )
 
+    viewer.user_permissions.add(
+        Permission.objects.get(
+            content_type__app_label="documents",
+            codename="view_uisettings",
+        ),
+    )
+
     inbox = Tag.objects.create(name="Inbox", is_inbox_tag=True, owner=admin)
     quick_filter = Tag.objects.create(name="Another Sample Tag", owner=admin)
     Tag.objects.create(name="TagWithPartial", owner=admin)
@@ -140,7 +147,9 @@ def seed_database() -> None:
     originals.mkdir(parents=True)
     thumbnails = Path(os.environ["PAPERLESS_MEDIA_ROOT"]) / "documents" / "thumbnails"
     thumbnails.mkdir(parents=True)
-    sample_pdf = SOURCE_ROOT / "documents" / "tests" / "samples" / "simple.pdf"
+    sample_pdf = (
+        SOURCE_ROOT / "paperless_testing" / "sample_files" / "simple-digital.pdf"
+    )
     for document in documents:
         shutil.copyfile(sample_pdf, originals / document.filename)
         shutil.copyfile(

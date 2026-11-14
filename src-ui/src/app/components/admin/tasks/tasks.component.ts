@@ -10,12 +10,14 @@ import {
   NgbPopoverModule,
 } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import {
   debounceTime,
   distinctUntilChanged,
   filter,
   first,
+  forkJoin,
+  map,
+  Observable,
   Subject,
   takeUntil,
   timer,
@@ -26,6 +28,7 @@ import {
   PaperlessTaskTriggerSource,
   PaperlessTaskType,
 } from 'src/app/data/paperless-task'
+import { Results } from 'src/app/data/results'
 import { IfPermissionsDirective } from 'src/app/directives/if-permissions.directive'
 import { CustomDatePipe } from 'src/app/pipes/custom-date.pipe'
 import { TasksService } from 'src/app/services/tasks.service'
@@ -148,7 +151,6 @@ const TRIGGER_SOURCE_OPTIONS: Array<{
     NgbDropdownModule,
     NgbPaginationModule,
     NgbPopoverModule,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })
@@ -171,6 +173,7 @@ export class TasksComponent
   public expandedTask: number
   public autoRefreshEnabled: boolean = true
   public readonly pageSize = 25
+  public readonly overviewSize = 10
   public page: number = 1
   readonly totalTasks = signal(0)
   readonly sectionCounts = signal<Record<TaskSection, number>>({
@@ -486,13 +489,6 @@ export class TasksComponent
     return this.sectionCounts()[section]
   }
 
-  private setSectionCount(section: TaskSection, count: number) {
-    this.sectionCounts.update((counts) => ({
-      ...counts,
-      [section]: count,
-    }))
-  }
-
   sectionShowsResults(section: TaskSection): boolean {
     return section !== TaskSection.InProgress
   }
@@ -739,21 +735,12 @@ export class TasksComponent
     this.reloadSectionCounts()
 
     this.loading.set(true)
-    this.tasksService
-      .list(
-        this.page,
-        this.pageSize,
-        this.getParamsForSection(this.selectedSection)
-      )
+    this.listTasks()
       .pipe(first(), takeUntil(this.unsubscribeNotifier))
       .subscribe({
         next: (result) => {
           this.pagedTasks.set(result.results)
           this.totalTasks.set(result.count)
-          this.setSectionCount(TaskSection.All, result.count)
-          if (this.selectedSection !== TaskSection.All) {
-            this.setSectionCount(this.selectedSection, result.count)
-          }
           this.loading.set(false)
           if (
             this.page > 1 &&
@@ -768,5 +755,31 @@ export class TasksComponent
           this.loading.set(false)
         },
       })
+  }
+
+  private listTasks(): Observable<Results<PaperlessTask>> {
+    if (this.selectedSection !== TaskSection.All) {
+      return this.tasksService.list(
+        this.page,
+        this.pageSize,
+        this.getParamsForSection(this.selectedSection)
+      )
+    }
+
+    // All is an overview of each section to avoid splitting sections across pages
+    return forkJoin(
+      this.sections.map((section) =>
+        this.tasksService.list(
+          1,
+          this.overviewSize,
+          this.getParamsForSection(section)
+        )
+      )
+    ).pipe(
+      map((results) => ({
+        count: results.reduce((sum, result) => sum + result.count, 0),
+        results: results.flatMap((result) => result.results),
+      }))
+    )
   }
 }

@@ -167,7 +167,7 @@
             (click)="reprocessSelected()"
             [disabled]="!userCanEditAll && !userCanEditAll"
           >
-            <lucide-icon name="body-text" class="me-1"></lucide-icon
+            <lucide-icon name="body-text" class="me-2"></lucide-icon
             ><ng-container i18n>Reprocess</ng-container>
           </button>
           <button
@@ -175,7 +175,7 @@
             (click)="rotateSelected()"
             [disabled]="!userOwnsAll && !userCanEditAll"
           >
-            <lucide-icon name="arrow-clockwise" class="me-1"></lucide-icon
+            <lucide-icon name="arrow-clockwise" class="me-2"></lucide-icon
             ><ng-container i18n>Rotate</ng-container>
           </button>
           <button
@@ -185,7 +185,7 @@
               !userCanAdd || list.allSelected || list.selectedCount < 2
             "
           >
-            <lucide-icon name="journals" class="me-1"></lucide-icon
+            <lucide-icon name="journals" class="me-2"></lucide-icon
             ><ng-container i18n>Merge</ng-container>
           </button>
           <button
@@ -199,7 +199,7 @@
               list.selectedCount < 2
             "
           >
-            <i-bs name="journal-bookmark-fill" class="me-1"></i-bs
+            <pngx-bs-icon name="journal-bookmark-fill" class="me-2"></pngx-bs-icon
             ><ng-container i18n>Merge as versions</ng-container>
           </button>
         </div>
@@ -231,7 +231,7 @@
             (click)="createShareLinkBundle()"
             [disabled]="!canSendSelection"
           >
-            <lucide-icon name="link" class="me-1"></lucide-icon
+            <lucide-icon name="link" class="me-2"></lucide-icon
             ><ng-container i18n>Create a share link bundle</ng-container>
           </button>
         }
@@ -242,7 +242,7 @@
           )
         ) {
           <button ngbDropdownItem (click)="manageShareLinkBundles()">
-            <lucide-icon name="list-ul" class="me-1"></lucide-icon
+            <lucide-icon name="list-ul" class="me-2"></lucide-icon
             ><ng-container i18n>Manage share link bundles</ng-container>
           </button>
         }
@@ -265,7 +265,7 @@
             (click)="emailSelected()"
             [disabled]="!canSendSelection"
           >
-            <lucide-icon name="envelope" class="me-1"></lucide-icon
+            <lucide-icon name="envelope" class="me-2"></lucide-icon
             ><ng-container i18n>Email</ng-container>
           </button>
         }

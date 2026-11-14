@@ -9,11 +9,11 @@ from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 
 from documents.models import Document
-from documents.tests.factories import DocumentFactory
 from documents.versioning import LATEST_VERSION_CONTENT_PREFETCH_ATTR
 from documents.versioning import has_prefetched_effective_content
 from documents.versioning import latest_version_content_prefetch
 from documents.views import DocumentViewSet
+from paperless_testing.factories import DocumentFactory
 
 if TYPE_CHECKING:
     from rest_framework.test import APIClient
@@ -422,36 +422,4 @@ class TestTrashAndGlobalSearchEffectiveContentIsNeverPerInstance:
         assert response.status_code == status.HTTP_200_OK
         [result] = [r for r in response.data["results"] if r["id"] == root.id]
         assert result["content"] == "own-content"
-        assert _get_effective_content_fallback_queries(ctx) == []
-
-    def test_global_search_db_only_shows_latest_version_content_with_no_extra_query(
-        self,
-        admin_client: APIClient,
-    ) -> None:
-        """
-        GIVEN:
-            - A root document, findable by title, whose own content differs
-              from its latest version's
-        WHEN:
-            - Using the global search endpoint's db_only mode
-        THEN:
-            - The response shows the latest version's content, resolved by
-              GlobalSearchView's own effective_content annotation
-            - There is no per-instance fallback query
-        """
-        root = DocumentFactory(title="findme", content="own-content")
-        DocumentFactory(
-            root_document=root,
-            version_index=1,
-            content="version-content",
-        )
-
-        with CaptureQueriesContext(connection) as ctx:
-            response = admin_client.get(
-                "/api/search/?query=findme&db_only=true",
-            )
-
-        assert response.status_code == status.HTTP_200_OK
-        [result] = [d for d in response.data["documents"] if d["id"] == root.id]
-        assert result["content"] == "version-content"
         assert _get_effective_content_fallback_queries(ctx) == []

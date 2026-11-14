@@ -10,7 +10,6 @@ import {
 import { NgbPopover, NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
 import { Options } from '@popperjs/core'
 import { LucideAngularModule } from 'lucide-angular'
-import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first, Subject, takeUntil } from 'rxjs'
 import { Document } from 'src/app/data/document'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
@@ -30,7 +29,6 @@ import { PdfRenderMode } from '../pdf-viewer/pdf-viewer.types'
     DocumentTitlePipe,
     PngxPdfViewerComponent,
     SafeUrlPipe,
-    NgxBootstrapIconsModule,
     LucideAngularModule,
   ],
 })

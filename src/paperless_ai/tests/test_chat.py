@@ -12,6 +12,7 @@ from paperless_ai.chat import MAX_HISTORY_MESSAGES
 from paperless_ai.chat import aiterate_sync_stream
 from paperless_ai.chat import build_chat_history
 from paperless_ai.chat import stream_chat_with_documents
+from paperless_testing.factories import DocumentFactory
 
 
 @pytest.fixture(autouse=True)
@@ -393,7 +394,6 @@ class TestStreamChatRetrieval:
         temp_llm_index_dir,
         mock_embed_model,
     ) -> None:
-        from documents.tests.factories import DocumentFactory
 
         doc = DocumentFactory.create(content="hello world")
         # Nothing indexed for this document yet.
@@ -411,7 +411,7 @@ class TestStreamChatRetrieval:
         requested documents only — content from other indexed documents must
         not be surfaced.
         """
-        from documents.tests.factories import DocumentFactory
+
         from paperless_ai import indexing
 
         included = DocumentFactory.create(content="included document content")

@@ -1,6 +1,25 @@
 <div class="chat-panel">
-  @if (canClear) {
-    <div class="chat-toolbar">
+  <div class="chat-toolbar">
+    <label class="model-picker">
+      <span i18n>Model</span>
+      <select
+        class="form-select form-select-sm"
+        [(ngModel)]="selectedModel"
+        [disabled]="loading || modelsLoading || !models.length"
+        aria-label="Chat model"
+        i18n-aria-label
+      >
+        @if (!models.length) {
+          <option value="" i18n>Default model</option>
+        }
+        @for (model of models; track model.id) {
+          <option [value]="model.id">
+            {{ model.provider }} · {{ model.name }}
+          </option>
+        }
+      </select>
+    </label>
+    @if (canClear) {
       <button
         type="button"
         class="btn btn-sm btn-link text-muted p-0"
@@ -11,9 +30,31 @@
       >
         <lucide-icon name="trash"></lucide-icon>&nbsp;<span i18n>Clear</span>
       </button>
-    </div>
+    }
+    <button
+      type="button"
+      class="btn btn-sm btn-link"
+      (click)="loadModels()"
+      [disabled]="loading || modelsLoading"
+      i18n
+    >
+      Refresh models
+    </button>
+  </div>
+  @if (modelsError) {
+    <small class="text-danger" role="status" i18n
+      >Could not load models. Refresh to try again, or use the default
+      model.</small
+    >
   }
-  <div class="chat-container" #chatContainer>
+  <div
+    class="chat-container"
+    #chatContainer
+    (scroll)="onScroll()"
+    role="log"
+    aria-label="Conversation"
+    i18n-aria-label
+  >
     @for (message of messages; track $index) {
       <div
         class="chat-message"
@@ -33,7 +74,11 @@
                           class="spinner-border spinner-border-sm"
                           role="status"
                         ></span>
-                        <span i18n>Searching:</span>
+                        @if (step.name === 'read_document') {
+                          <span i18n>Reading document:</span>
+                        } @else {
+                          <span i18n>Searching:</span>
+                        }
                         <span class="query">{{ step.query }}</span>
                       } @else {
                         <lucide-icon name="search"></lucide-icon>
@@ -63,9 +108,7 @@
                       name="search"
                       class="search-icon"
                     ></lucide-icon>
-                    <span i18n
-                      >Searched {{ message.steps.length }} time(s)</span
-                    >
+                    <span i18n>Research steps: {{ message.steps.length }}</span>
                   </button>
                   @if (message.stepsExpanded) {
                     <ul class="steps-list">
@@ -119,6 +162,17 @@
                 (mouseover)="onAnswerHover($event, message)"
                 (mouseout)="onAnswerLeave()"
               ></markdown>
+            }
+
+            @if (message.error && $last && !loading) {
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary mt-2"
+                (click)="retry()"
+                i18n
+              >
+                Retry response
+              </button>
             }
 
             <!-- Sources actually cited -->
@@ -176,10 +230,28 @@
         [(ngModel)]="input"
         name="message"
         autocomplete="off"
+        aria-label="Message"
+        i18n-aria-label
       />
-      <button type="submit" class="btn btn-primary" [disabled]="loading" i18n>
-        Send
-      </button>
+      @if (loading) {
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          (click)="stop()"
+          i18n
+        >
+          Stop
+        </button>
+      } @else {
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="!input.trim()"
+          i18n
+        >
+          Send
+        </button>
+      }
     </div>
   </form>
 </div>

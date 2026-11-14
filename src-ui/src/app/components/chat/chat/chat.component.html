@@ -1,5 +1,11 @@
-<li ngbDropdown [autoClose]="'outside'" class="nav-item me-n2">
-  <button class="btn border-0" id="chatDropdown" ngbDropdownToggle>
+<li ngbDropdown [autoClose]="'outside'" class="nav-item">
+  <button
+    class="btn navbar-action border-0"
+    id="chatDropdown"
+    ngbDropdownToggle
+    aria-label="Chat"
+    i18n-aria-label
+  >
     <lucide-icon
       width="1.3em"
       height="1.3em"
@@ -8,7 +14,7 @@
   </button>
   <div
     ngbDropdownMenu
-    class="dropdown-menu-end shadow p-3"
+    class="dropdown-menu-end shadow p-0 overflow-hidden"
     aria-labelledby="chatDropdown"
   >
     <pngx-chat-panel

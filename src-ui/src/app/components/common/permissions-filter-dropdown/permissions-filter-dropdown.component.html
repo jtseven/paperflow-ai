@@ -34,7 +34,7 @@
           }
         </div>
         <div class="me-1">
-          <small i18n>All</small>
+          <span i18n>All</span>
         </div>
       </button>
       <button
@@ -49,7 +49,7 @@
           }
         </div>
         <div class="me-1">
-          <small>{{ ownerFilterLabel }}</small>
+          {{ ownerFilterLabel }}
         </div>
       </button>
       <button
@@ -64,7 +64,7 @@
           }
         </div>
         <div class="me-1">
-          <small>{{ ownerExclusionFilterLabel }}</small>
+          {{ ownerExclusionFilterLabel }}
         </div>
       </button>
       <button
@@ -79,7 +79,7 @@
           }
         </div>
         <div class="me-1">
-          <small>{{ sharedByFilterLabel }}</small>
+          {{ sharedByFilterLabel }}
         </div>
       </button>
       <button
@@ -94,7 +94,7 @@
           }
         </div>
         <div class="me-1">
-          <small i18n>Unowned</small>
+          <span i18n>Unowned</span>
         </div>
       </button>
       <button
@@ -133,7 +133,7 @@
         <div class="me-1 w-100">
           <ng-select
             name="user"
-            class="user-select small"
+            class="user-select"
             [ngModel]="selectionModel.includeUsers()"
             (ngModelChange)="selectionModel.includeUsers.set($event)"
             [disabled]="disabled"
@@ -168,7 +168,7 @@
               [disabled]="disabled"
             />
             <label class="form-check-label w-100" for="hideUnowned"
-              ><small i18n>Hide unowned</small></label
+              ><ng-container i18n>Hide unowned</ng-container></label
             >
           </div>
         </div>
