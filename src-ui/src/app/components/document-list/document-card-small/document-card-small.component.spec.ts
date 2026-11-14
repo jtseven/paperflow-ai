@@ -52,6 +52,15 @@ describe('DocumentCardSmallComponent', () => {
     jest.useFakeTimers()
   })
 
+  it('selects only once when the checkbox click bubbles', () => {
+    const selectSpy = jest.spyOn(component.toggleSelected, 'emit')
+    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[type="checkbox"]'
+    )
+    checkbox.click()
+    expect(selectSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('should show the card', () => {
     expect(component.show()).toBeTruthy()
     component.ngAfterViewInit()

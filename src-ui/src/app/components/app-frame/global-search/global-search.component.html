@@ -1,7 +1,7 @@
 <div
   ngbDropdown
   #resultsDropdown="ngbDropdown"
-  (openChange)="(onDropdownOpenChange)"
+  (openChange)="onDropdownOpenChange($event)"
 >
   <form class="form-inline position-relative">
     <lucide-icon width="1em" height="1em" name="search"></lucide-icon>
@@ -14,6 +14,7 @@
           name="query"
           placeholder="Search"
           aria-label="Search"
+          i18n-aria-label
           i18n-placeholder
           autocomplete="off"
           spellcheck="false"

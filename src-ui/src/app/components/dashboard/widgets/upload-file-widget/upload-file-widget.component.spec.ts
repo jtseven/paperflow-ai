@@ -130,18 +130,13 @@ describe('UploadFileWidgetComponent', () => {
   })
 
   it('should allow dismissing completed alerts', () => {
-    jest.useFakeTimers()
     mockConsumerStatuses(websocketStatusService)
-    fixture.detectChanges()
     jest
       .spyOn(component, 'getStatusCompleted')
       .mockImplementation(() => SUCCESS_STATUSES)
     const dismissSpy = jest.spyOn(websocketStatusService, 'dismiss')
     component.dismissCompleted()
-    jest.advanceTimersByTime(1000)
-    fixture.detectChanges()
     expect(dismissSpy).toHaveBeenCalledTimes(4)
-    jest.useRealTimers()
   })
 })
 

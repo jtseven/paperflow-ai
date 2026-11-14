@@ -56,6 +56,7 @@ export class StatisticsWidgetComponent
   private documentListViewService = inject(DocumentListViewService)
 
   readonly loading = signal(false)
+  readonly loadFailed = signal(false)
   readonly statistics = signal<Statistics>({})
 
   subscription: Subscription
@@ -64,27 +65,35 @@ export class StatisticsWidgetComponent
   reload() {
     if (this.loading()) return
     this.loading.set(true)
+    this.loadFailed.set(false)
     this.http
       .get<Statistics>(`${environment.apiBaseUrl}statistics/`)
       .pipe(takeUntil(this.unsubscribeNotifer), first())
-      .subscribe((statistics) => {
-        this.loading.set(false)
-        const fileTypeMax = 5
-        if (statistics.document_file_type_counts?.length > fileTypeMax) {
-          const others = statistics.document_file_type_counts.slice(fileTypeMax)
-          statistics.document_file_type_counts =
-            statistics.document_file_type_counts.slice(0, fileTypeMax)
-          statistics.document_file_type_counts.push({
-            mime_type: $localize`Other`,
-            is_other: true,
-            mime_type_count: others.reduce(
-              (currentValue, documentFileType) =>
-                documentFileType.mime_type_count + currentValue,
-              0
-            ),
-          })
-        }
-        this.statistics.set(statistics)
+      .subscribe({
+        next: (statistics) => {
+          this.loading.set(false)
+          const fileTypeMax = 5
+          if (statistics.document_file_type_counts?.length > fileTypeMax) {
+            const others =
+              statistics.document_file_type_counts.slice(fileTypeMax)
+            statistics.document_file_type_counts =
+              statistics.document_file_type_counts.slice(0, fileTypeMax)
+            statistics.document_file_type_counts.push({
+              mime_type: $localize`Other`,
+              is_other: true,
+              mime_type_count: others.reduce(
+                (currentValue, documentFileType) =>
+                  documentFileType.mime_type_count + currentValue,
+                0
+              ),
+            })
+          }
+          this.statistics.set(statistics)
+        },
+        error: () => {
+          this.loading.set(false)
+          this.loadFailed.set(true)
+        },
       })
   }
 

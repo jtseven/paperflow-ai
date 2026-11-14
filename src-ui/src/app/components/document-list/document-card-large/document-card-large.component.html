@@ -40,7 +40,11 @@
               class="form-check-input"
               id="smallCardCheck{{ document().id }}"
               [checked]="selected()"
-              (click)="this.toggleSelected.emit($event)"
+              (click)="
+                this.toggleSelected.emit($event); $event.stopPropagation()
+              "
+              aria-label="Select document"
+              i18n-aria-label
             />
             <label
               class="form-check-label"

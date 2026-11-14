@@ -7,8 +7,9 @@
     data-toggle="collapse"
     data-target="#sidebarMenu"
     aria-controls="sidebarMenu"
-    aria-expanded="false"
+    [attr.aria-expanded]="!isMenuCollapsed()"
     aria-label="Toggle navigation"
+    i18n-aria-label
     (click)="closeMobileSearch(); toggleMenuCollapsed()"
   >
     <i-bs width="1.5em" height="1.5em" name="list"></i-bs>

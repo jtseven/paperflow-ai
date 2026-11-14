@@ -12,7 +12,7 @@ import {
   NgbModalRef,
 } from '@ng-bootstrap/ng-bootstrap'
 import { NgxBootstrapIconsModule, allIcons } from 'ngx-bootstrap-icons'
-import { of } from 'rxjs'
+import { Subject, of, throwError } from 'rxjs'
 import { DataType } from 'src/app/data/datatype'
 import {
   FILTER_FULLTEXT_QUERY,
@@ -190,7 +190,7 @@ describe('GlobalSearchComponent', () => {
     component.dropdownKeyDown(
       new KeyboardEvent('keydown', { key: 'ArrowRight' })
     )
-    expect(secondaryItemFocusSpy).toHaveBeenCalled()
+    expect(secondaryItemFocusSpy).not.toHaveBeenCalled()
 
     component.dropdownKeyDown(
       new KeyboardEvent('keydown', { key: 'ArrowLeft' })
@@ -216,7 +216,7 @@ describe('GlobalSearchComponent', () => {
     component.dropdownKeyDown(
       new KeyboardEvent('keydown', { key: 'ArrowDown' })
     )
-    component['currentItemIndex'] = searchResults.total - 1
+    component['currentItemIndex'] = component.resultItems.length - 1
     component['setCurrentItem']()
     component.dropdownKeyDown(
       new KeyboardEvent('keydown', { key: 'ArrowDown' })
@@ -228,14 +228,19 @@ describe('GlobalSearchComponent', () => {
     component.searchInputKeyDown(
       new KeyboardEvent('keydown', { key: 'ArrowUp' })
     )
-    expect(component['currentItemIndex']).toBe(searchResults.total - 1)
+    expect(component['currentItemIndex']).toBe(component.resultItems.length - 1)
 
     component.searchInputKeyDown(
       new KeyboardEvent('keydown', { key: 'ArrowDown' })
     )
     expect(component['currentItemIndex']).toBe(0)
 
-    component.searchResults.set({ total: 1 } as any)
+    component.searchResults.set({
+      ...Object.fromEntries(Object.keys(searchResults).map((key) => [key, []])),
+      total: 1,
+      documents: searchResults.documents,
+    } as any)
+    fixture.detectChanges()
     const primaryActionSpy = jest.spyOn(component, 'primaryAction')
     component.searchInputKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
     expect(primaryActionSpy).toHaveBeenCalled()
@@ -254,7 +259,12 @@ describe('GlobalSearchComponent', () => {
     )
     expect(blurSpy).toHaveBeenCalled()
 
-    component.searchResults.set({ total: 1 } as any)
+    component.searchResults.set({
+      ...Object.fromEntries(Object.keys(searchResults).map((key) => [key, []])),
+      total: 1,
+      documents: searchResults.documents,
+    } as any)
+    fixture.detectChanges()
     component.resultsDropdown.open()
 
     component.searchInputKeyDown(
@@ -268,6 +278,7 @@ describe('GlobalSearchComponent', () => {
     component.searchResults.set(searchResults as any)
     component.resultsDropdown.open()
     component.query.set('test')
+    fixture.detectChanges()
     const advancedSearchSpy = jest.spyOn(component, 'runFullSearch')
     component.searchInputKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
     expect(advancedSearchSpy).toHaveBeenCalled()
@@ -284,6 +295,51 @@ describe('GlobalSearchComponent', () => {
     expect(fullSearchSpy).toHaveBeenCalled()
     expect(searchSpy).not.toHaveBeenCalled()
     jest.useRealTimers()
+  })
+
+  it('ignores old responses after the query changes or the dropdown closes', () => {
+    jest.useFakeTimers()
+    const response = new Subject<any>()
+    jest.spyOn(searchService, 'globalSearch').mockReturnValue(response)
+    const openSpy = jest.spyOn(component.resultsDropdown, 'open')
+    component.onQueryChange('older')
+    jest.advanceTimersByTime(401)
+    component.onQueryChange('newer')
+    response.next(searchResults)
+    expect(component.searchResults()).toBeNull()
+    expect(openSpy).not.toHaveBeenCalled()
+    jest.advanceTimersByTime(401)
+    component.onDropdownOpenChange(false)
+    response.next(searchResults)
+    expect(component.searchResults()).toBeNull()
+    expect(component.semanticResults()).toEqual([])
+    expect(openSpy).not.toHaveBeenCalled()
+    jest.useRealTimers()
+  })
+
+  it('clears the spinner and reports failed keyword searches', () => {
+    jest.useFakeTimers()
+    jest
+      .spyOn(searchService, 'globalSearch')
+      .mockReturnValue(throwError(() => new Error('Offline')))
+    const errorSpy = jest.spyOn(toastService, 'showError')
+    component.onQueryChange('invoice')
+    jest.advanceTimersByTime(401)
+    expect(component.loading()).toBe(false)
+    expect(errorSpy).toHaveBeenCalled()
+    jest.useRealTimers()
+  })
+
+  it('navigates semantic-only results with the keyboard', () => {
+    component.semanticResults.set([{ id: 7, title: 'Semantic result' } as any])
+    component.resultsDropdown.open()
+    fixture.detectChanges()
+    component.searchInputKeyDown(
+      new KeyboardEvent('keydown', { key: 'ArrowDown' })
+    )
+    expect(document.activeElement).toBe(
+      component.primaryButtons.first.nativeElement
+    )
   })
 
   it('should search on query debounce', () => {
