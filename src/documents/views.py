@@ -2417,6 +2417,7 @@ class ChatHistoryItemSerializer(serializers.Serializer[dict[str, Any]]):
 class ChatStreamingSerializer(serializers.Serializer[dict[str, Any]]):
     q = serializers.CharField(required=True, max_length=4000)
     document_id = serializers.IntegerField(required=False, allow_null=True)
+    model = serializers.CharField(required=False, max_length=160)
     history = ChatHistoryItemSerializer(many=True, required=False)
 
     def validate_history(self, value):
@@ -2425,6 +2426,17 @@ class ChatStreamingSerializer(serializers.Serializer[dict[str, Any]]):
                 f"At most {MAX_CHAT_HISTORY_ITEMS} history items are allowed.",
             )
         return value
+
+
+class ChatModelsView(GenericAPIView[Any]):
+    permission_classes = (IsAuthenticated, ViewDocumentsPermissions)
+
+    def get(self, request, *args, **kwargs):
+        from paperless_ai.providers import available_chat_models
+
+        response = Response(available_chat_models())
+        response["Cache-Control"] = "no-store"
+        return response
 
 
 @method_decorator(
@@ -2446,6 +2458,18 @@ class ChatStreamingView(GenericAPIView[Any]):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         question = serializer.validated_data["q"]
+        from paperless_ai.providers import available_chat_models
+
+        selection = serializer.validated_data.get("model")
+        catalog = available_chat_models(ai_config)
+        if selection and selection not in {item["id"] for item in catalog["models"]}:
+            raise serializers.ValidationError(
+                {
+                    "model": "This chat model is no longer available. Refresh the model list.",
+                },
+            )
+        if not selection and not ai_config.llm_backend:
+            selection = catalog["default_model"]
 
         doc_id = serializer.validated_data.get("document_id")
 
@@ -2483,6 +2507,7 @@ class ChatStreamingView(GenericAPIView[Any]):
             chat_history=chat_history,
             unrestricted=unrestricted,
             output_language=output_language,
+            **({"model": selection} if selection and selection != "default" else {}),
         )
         response = StreamingHttpResponse(
             aiterate_sync_stream(stream),

@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { RouterTestingModule } from '@angular/router/testing'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { provideMarkdown } from 'ngx-markdown'
-import { EMPTY } from 'rxjs'
+import { EMPTY, of } from 'rxjs'
 import { ChatService } from 'src/app/services/chat.service'
 import { AiChatWidgetComponent } from './ai-chat-widget.component'
 
@@ -19,7 +19,13 @@ describe('AiChatWidgetComponent', () => {
       ],
       providers: [
         provideMarkdown(),
-        { provide: ChatService, useValue: { streamChat: () => EMPTY } },
+        {
+          provide: ChatService,
+          useValue: {
+            streamChat: () => EMPTY,
+            getModels: () => of({ models: [], default_model: null }),
+          },
+        },
       ],
     }).compileComponents()
 

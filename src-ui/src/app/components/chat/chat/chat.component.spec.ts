@@ -4,7 +4,7 @@ import { RouterTestingModule } from '@angular/router/testing'
 import { jest } from '@jest/globals'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { provideMarkdown } from 'ngx-markdown'
-import { EMPTY, Subject } from 'rxjs'
+import { EMPTY, of, Subject } from 'rxjs'
 import { ChatService } from 'src/app/services/chat.service'
 import { ChatComponent } from './chat.component'
 
@@ -23,7 +23,13 @@ describe('ChatComponent', () => {
       ],
       providers: [
         provideMarkdown(),
-        { provide: ChatService, useValue: { streamChat: () => EMPTY } },
+        {
+          provide: ChatService,
+          useValue: {
+            streamChat: () => EMPTY,
+            getModels: () => of({ models: [], default_model: null }),
+          },
+        },
       ],
     }).compileComponents()
 

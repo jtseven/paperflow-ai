@@ -207,4 +207,21 @@ describe('ConfigComponent', () => {
       'remote_ocr_mode',
     ])
   })
+  it('saves independently configured chat providers together', () => {
+    const providers = {
+      chat_openai_api_key: 'openai-test-key',
+      chat_openai_models: 'first-model, second-model',
+      chat_anthropic_api_key: 'claude-test-key',
+      chat_anthropic_models: 'claude-model',
+      chat_mistral_api_key: 'mistral-test-key',
+      chat_mistral_models: 'mistral-model',
+    }
+    component.configForm.patchValue(providers)
+    const save = jest
+      .spyOn(configService, 'saveConfig')
+      .mockReturnValue(of(providers as any))
+    jest.spyOn(settingService, 'initializeSettings').mockReturnValue(of(true))
+    component.saveConfig()
+    expect(save).toHaveBeenCalledWith(expect.objectContaining(providers))
+  })
 })

@@ -1,20 +1,25 @@
-import { NgZone } from '@angular/core'
+import { NgZone, SimpleChange } from '@angular/core'
 import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { provideRouter, Router } from '@angular/router'
 import { jest } from '@jest/globals'
 import { provideMarkdown } from 'ngx-markdown'
-import { from, Observable, Subject } from 'rxjs'
+import { from, Observable, of, Subject } from 'rxjs'
 import { ChatEvent, ChatService } from 'src/app/services/chat.service'
 import { ChatPanelComponent } from './chat-panel.component'
 
 describe('ChatPanelComponent', () => {
   let component: ChatPanelComponent
   let fixture: ComponentFixture<ChatPanelComponent>
-  let chatService: { streamChat: jest.Mock }
+  let chatService: { streamChat: jest.Mock; getModels: jest.Mock }
 
   beforeEach(async () => {
     localStorage.clear()
-    chatService = { streamChat: jest.fn() }
+    chatService = {
+      streamChat: jest.fn(),
+      getModels: jest
+        .fn()
+        .mockReturnValue(of({ models: [], default_model: null })),
+    }
     await TestBed.configureTestingModule({
       imports: [ChatPanelComponent],
       providers: [
@@ -34,6 +39,61 @@ describe('ChatPanelComponent', () => {
     component.input = prompt
     component.sendMessage()
   }
+
+  it('loads configured models and sends the chosen model', () => {
+    chatService.getModels.mockReturnValue(
+      of({
+        models: [
+          { id: 'anthropic:claude', provider: 'Claude', name: 'Claude' },
+        ],
+        default_model: 'anthropic:claude',
+      })
+    )
+    component.loadModels()
+    send('hello', [{ type: 'done' }])
+    expect(chatService.streamChat).toHaveBeenCalledWith(
+      null,
+      'hello',
+      [],
+      'anthropic:claude'
+    )
+  })
+
+  it('cancels a response and retries without duplicating the question', () => {
+    const stream = new Subject<ChatEvent>()
+    chatService.streamChat.mockReturnValue(stream)
+    component.input = 'hello'
+    component.sendMessage()
+    stream.next({ type: 'token', text: 'partial' })
+    component.stop()
+    stream.next({ type: 'token', text: 'ignored' })
+    expect(component.loading).toBe(false)
+    expect(component.messages.at(-1).content).toBe('partial')
+    chatService.streamChat.mockReturnValue(
+      from([{ type: 'token', text: 'complete' }, { type: 'done' }])
+    )
+    component.retry()
+    expect(component.messages.map((message) => message.content)).toEqual([
+      'hello',
+      'complete',
+    ])
+    expect(chatService.streamChat).toHaveBeenLastCalledWith(null, 'hello', [])
+  })
+
+  it('cancels the old document stream before loading a different thread', () => {
+    const stream = new Subject<ChatEvent>()
+    chatService.streamChat.mockReturnValue(stream)
+    component.documentId = 1
+    component.input = 'old question'
+    component.sendMessage()
+    component.documentId = 2
+    component.ngOnChanges({ documentId: new SimpleChange(1, 2, false) })
+    stream.next({ type: 'token', text: 'old answer' })
+    expect(component.messages).toEqual([])
+    expect(component.loading).toBe(false)
+    expect(localStorage.getItem('pngx:chat:doc:2')).toBeNull()
+    expect(localStorage.getItem('pngx:chat:doc:1')).toContain('old question')
+  })
 
   it('shows a welcome message when configured', () => {
     component.welcome = 'Hi there'

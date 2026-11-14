@@ -251,7 +251,41 @@ class ApplicationConfigurationSerializer(
         max_length=1024,
     )
 
-    OBFUSCATED_FIELDS = ("llm_api_key", "remote_ocr_api_key")
+    chat_openai_api_key = ObfuscatedPasswordField(
+        required=False,
+        allow_null=True,
+        max_length=1024,
+    )
+    chat_anthropic_api_key = ObfuscatedPasswordField(
+        required=False,
+        allow_null=True,
+        max_length=1024,
+    )
+    chat_mistral_api_key = ObfuscatedPasswordField(
+        required=False,
+        allow_null=True,
+        max_length=1024,
+    )
+
+    OBFUSCATED_FIELDS = (
+        "llm_api_key",
+        "remote_ocr_api_key",
+        "chat_openai_api_key",
+        "chat_anthropic_api_key",
+        "chat_mistral_api_key",
+    )
+
+    def validate(self, attrs):
+        from paperless_ai.providers import parse_models
+
+        for provider in ("openai", "anthropic", "mistral"):
+            field = f"chat_{provider}_models"
+            if attrs.get(field):
+                try:
+                    attrs[field] = ", ".join(parse_models(attrs[field]))
+                except ValueError as exc:
+                    raise serializers.ValidationError({field: str(exc)}) from exc
+        return super().validate(attrs)
 
     def get_externally_configured_variables(
         self,

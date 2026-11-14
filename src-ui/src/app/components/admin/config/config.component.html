@@ -37,16 +37,18 @@
                           <h6 class="mb-0">
                             {{ option.title }}
                           </h6>
-                          <a
-                            class="btn btn-sm btn-link"
-                            title="Read the documentation about this setting"
-                            i18n-title
-                            [href]="getDocsUrl(option.config_key)"
-                            target="_blank"
-                            referrerpolicy="no-referrer"
-                          >
-                            <lucide-icon name="info-circle"></lucide-icon>
-                          </a>
+                          @if (option.config_key) {
+                            <a
+                              class="btn btn-sm btn-link"
+                              title="Read the documentation about this setting"
+                              i18n-title
+                              [href]="getDocsUrl(option.config_key)"
+                              target="_blank"
+                              referrerpolicy="no-referrer"
+                            >
+                              <lucide-icon name="info-circle"></lucide-icon>
+                            </a>
+                          }
                           @if (isExternallyConfigured(option.config_key)) {
                             @if (isSet(option.key)) {
                               <span

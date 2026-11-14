@@ -108,6 +108,7 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
+            patch("paperless_ai.indexing.read_store"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
                 side_effect=fake_build_tool,
@@ -149,6 +150,7 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
+            patch("paperless_ai.indexing.read_store"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
                 return_value=MagicMock(),
@@ -179,6 +181,7 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
+            patch("paperless_ai.indexing.read_store"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
                 return_value=MagicMock(),
@@ -232,6 +235,7 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
+            patch("paperless_ai.indexing.read_store"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
                 side_effect=fake_build_tool,
@@ -286,6 +290,7 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
+            patch("paperless_ai.indexing.read_store"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
                 return_value=MagicMock(),
@@ -311,6 +316,7 @@ class TestStreamAgenticChat:
             patch("paperless_ai.client.AIClient"),
             patch("paperless_ai.indexing.llm_index_exists", return_value=True),
             patch("paperless_ai.indexing.load_or_build_index"),
+            patch("paperless_ai.indexing.read_store"),
             patch(
                 "paperless_ai.agent_chat._build_search_tool",
                 return_value=MagicMock(),
@@ -323,3 +329,105 @@ class TestStreamAgenticChat:
             events = _events(list(stream_agentic_chat("question", documents)))
 
         assert events == [{"type": "error", "message": CHAT_ERROR_MESSAGE}]
+
+
+class TestAgentTools:
+    def search_tool(self, documents, nodes=(), error=None):
+        from paperless_ai.agent_chat import _build_search_tool
+
+        registry = _ReferenceRegistry(documents)
+        with patch("llama_index.core.retrievers.VectorIndexRetriever") as retriever:
+            retriever.return_value.retrieve.return_value = list(nodes)
+            retriever.return_value.retrieve.side_effect = error
+            tool = _build_search_tool(MagicMock(), registry)
+        return tool, registry, retriever.return_value.retrieve
+
+    def test_lexical_fallback_finds_exact_identifier_when_vectors_fail(self):
+        doc = _doc(1, "Invoice")
+        doc.content = "The invoice INV-2026-198 totals EUR 42."
+        tool, registry, _retrieve = self.search_tool(
+            [doc],
+            error=RuntimeError("offline"),
+        )
+        result = tool.call(query="INV-2026-198").content
+        assert "EUR 42" in result
+        assert registry.calls["INV-2026-198"]["count"] == 1
+        assert registry.drain_pending()[0]["document_id"] == 1
+
+    def test_search_deduplicates_queries_and_enforces_budget(self):
+        from paperless_ai.agent_chat import AGENT_MAX_SEARCHES
+
+        tool, _registry, retrieve = self.search_tool([_doc(1)])
+        tool.call(query="first")
+        tool.call(query=" FIRST ")
+        assert retrieve.call_count == 1
+        for i in range(AGENT_MAX_SEARCHES - 1):
+            tool.call(query=f"query {i}")
+        assert "budget exhausted" in tool.call(query="one too many").content
+        assert retrieve.call_count == AGENT_MAX_SEARCHES
+
+    def test_filters_unauthorized_vector_results_and_counts_visible_documents(self):
+        from llama_index.core.schema import NodeWithScore
+        from llama_index.core.schema import TextNode
+
+        nodes = [
+            NodeWithScore(
+                node=TextNode(text="private", metadata={"document_id": "99"}),
+            ),
+            NodeWithScore(node=TextNode(text="visible", metadata={"document_id": "1"})),
+            NodeWithScore(
+                node=TextNode(text="another chunk", metadata={"document_id": "1"}),
+            ),
+        ]
+        tool, registry, _ = self.search_tool([_doc(1)], nodes=nodes)
+        result = tool.call(query="question").content
+        assert "private" not in result
+        assert "visible" in result
+        assert registry.calls["question"]["count"] == 1
+
+    def test_read_requires_discovery_and_pages_with_stable_citations(self):
+        from paperless_ai.agent_chat import AGENT_READ_LENGTH
+        from paperless_ai.agent_chat import _build_read_tool
+
+        doc = _doc(1)
+        doc.content = "a" * AGENT_READ_LENGTH + "last page"
+        registry = _ReferenceRegistry([doc])
+        tool = _build_read_tool(registry)
+        assert "Search for this document first" in tool.call(document_id=1).content
+        registry.register("1", doc.title, "a")
+        first = tool.call(document_id=1).content
+        assert f"Next offset: {AGENT_READ_LENGTH}" in first
+        assert "last page" not in first
+        last = tool.call(document_id=1, offset=AGENT_READ_LENGTH).content
+        assert "[1]" in last
+        assert "last page" in last
+        assert "End of document" in last
+        assert "Search for this document first" in tool.call(document_id=99).content
+
+    def test_read_budget_is_enforced(self):
+        from paperless_ai.agent_chat import AGENT_MAX_READS
+        from paperless_ai.agent_chat import _build_read_tool
+
+        doc = _doc(1)
+        doc.content = "text"
+        registry = _ReferenceRegistry([doc])
+        registry.register("1", doc.title, "text")
+        tool = _build_read_tool(registry)
+        for _ in range(AGENT_MAX_READS):
+            tool.call(document_id=1)
+        assert "budget exhausted" in tool.call(document_id=1).content
+
+    def test_empty_or_oversized_query_does_not_use_retrieval(self):
+        tool, _registry, retrieve = self.search_tool([_doc(1)])
+        for query in [" ", "a" * 1001]:
+            assert "at most 1000 characters" in tool.call(query=query).content
+        retrieve.assert_not_called()
+
+    def test_negative_read_offset_does_not_consume_budget(self):
+        from paperless_ai.agent_chat import _build_read_tool
+
+        registry = _ReferenceRegistry([_doc(1)])
+        registry.register("1", "Doc 1", "text")
+        tool = _build_read_tool(registry)
+        assert "non-negative" in tool.call(document_id=1, offset=-1).content
+        assert registry.read_count == 0

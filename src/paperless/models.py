@@ -350,6 +350,15 @@ class ApplicationConfiguration(AbstractSingletonModel):
         null=True,
     )
 
+    chat_openai_api_key = models.CharField(blank=True, null=True, max_length=1024)
+    chat_openai_models = models.CharField(blank=True, null=True, max_length=2048)
+
+    chat_anthropic_api_key = models.CharField(blank=True, null=True, max_length=1024)
+    chat_anthropic_models = models.CharField(blank=True, null=True, max_length=2048)
+
+    chat_mistral_api_key = models.CharField(blank=True, null=True, max_length=1024)
+    chat_mistral_models = models.CharField(blank=True, null=True, max_length=2048)
+
     llm_embedding_backend = models.CharField(
         verbose_name=_("Sets the LLM embedding backend"),
         blank=True,

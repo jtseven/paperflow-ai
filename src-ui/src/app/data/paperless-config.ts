@@ -331,6 +331,60 @@ export const PaperlessConfigOptions: ConfigOption[] = [
     category: ConfigCategory.Barcode,
   },
   {
+    key: 'chat_openai_api_key',
+    title: $localize`API key`,
+    type: ConfigOptionType.Password,
+    config_key: '',
+    category: ConfigCategory.AI,
+    section: $localize`OpenAI (ChatGPT)`,
+    note: $localize`Stored on the server. Leave the masked value unchanged to keep the saved key. Clear it to disable this provider.`,
+  },
+  {
+    key: 'chat_openai_models',
+    title: $localize`Chat models`,
+    type: ConfigOptionType.String,
+    config_key: '',
+    category: ConfigCategory.AI,
+    section: $localize`OpenAI (ChatGPT)`,
+    note: $localize`Comma-separated model IDs with tool calling support available to your API account. The first model is offered first in chat. Add an API key and at least one model to enable this provider.`,
+  },
+  {
+    key: 'chat_anthropic_api_key',
+    title: $localize`API key`,
+    type: ConfigOptionType.Password,
+    config_key: '',
+    category: ConfigCategory.AI,
+    section: $localize`Anthropic (Claude)`,
+    note: $localize`Stored on the server. Leave the masked value unchanged to keep the saved key. Clear it to disable this provider.`,
+  },
+  {
+    key: 'chat_anthropic_models',
+    title: $localize`Chat models`,
+    type: ConfigOptionType.String,
+    config_key: '',
+    category: ConfigCategory.AI,
+    section: $localize`Anthropic (Claude)`,
+    note: $localize`Comma-separated model IDs with tool calling support available to your API account. The first model is offered first in chat. Add an API key and at least one model to enable this provider.`,
+  },
+  {
+    key: 'chat_mistral_api_key',
+    title: $localize`API key`,
+    type: ConfigOptionType.Password,
+    config_key: '',
+    category: ConfigCategory.AI,
+    section: $localize`Mistral`,
+    note: $localize`Stored on the server. Leave the masked value unchanged to keep the saved key. Clear it to disable this provider.`,
+  },
+  {
+    key: 'chat_mistral_models',
+    title: $localize`Chat models`,
+    type: ConfigOptionType.String,
+    config_key: '',
+    category: ConfigCategory.AI,
+    section: $localize`Mistral`,
+    note: $localize`Comma-separated model IDs with tool calling support available to your API account. The first model is offered first in chat. Add an API key and at least one model to enable this provider.`,
+  },
+  {
     key: 'ai_enabled',
     title: $localize`AI Enabled`,
     type: ConfigOptionType.Boolean,
@@ -422,6 +476,13 @@ export const PaperlessConfigOptions: ConfigOption[] = [
 ]
 
 export interface PaperlessConfig extends ObjectWithId {
+  chat_openai_api_key?: string
+  chat_openai_models?: string
+  chat_anthropic_api_key?: string
+  chat_anthropic_models?: string
+  chat_mistral_api_key?: string
+  chat_mistral_models?: string
+
   defaults?: { [key: string]: any }
   externally_configured_variables: string[]
   output_type: OutputTypeConfig

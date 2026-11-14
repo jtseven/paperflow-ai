@@ -10,7 +10,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from guardian.shortcuts import clear_ct_cache
-from pytest_django.fixtures import Settings
+from pytest_django.fixtures import SettingsWrapper as Settings
 from rest_framework.test import APIClient
 
 from documents.tests.factories import DocumentFactory
