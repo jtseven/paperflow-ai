@@ -1,1 +1,5 @@
-// The chat UI lives in the shared pngx-chat-panel component.
+// Keep the model menu inside the chat so nested dropdowns stay open, and let
+// it extend beyond the widget when the conversation is short.
+:host ::ng-deep pngx-widget-frame .card {
+  overflow: visible;
+}
