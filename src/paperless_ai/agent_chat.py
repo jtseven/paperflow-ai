@@ -8,7 +8,8 @@ collection: the LLM drives a retrieval tool, may call it several times to
 gather evidence, and cites the documents it actually used.
 
 The backend streams the same structured NDJSON event protocol as the
-per-document chat (see :mod:`paperless_ai.chat`): ``tool_call`` / ``tool_result``
+per-document chat (see :mod:`paperless_ai.chat`): ``status`` reports model work,
+``tool_call`` / ``tool_result``
 events expose the agent's searches live, ``token`` events stream the answer,
 ``citation`` events map each ``[n]`` marker to the exact source document (with a
 preview snippet), and a final ``done`` (or ``error``) closes the stream. The
@@ -32,6 +33,7 @@ from paperless_ai.chat import _build_document_reference
 from paperless_ai.chat import chat_event
 from paperless_ai.chat import done_event
 from paperless_ai.chat import error_event
+from paperless_ai.chat import status_event
 from paperless_ai.chat import token_event
 
 if TYPE_CHECKING:
@@ -395,6 +397,7 @@ def stream_agentic_chat(
             yield done_event()
             return
 
+        yield status_event("preparing")
         client = AIClient(model=model) if model else AIClient()
         if not llm_index_exists():
             # No index has been built yet. Queue a build and tell the user
@@ -487,6 +490,7 @@ async def _astream_agent_events(
     # max_iterations bounds how many search/answer turns the agent may take
     # (see AGENT_MAX_ITERATIONS); paired with early_stopping_method="generate"
     # the agent answers from gathered evidence rather than erroring at the cap.
+    yield status_event("thinking")
     handler = agent.run(
         query_str,
         chat_history=chat_history or None,
@@ -507,6 +511,7 @@ async def _astream_agent_events(
             )
             for citation in registry.drain_pending():
                 yield chat_event(EVENT_CITATION, **citation)
+            yield status_event("thinking")
         elif isinstance(event, ToolCall):
             yield chat_event(
                 EVENT_TOOL_CALL,

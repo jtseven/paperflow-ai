@@ -5,6 +5,7 @@ import { jest } from '@jest/globals'
 import { provideMarkdown } from 'ngx-markdown'
 import { from, Observable, of, Subject } from 'rxjs'
 import { ChatEvent, ChatService } from 'src/app/services/chat.service'
+import { ChatMarkdownPipe } from './chat-markdown.pipe'
 import { ChatPanelComponent } from './chat-panel.component'
 
 describe('ChatPanelComponent', () => {
@@ -287,8 +288,11 @@ describe('ChatPanelComponent', () => {
       { type: 'done' },
     ])
     const message = component.messages[component.messages.length - 1]
-    const rendered = component.renderAnswer(message)
-    expect(rendered).toContain('(/documents/9 "Report")')
+    const rendered = new ChatMarkdownPipe().transform(
+      message.content,
+      message.citations
+    )
+    expect(rendered).toContain('href="/documents/9" title="Report"')
     expect(rendered).toContain('not [2]')
   })
 
@@ -305,8 +309,11 @@ describe('ChatPanelComponent', () => {
       { type: 'done' },
     ])
     const message = component.messages[component.messages.length - 1]
-    const rendered = component.renderAnswer(message)
-    expect(rendered).toContain('(/documents/9 "Report")')
+    const rendered = new ChatMarkdownPipe().transform(
+      message.content,
+      message.citations
+    )
+    expect(rendered).toContain('href="/documents/9" title="Report"')
     expect(rendered).not.toContain('`[1]`')
   })
 
@@ -354,25 +361,112 @@ describe('ChatPanelComponent', () => {
     expect(chatService.streamChat).toHaveBeenCalledWith(7, 'q', [])
   })
 
-  it('shows the typing animation only before steps or content', () => {
+  it('shows progress and keeps tool activity visible while text streams', () => {
     const stream = new Subject<ChatEvent>()
-    chatService.streamChat.mockReturnValue(stream as Observable<ChatEvent>)
+    chatService.streamChat.mockReturnValue(stream)
     component.input = 'q'
     component.sendMessage()
-    const message = component.messages[component.messages.length - 1]
-
-    expect(component.showTyping(message)).toBe(true)
+    fixture.detectChanges()
+    const status = () =>
+      fixture.nativeElement.querySelector('.chat-activity')?.textContent
+    expect(status()).toContain('Preparing your question')
+    stream.next({ type: 'status', phase: 'thinking' })
+    expect(status()).toContain('Thinking')
     stream.next({
       type: 'tool_call',
       id: 't1',
       name: 'search_documents',
-      query: 'x',
+      query: 'rent',
     })
-    expect(component.showTyping(message)).toBe(false)
-    expect(component.showLiveSteps(message)).toBe(true)
-    stream.next({ type: 'token', text: 'hello' })
-    expect(component.showLiveSteps(message)).toBe(false)
-    stream.complete()
+    expect(status()).toContain('Searching documents')
+    expect(
+      fixture.nativeElement.querySelector('.step-item').textContent
+    ).toContain('rent')
+    stream.next({ type: 'token', text: 'An answer' })
+    expect(fixture.nativeElement.querySelector('.steps-list')).toBeTruthy()
+    stream.next({
+      type: 'tool_result',
+      id: 't1',
+      name: 'search_documents',
+      count: 1,
+      documents: [{ id: 7, title: 'Lease' }],
+    })
+    expect(status()).toContain('Thinking')
+    expect(
+      fixture.nativeElement.querySelector('.step-doc').textContent
+    ).toContain('Lease')
+    stream.next({ type: 'token', text: ' with a source' })
+    stream.next({ type: 'done' })
+    expect(status()).toBeUndefined()
+    expect(component.loading).toBe(false)
+    expect(fixture.nativeElement.querySelector('.steps-list')).toBeNull()
+    expect(
+      fixture.nativeElement.querySelector('.answer').textContent
+    ).toContain('An answer with a source')
+  })
+
+  it('renders Markdown before completion, including split tokens and late citations', () => {
+    jest.useFakeTimers()
+    const stream = new Subject<ChatEvent>()
+    chatService.streamChat.mockReturnValue(stream)
+    component.input = 'q'
+    component.sendMessage()
+    const zone = TestBed.inject(NgZone)
+    const emit = (text: string) =>
+      zone.runOutsideAngular(() => stream.next({ type: 'token', text }))
+    emit('## Summary\n\n**Hel')
+    jest.advanceTimersByTime(32)
+    expect(fixture.nativeElement.querySelector('.answer h2').textContent).toBe(
+      'Summary'
+    )
+    emit('lo** [1]\n\n- First\n- Second\n\n```ts\nconst x = 1')
+    jest.advanceTimersByTime(32)
+    expect(
+      fixture.nativeElement.querySelector('.answer strong').textContent
+    ).toBe('Hello')
+    expect(fixture.nativeElement.querySelectorAll('.answer li')).toHaveLength(2)
+    expect(
+      fixture.nativeElement.querySelector('.answer pre code').textContent
+    ).toContain('const x = 1')
+    stream.next({
+      type: 'citation',
+      marker: 1,
+      document_id: 9,
+      title: 'Report',
+      snippet: 's',
+    })
+    expect(
+      fixture.nativeElement.querySelector('.answer a').getAttribute('href')
+    ).toBe('/documents/9')
+    expect(component.loading).toBe(true)
+    stream.next({ type: 'done' })
+    jest.runOnlyPendingTimers()
+    jest.useRealTimers()
+  })
+
+  it('marks unfinished tools interrupted and preserves partial Markdown on failure', () => {
+    const stream = new Subject<ChatEvent>()
+    chatService.streamChat.mockReturnValue(stream)
+    component.input = 'q'
+    component.sendMessage()
+    stream.next({
+      type: 'tool_call',
+      id: 'r1',
+      name: 'read_document',
+      query: '9',
+    })
+    expect(
+      fixture.nativeElement.querySelector('.chat-activity').textContent
+    ).toContain('Reading document')
+    stream.next({ type: 'token', text: '**Partial answer**' })
+    stream.error(new Error('connection lost'))
+    const message = component.messages.at(-1)!
+    expect(message.steps[0].status).toBe('interrupted')
+    expect(message.content).toBe('**Partial answer**')
+    expect(fixture.nativeElement.querySelector('.chat-activity')).toBeNull()
+    expect(
+      fixture.nativeElement.querySelector('.answer strong').textContent
+    ).toBe('Partial answer')
   })
 
   it('handles an error event and stops streaming', () => {

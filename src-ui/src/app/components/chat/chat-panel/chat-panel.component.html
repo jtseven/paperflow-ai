@@ -63,105 +63,133 @@
       >
         <div class="message-bubble" [class.error]="message.error">
           @if (message.role === 'assistant') {
-            <!-- Agent search activity -->
-            @if (message.steps?.length) {
-              @if (showLiveSteps(message)) {
-                <div class="chat-steps live">
-                  @for (step of message.steps; track step.id) {
-                    <div class="step">
-                      @if (step.status === 'running') {
-                        <span
-                          class="spinner-border spinner-border-sm"
-                          role="status"
-                        ></span>
-                        @if (step.name === 'read_document') {
-                          <span i18n>Reading document:</span>
-                        } @else {
-                          <span i18n>Searching:</span>
-                        }
-                        <span class="query">{{ step.query }}</span>
-                      } @else {
-                        <lucide-icon name="search"></lucide-icon>
-                        <span class="query">{{ step.query }}</span>
-                        <span class="count" i18n
-                          >{{ step.count ?? 0 }} results</span
-                        >
-                      }
-                    </div>
-                  }
-                </div>
-              } @else {
-                <div class="chat-steps summary">
-                  <button
-                    type="button"
-                    class="steps-toggle"
-                    [attr.aria-expanded]="!!message.stepsExpanded"
-                    (click)="toggleSteps(message)"
-                  >
-                    <lucide-icon
-                      class="chevron"
-                      [name]="
-                        message.stepsExpanded ? 'chevron-down' : 'chevron-right'
-                      "
-                    ></lucide-icon>
-                    <lucide-icon
-                      name="search"
-                      class="search-icon"
-                    ></lucide-icon>
-                    <span i18n>Research steps: {{ message.steps.length }}</span>
-                  </button>
-                  @if (message.stepsExpanded) {
-                    <ul class="steps-list">
-                      @for (step of message.steps; track step.id) {
-                        <li class="step-item">
-                          <div class="step-query">
-                            <span class="query">{{ step.query }}</span>
-                            <span class="count" i18n
-                              >{{ step.count ?? 0 }} results</span
-                            >
-                          </div>
-                          @if (step.documents?.length) {
-                            <div class="step-docs">
-                              @for (doc of step.documents; track doc.id) {
-                                <a
-                                  class="step-doc"
-                                  [routerLink]="['/documents', doc.id]"
-                                  [title]="doc.title"
-                                >
-                                  <lucide-icon name="file-text"></lucide-icon>
-                                  <span class="step-doc-title">{{
-                                    doc.title
-                                  }}</span>
-                                </a>
-                              }
-                            </div>
-                          }
-                        </li>
-                      }
-                    </ul>
-                  }
-                </div>
-              }
-            }
-
-            <!-- Typing indicator before the first token / step -->
-            @if (showTyping(message)) {
-              <div class="typing-animation">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
+            @if (message.isStreaming) {
+              <div
+                class="chat-activity"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <lucide-icon name="stars" aria-hidden="true"></lucide-icon>
+                <span>{{ activityLabel(message) }}</span>
+                <span class="activity-pulse" aria-hidden="true"></span>
               </div>
             }
 
-            <!-- Streamed answer with inline citations -->
+            @if (message.steps?.length) {
+              <div class="chat-steps" [class.live]="message.isStreaming">
+                <button
+                  type="button"
+                  class="steps-toggle"
+                  [attr.aria-expanded]="
+                    !!message.isStreaming || !!message.stepsExpanded
+                  "
+                  [disabled]="message.isStreaming"
+                  (click)="toggleSteps(message)"
+                >
+                  <lucide-icon
+                    class="chevron"
+                    [name]="
+                      message.isStreaming || message.stepsExpanded
+                        ? 'chevron-down'
+                        : 'chevron-right'
+                    "
+                    aria-hidden="true"
+                  ></lucide-icon>
+                  <span i18n>Research steps: {{ message.steps.length }}</span>
+                </button>
+                @if (message.isStreaming || message.stepsExpanded) {
+                  <ol class="steps-list">
+                    @for (step of message.steps; track step.id) {
+                      <li
+                        class="step-item"
+                        [class.running]="step.status === 'running'"
+                      >
+                        <div class="step-query">
+                          @if (step.status === 'running') {
+                            <span
+                              class="spinner-border spinner-border-sm"
+                              aria-hidden="true"
+                            ></span>
+                          } @else {
+                            <lucide-icon
+                              [name]="
+                                step.status === 'done'
+                                  ? 'check'
+                                  : 'slash-circle'
+                              "
+                              aria-hidden="true"
+                            ></lucide-icon>
+                          }
+                          <span class="step-label">
+                            @if (step.name === 'read_document') {
+                              <lucide-icon
+                                name="file-text"
+                                aria-hidden="true"
+                              ></lucide-icon>
+                              <span i18n>Read document</span>
+                            } @else {
+                              <lucide-icon
+                                name="search"
+                                aria-hidden="true"
+                              ></lucide-icon>
+                              <span i18n>Search documents</span>
+                            }
+                          </span>
+                          @if (step.status === 'running') {
+                            <span class="count" i18n>In progress</span>
+                          } @else if (step.status === 'interrupted') {
+                            <span class="count" i18n>Interrupted</span>
+                          } @else if (step.name === 'read_document') {
+                            <span class="count" i18n>Read complete</span>
+                          } @else {
+                            <span class="count" i18n
+                              >{{ step.count ?? 0 }} results</span
+                            >
+                          }
+                        </div>
+                        <div class="query">{{ step.query }}</div>
+                        @if (step.documents?.length) {
+                          <div class="step-docs">
+                            @for (doc of step.documents; track doc.id) {
+                              <a
+                                class="step-doc"
+                                [routerLink]="['/documents', doc.id]"
+                                [title]="doc.title"
+                              >
+                                <lucide-icon
+                                  name="file-text"
+                                  aria-hidden="true"
+                                ></lucide-icon>
+                                <span class="step-doc-title">{{
+                                  doc.title
+                                }}</span>
+                              </a>
+                            }
+                          </div>
+                        }
+                      </li>
+                    }
+                  </ol>
+                }
+              </div>
+            }
+
             @if (message.content) {
-              <markdown
+              <div
                 class="answer"
-                [data]="renderAnswer(message)"
+                [class.streaming]="message.isStreaming"
+                [innerHTML]="message.content | chatMarkdown: message.citations"
                 (click)="onAnswerClick($event)"
                 (mouseover)="onAnswerHover($event, message)"
                 (mouseout)="onAnswerLeave()"
-              ></markdown>
+              ></div>
+            }
+
+            @if (message.error) {
+              <small class="text-danger response-notice" role="status" i18n
+                >Response interrupted. You can retry.</small
+              >
             }
 
             @if (message.error && $last && !loading) {

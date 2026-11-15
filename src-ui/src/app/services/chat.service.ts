@@ -14,6 +14,13 @@ export interface ChatTokenEvent {
   text: string
 }
 
+export type ChatPhase = 'preparing' | 'retrieving' | 'thinking' | 'answering'
+
+export interface ChatStatusEvent {
+  type: 'status'
+  phase: Exclude<ChatPhase, 'answering'>
+}
+
 export interface ChatToolCallEvent {
   type: 'tool_call'
   id: string
@@ -54,6 +61,7 @@ export interface ChatDoneEvent {
 
 export type ChatEvent =
   | ChatTokenEvent
+  | ChatStatusEvent
   | ChatToolCallEvent
   | ChatToolResultEvent
   | ChatCitationEvent
@@ -90,7 +98,7 @@ export interface ChatStep {
   id: string
   name?: string
   query: string
-  status: 'running' | 'done'
+  status: 'running' | 'done' | 'interrupted'
   count?: number
   documents?: ChatToolResultDocument[]
 }
@@ -99,6 +107,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   isStreaming?: boolean
+  phase?: ChatPhase
   error?: boolean
   steps?: ChatStep[]
   stepsExpanded?: boolean
@@ -184,24 +193,33 @@ export class ChatService {
           const decoder = new TextDecoder()
           let buffer = ''
 
-          while (true) {
-            const { value, done } = await reader.read()
-            if (done) {
-              break
-            }
-            buffer += decoder.decode(value, { stream: true })
+          try {
+            while (!subscriber.closed) {
+              const { value, done } = await reader.read()
+              buffer += done
+                ? decoder.decode()
+                : decoder.decode(value, { stream: true })
 
-            let newlineIndex: number
-            while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
-              const line = buffer.slice(0, newlineIndex).trim()
-              buffer = buffer.slice(newlineIndex + 1)
-              this.emit(subscriber, line)
+              let newlineIndex: number
+              while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+                const line = buffer.slice(0, newlineIndex).trim()
+                buffer = buffer.slice(newlineIndex + 1)
+                if (this.emit(subscriber, line)) {
+                  subscriber.complete()
+                  return
+                }
+              }
+              if (done) {
+                if (this.emit(subscriber, buffer.trim())) {
+                  subscriber.complete()
+                  return
+                }
+                throw new Error('Chat stream ended before the answer completed')
+              }
             }
+          } finally {
+            reader.releaseLock()
           }
-
-          // Emit any trailing line not terminated by a newline.
-          this.emit(subscriber, buffer.trim())
-          subscriber.complete()
         })
         .catch((error) => {
           if (controller.signal.aborted) {
@@ -217,17 +235,18 @@ export class ChatService {
   private emit(
     subscriber: { next: (event: ChatEvent) => void },
     line: string
-  ): void {
+  ): boolean {
     if (!line) {
-      return
+      return false
     }
     let event: ChatEvent
     try {
       event = JSON.parse(line) as ChatEvent
     } catch {
-      return
+      return false
     }
     subscriber.next(event)
+    return event.type === 'done' || event.type === 'error'
   }
 
   private getCsrfToken(): string {

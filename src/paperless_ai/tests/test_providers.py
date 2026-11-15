@@ -142,9 +142,14 @@ def test_provider_client_uses_selected_endpoint_and_key(provider):
         patch("llama_index.llms.openai_like.OpenAILike") as llm,
         patch("paperless_ai.client.create_pinned_httpx_client"),
         patch("paperless_ai.client.create_pinned_async_httpx_client"),
+        patch("paperless_ai.openai_compat.CompatibleOpenAI") as sdk,
+        patch("paperless_ai.openai_compat.CompatibleAsyncOpenAI") as async_sdk,
     ):
         AIClient(model=f"{provider}:test-model")
     assert llm.call_args.kwargs["model"] == "test-model"
     assert llm.call_args.kwargs["api_key"] == "test-provider-key"
     assert llm.call_args.kwargs["api_base"] == PROVIDERS[provider][1]
     assert llm.call_args.kwargs["is_function_calling_model"] is True
+    for client in (sdk, async_sdk):
+        assert client.call_args.kwargs["api_key"] == "test-provider-key"
+        assert client.call_args.kwargs["base_url"] == PROVIDERS[provider][1]

@@ -15,6 +15,7 @@ function fakeResponse(chunks: string[], ok = true, status = 200): Response {
   const queue = chunks.map((chunk) => encoder.encode(chunk))
   let index = 0
   const reader = {
+    releaseLock: jest.fn(),
     read: () =>
       Promise.resolve(
         index < queue.length
@@ -137,7 +138,9 @@ describe('ChatService', () => {
   })
 
   it('includes history when provided and omits it when empty', (done) => {
-    fetchMock.mockResolvedValue(fakeResponse(['{"type":"done"}\n']))
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(fakeResponse(['{"type":"done"}\n']))
+    )
 
     const history = [
       { role: 'user' as const, content: 'first question' },
@@ -193,6 +196,57 @@ describe('ChatService', () => {
           { type: 'token', text: 'ok' },
           { type: 'done' },
         ])
+        done()
+      },
+    })
+  })
+
+  it('delivers status events and completes at done without waiting for EOF', (done) => {
+    const events: ChatEvent[] = []
+    fetchMock.mockResolvedValue(
+      fakeResponse([
+        '{"type":"status","phase":"thinking"}\n{"type":"done"}\n',
+        '{"type":"token","text":"too late"}\n',
+      ])
+    )
+    service.streamChat(null, 'hi').subscribe({
+      next: (event) => events.push(event),
+      complete: () => {
+        expect(events).toEqual([
+          { type: 'status', phase: 'thinking' },
+          { type: 'done' },
+        ])
+        const init = fetchMock.mock.calls[0][1] as RequestInit
+        Promise.resolve().then(() => {
+          expect(init.signal.aborted).toBe(true)
+          done()
+        })
+      },
+    })
+  })
+
+  it('treats a truncated response as an error instead of successful completion', (done) => {
+    fetchMock.mockResolvedValue(
+      fakeResponse(['{"type":"token","text":"partial"}\n'])
+    )
+    service.streamChat(null, 'hi').subscribe({
+      complete: () => done(new Error('should not complete')),
+      error: (error) => {
+        expect(error.message).toContain('before the answer completed')
+        done()
+      },
+    })
+  })
+
+  it('completes on an error event, including an unterminated final line', (done) => {
+    const events: ChatEvent[] = []
+    fetchMock.mockResolvedValue(
+      fakeResponse(['{"type":"error","message":"unavailable"}'])
+    )
+    service.streamChat(null, 'hi').subscribe({
+      next: (event) => events.push(event),
+      complete: () => {
+        expect(events).toEqual([{ type: 'error', message: 'unavailable' }])
         done()
       },
     })
