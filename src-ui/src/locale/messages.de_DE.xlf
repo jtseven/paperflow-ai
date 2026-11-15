@@ -14997,6 +14997,50 @@
         <source>Hello, I am Paperflow AI and I have access to all of your documents. How can I help you today?</source>
         <target state="final">Hallo, ich bin Paperflow AI und habe Zugriff auf alle deine Dokumente. Wie kann ich dir heute helfen?</target>
       </trans-unit>
+      <trans-unit id="6679143277356532311" datatype="html" approved="yes">
+        <source>Preparing your question…</source>
+        <target state="final">Deine Frage wird vorbereitet…</target>
+      </trans-unit>
+      <trans-unit id="3539026002246719815" datatype="html" approved="yes">
+        <source>Finding relevant passages…</source>
+        <target state="final">Relevante Textstellen werden gesucht…</target>
+      </trans-unit>
+      <trans-unit id="6631196071533020937" datatype="html" approved="yes">
+        <source>Thinking…</source>
+        <target state="final">Denkt nach…</target>
+      </trans-unit>
+      <trans-unit id="8508245991291104696" datatype="html" approved="yes">
+        <source>Writing answer…</source>
+        <target state="final">Antwort wird geschrieben…</target>
+      </trans-unit>
+      <trans-unit id="7824292735343316612" datatype="html" approved="yes">
+        <source>Searching documents…</source>
+        <target state="final">Dokumente werden durchsucht…</target>
+      </trans-unit>
+      <trans-unit id="3752374786428029380" datatype="html" approved="yes">
+        <source>Reading document…</source>
+        <target state="final">Dokument wird gelesen…</target>
+      </trans-unit>
+      <trans-unit id="7100953725264790651" datatype="html" approved="yes">
+        <source>Search documents</source>
+        <target state="final">Dokumente durchsuchen</target>
+      </trans-unit>
+      <trans-unit id="9065131043794167815" datatype="html" approved="yes">
+        <source>Read document</source>
+        <target state="final">Dokument lesen</target>
+      </trans-unit>
+      <trans-unit id="7085679729777397411" datatype="html" approved="yes">
+        <source>Interrupted</source>
+        <target state="final">Unterbrochen</target>
+      </trans-unit>
+      <trans-unit id="984741255536144202" datatype="html" approved="yes">
+        <source>Read complete</source>
+        <target state="final">Gelesen</target>
+      </trans-unit>
+      <trans-unit id="6292581491916637404" datatype="html" approved="yes">
+        <source>Response interrupted. You can retry.</source>
+        <target state="final">Antwort unterbrochen. Du kannst es erneut versuchen.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

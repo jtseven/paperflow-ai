@@ -45,6 +45,7 @@ EVENT_TOKEN = "token"
 EVENT_CITATION = "citation"
 EVENT_ERROR = "error"
 EVENT_DONE = "done"
+EVENT_STATUS = "status"
 
 
 def chat_event(event_type: str, **fields) -> str:
@@ -54,6 +55,11 @@ def chat_event(event_type: str, **fields) -> str:
 
 def token_event(text: str) -> str:
     return chat_event(EVENT_TOKEN, text=text)
+
+
+def status_event(phase: str) -> str:
+    """Report work in progress without exposing the model's private reasoning."""
+    return chat_event(EVENT_STATUS, phase=phase)
 
 
 def error_event(message: str = CHAT_ERROR_MESSAGE) -> str:
@@ -251,6 +257,7 @@ def _stream_chat_with_documents(
     from llama_index.core.retrievers import VectorIndexRetriever
 
     config = AIConfig()
+    yield status_event("retrieving")
     filters = (
         exclude_document_ids_filter(
             str(pk) for pk in Document.deleted_objects.values_list("pk", flat=True)
@@ -310,6 +317,7 @@ def _stream_chat_with_documents(
         # question while the prompt (carrying the conversation history) drives the
         # answer.
         with db_connection_released():
+            yield status_event("thinking")
             response_stream = response_synthesizer.synthesize(
                 query=query_str,
                 nodes=top_nodes,

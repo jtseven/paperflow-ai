@@ -55,6 +55,11 @@ def assert_chat_output(
 ) -> None:
     events = [json.loads(line) for line in output]
 
+    assert [event["phase"] for event in events if event["type"] == "status"] == [
+        "retrieving",
+        "thinking",
+    ]
+
     # The stream always terminates with an explicit done event.
     assert events[-1] == {"type": "done"}
 
@@ -224,6 +229,7 @@ def test_stream_chat_no_matching_nodes() -> None:
         output = list(stream_chat_with_documents("Any info?", [MagicMock(pk=1)]))
 
         assert [json.loads(line) for line in output] == [
+            {"type": "status", "phase": "retrieving"},
             {
                 "type": "token",
                 "text": "Sorry, I couldn't find any content to answer your question.",
@@ -259,6 +265,7 @@ def test_stream_chat_unexpected_failure_returns_generic_error(caplog) -> None:
             output = list(stream_chat_with_documents("Any info?", [MagicMock(pk=1)]))
 
         assert [json.loads(line) for line in output] == [
+            {"type": "status", "phase": "retrieving"},
             {"type": "error", "message": CHAT_ERROR_MESSAGE},
         ]
         assert "Failed to stream document chat response" in caplog.text

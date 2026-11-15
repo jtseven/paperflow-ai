@@ -14,7 +14,6 @@ import {
 import { FormsModule } from '@angular/forms'
 import { Router, RouterModule } from '@angular/router'
 import { LucideAngularModule } from 'lucide-angular'
-import { MarkdownModule } from 'ngx-markdown'
 import { Subscription } from 'rxjs'
 import { ChatHistoryService } from 'src/app/services/chat-history.service'
 import {
@@ -25,6 +24,7 @@ import {
   ChatService,
   Citation,
 } from 'src/app/services/chat.service'
+import { ChatMarkdownPipe } from './chat-markdown.pipe'
 
 const CITATION_MARKER_RE = /\[(\d+)\]/g
 
@@ -38,7 +38,7 @@ const CHAT_HISTORY_TURNS = 6
  * Shared chat surface used by both the dashboard agentic widget (no
  * `documentId`) and the per-document chat (`documentId` set). Renders streamed
  * tokens as markdown, shows the agent's live search steps (collapsing into a
- * summary once the answer begins), and turns inline `[n]` markers into
+ * summary once the answer completes), and turns inline `[n]` markers into
  * clickable citations with a hover preview, listing only the documents the
  * answer actually used.
  */
@@ -51,7 +51,7 @@ const CHAT_HISTORY_TURNS = 6
     FormsModule,
     RouterModule,
     LucideAngularModule,
-    MarkdownModule,
+    ChatMarkdownPipe,
   ],
 })
 export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
@@ -84,6 +84,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef)
 
   private streamSub?: Subscription
+  private renderTimer?: ReturnType<typeof setTimeout>
   private destroyed = false
 
   ngOnInit(): void {
@@ -96,6 +97,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.stop()
     this.streamSub?.unsubscribe()
     this.modelsSub?.unsubscribe()
+    clearTimeout(this.renderTimer)
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -139,12 +141,13 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.streamSub?.unsubscribe()
     const message = this.messages[this.messages.length - 1]
     if (message?.role === 'assistant') {
-      message.isStreaming = false
+      this.finishMessage(message)
       message.error = true
       if (!message.content) message.content = $localize`Response stopped.`
     }
     this.loading = false
     if (persist) this.persist()
+    this.render()
   }
 
   public retry(): void {
@@ -231,6 +234,7 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       role: 'assistant',
       content: '',
       isStreaming: true,
+      phase: 'preparing',
       steps: [],
       citations: new Map(),
     }
@@ -248,25 +252,34 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
       : this.chatService.streamChat(this.documentId ?? null, prompt, history)
     this.streamSub = stream.subscribe({
       next: (event) => {
+        if (!assistantMessage.isStreaming) return
         this.handleEvent(event, assistantMessage)
-        this.render()
-        this.scrollToBottom()
+        if (event.type === 'token') {
+          // A provider may send hundreds of tiny deltas in a burst. Parse and
+          // paint at most once per 32ms, then flush immediately on completion.
+          this.renderTimer ??= setTimeout(() => {
+            this.renderTimer = undefined
+            this.render()
+            this.scrollToBottom()
+          }, 32)
+        } else {
+          this.render()
+          this.scrollToBottom()
+        }
       },
       error: () => {
         if (!assistantMessage.content) {
           assistantMessage.content = $localize`⚠️ Sorry, there was an error processing your message. Please try again.`
         }
         assistantMessage.error = true
-        assistantMessage.isStreaming = false
-        this.loading = false
+        this.finishMessage(assistantMessage)
         this.persist()
         this.render()
         this.scrollToBottom()
         this.focusInput()
       },
       complete: () => {
-        assistantMessage.isStreaming = false
-        this.loading = false
+        this.finishMessage(assistantMessage)
         this.persist()
         this.render()
         this.scrollToBottom()
@@ -295,6 +308,9 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   private handleEvent(event: ChatEvent, message: ChatMessage): void {
     switch (event.type) {
+      case 'status':
+        message.phase = event.phase
+        break
       case 'tool_call':
         message.steps = message.steps ?? []
         message.steps.push({
@@ -311,10 +327,11 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
           step.count = event.count
           step.documents = event.documents
         }
+        message.phase = 'thinking'
         break
       }
       case 'citation':
-        message.citations = message.citations ?? new Map()
+        message.citations = new Map(message.citations)
         message.citations.set(event.marker, {
           marker: event.marker,
           documentId: event.document_id,
@@ -324,37 +341,30 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
         break
       case 'token':
         message.content += event.text
+        if (event.text) message.phase = 'answering'
         break
       case 'error':
-        message.content = event.message
+        if (!message.content) message.content = event.message
         message.error = true
+        this.finishMessage(message)
+        this.persist()
         break
       case 'done':
+        this.finishMessage(message)
+        this.persist()
         break
     }
   }
 
-  /**
-   * Rewrite inline `[n]` markers into markdown links to the cited document so
-   * they render as clickable citations (with the document title as a native
-   * tooltip). Markers without a known citation are left as plain text.
-   */
-  public renderAnswer(message: ChatMessage): string {
-    const citations = message.citations
-    if (!citations?.size) {
-      return message.content
+  private finishMessage(message: ChatMessage): void {
+    clearTimeout(this.renderTimer)
+    this.renderTimer = undefined
+    message.isStreaming = false
+    message.phase = undefined
+    for (const step of message.steps ?? []) {
+      if (step.status === 'running') step.status = 'interrupted'
     }
-    // The model occasionally wraps markers in backticks (inline code); unwrap
-    // them first so the substituted link isn't rendered as literal code.
-    const content = message.content.replace(/`(\[\d+\])`/g, '$1')
-    return content.replace(CITATION_MARKER_RE, (match, num: string) => {
-      const citation = citations.get(+num)
-      if (!citation) {
-        return match
-      }
-      const title = (citation.title ?? '').replace(/"/g, "'")
-      return `[\\[${num}\\]](/documents/${citation.documentId} "${title}")`
-    })
+    this.loading = false
   }
 
   /** Documents the answer actually cited (falls back to all for per-doc chat). */
@@ -394,12 +404,23 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.render()
   }
 
-  public showTyping(message: ChatMessage): boolean {
-    return !!message.isStreaming && !message.content && !message.steps?.length
-  }
-
-  public showLiveSteps(message: ChatMessage): boolean {
-    return !!message.isStreaming && !message.content && !!message.steps?.length
+  public activityLabel(message: ChatMessage): string {
+    const active = message.steps?.find((step) => step.status === 'running')
+    if (active) {
+      return active.name === 'read_document'
+        ? $localize`Reading document…`
+        : $localize`Searching documents…`
+    }
+    switch (message.phase) {
+      case 'retrieving':
+        return $localize`Finding relevant passages…`
+      case 'thinking':
+        return $localize`Thinking…`
+      case 'answering':
+        return $localize`Writing answer…`
+      default:
+        return $localize`Preparing your question…`
+    }
   }
 
   public onAnswerClick(event: MouseEvent): void {

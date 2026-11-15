@@ -248,21 +248,29 @@ class TestStreamAgenticChat:
             events = _events(list(stream_agentic_chat("question", documents)))
 
         assert [e["type"] for e in events] == [
+            "status",
+            "status",
             "tool_call",
             "tool_result",
             "citation",
+            "status",
             "token",
             "done",
         ]
-        assert events[0] == {
+        assert events[:2] == [
+            {"type": "status", "phase": "preparing"},
+            {"type": "status", "phase": "thinking"},
+        ]
+        assert events[5] == {"type": "status", "phase": "thinking"}
+        assert events[2] == {
             "type": "tool_call",
             "id": "t1",
             "name": "search_documents",
             "query": "rent",
         }
-        assert events[1]["count"] == 1
-        assert events[1]["documents"] == [{"id": 5, "title": "Lease", "marker": 1}]
-        assert events[2]["document_id"] == 5
+        assert events[3]["count"] == 1
+        assert events[3]["documents"] == [{"id": 5, "title": "Lease", "marker": 1}]
+        assert events[4]["document_id"] == 5
 
     def test_missing_index_yields_index_not_ready_and_queues_build(self):
         documents = [_doc(1)]
@@ -276,6 +284,7 @@ class TestStreamAgenticChat:
             events = _events(list(stream_agentic_chat("question", documents)))
 
         assert events == [
+            {"type": "status", "phase": "preparing"},
             {"type": "token", "text": CHAT_INDEX_NOT_READY_MESSAGE},
             {"type": "done"},
         ]
@@ -303,6 +312,8 @@ class TestStreamAgenticChat:
             events = _events(list(stream_agentic_chat("question", documents)))
 
         assert events == [
+            {"type": "status", "phase": "preparing"},
+            {"type": "status", "phase": "thinking"},
             {"type": "token", "text": CHAT_NO_CONTENT_MESSAGE},
             {"type": "done"},
         ]
@@ -328,7 +339,11 @@ class TestStreamAgenticChat:
         ):
             events = _events(list(stream_agentic_chat("question", documents)))
 
-        assert events == [{"type": "error", "message": CHAT_ERROR_MESSAGE}]
+        assert events == [
+            {"type": "status", "phase": "preparing"},
+            {"type": "status", "phase": "thinking"},
+            {"type": "error", "message": CHAT_ERROR_MESSAGE},
+        ]
 
 
 class TestAgentTools:
