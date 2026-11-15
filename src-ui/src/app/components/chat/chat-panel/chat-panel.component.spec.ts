@@ -3,8 +3,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing'
 import { provideRouter, Router } from '@angular/router'
 import { jest } from '@jest/globals'
 import { provideMarkdown } from 'ngx-markdown'
-import { from, Observable, of, Subject } from 'rxjs'
-import { ChatEvent, ChatService } from 'src/app/services/chat.service'
+import { from, Observable, of, Subject, throwError } from 'rxjs'
+import {
+  ChatEvent,
+  ChatModels,
+  ChatService,
+} from 'src/app/services/chat.service'
 import { ChatMarkdownPipe } from './chat-markdown.pipe'
 import { ChatPanelComponent } from './chat-panel.component'
 
@@ -57,6 +61,76 @@ describe('ChatPanelComponent', () => {
       'hello',
       [],
       'anthropic:claude'
+    )
+  })
+
+  it('selects a model from the menu and keeps it usable after a failed refresh', () => {
+    const catalog: ChatModels = {
+      models: [
+        { id: 'first', provider: 'Provider A', name: 'First model' },
+        { id: 'second', provider: 'Provider B', name: 'Second model' },
+      ],
+      default_model: 'first',
+    }
+    chatService.getModels.mockReturnValue(of(catalog))
+    component.loadModels()
+    fixture.nativeElement.querySelector('.model-toggle').click()
+    fixture.detectChanges()
+    const options = fixture.nativeElement.querySelectorAll('.model-option')
+    options[1].click()
+    fixture.detectChanges()
+    expect(options[1].getAttribute('aria-checked')).toBe('true')
+    expect(
+      fixture.nativeElement.querySelector('.model-toggle').textContent
+    ).toContain('Second model')
+
+    chatService.getModels.mockReturnValue(
+      throwError(() => new Error('offline'))
+    )
+    fixture.nativeElement.querySelector('.refresh-models').click()
+    fixture.detectChanges()
+    expect(fixture.nativeElement.querySelector('.model-error')).toBeTruthy()
+    send('question', [{ type: 'done' }])
+    expect(chatService.streamChat).toHaveBeenLastCalledWith(
+      null,
+      'question',
+      [],
+      'second'
+    )
+
+    chatService.getModels.mockReturnValue(of(catalog))
+    fixture.nativeElement.querySelector('.model-error button').click()
+    fixture.detectChanges()
+    expect(fixture.nativeElement.querySelector('.model-error')).toBeNull()
+    expect(component.selectedModel).toBe('second')
+  })
+
+  it('sends multiline input with Enter while preserving Shift+Enter and IME composition', () => {
+    const input: HTMLTextAreaElement =
+      fixture.nativeElement.querySelector('textarea')
+    input.value = 'First line\nSecond line'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    const dispatchEnter = (options: KeyboardEventInit = {}) => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      })
+      input.dispatchEvent(event)
+      return event
+    }
+    expect(dispatchEnter({ shiftKey: true }).defaultPrevented).toBe(false)
+    expect(dispatchEnter({ isComposing: true }).defaultPrevented).toBe(false)
+    expect(chatService.streamChat).not.toHaveBeenCalled()
+
+    chatService.streamChat.mockReturnValue(from([{ type: 'done' }]))
+    expect(dispatchEnter().defaultPrevented).toBe(true)
+    expect(chatService.streamChat).toHaveBeenCalledTimes(1)
+    expect(chatService.streamChat).toHaveBeenCalledWith(
+      null,
+      'First line\nSecond line',
+      []
     )
   })
 

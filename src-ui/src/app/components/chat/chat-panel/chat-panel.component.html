@@ -1,51 +1,106 @@
 <div class="chat-panel">
   <div class="chat-toolbar">
-    <label class="model-picker">
-      <span i18n>Model</span>
-      <select
-        class="form-select form-select-sm"
-        [(ngModel)]="selectedModel"
-        [disabled]="loading || modelsLoading || !models.length"
-        aria-label="Chat model"
-        i18n-aria-label
-      >
-        @if (!models.length) {
-          <option value="" i18n>Default model</option>
-        }
-        @for (model of models; track model.id) {
-          <option [value]="model.id">
-            {{ model.provider }} · {{ model.name }}
-          </option>
-        }
-      </select>
-    </label>
-    @if (canClear) {
+    <div class="model-picker" ngbDropdown placement="bottom-start top-start">
       <button
         type="button"
-        class="btn btn-sm btn-link text-muted p-0"
-        (click)="clear()"
+        class="btn model-toggle"
+        ngbDropdownToggle
         [disabled]="loading"
-        title="Clear conversation"
-        i18n-title
+        [title]="modelLabel"
       >
-        <lucide-icon name="trash"></lucide-icon>&nbsp;<span i18n>Clear</span>
+        <span class="visually-hidden" i18n>Chat model:</span>
+        @if (modelsLoading) {
+          <span
+            class="spinner-border spinner-border-sm"
+            aria-hidden="true"
+          ></span>
+          <span class="model-name" i18n>Loading models…</span>
+        } @else {
+          <lucide-icon name="cpu" aria-hidden="true"></lucide-icon>
+          <span class="model-name">{{ modelLabel }}</span>
+        }
+        <lucide-icon
+          class="model-chevron"
+          name="chevron-down"
+          aria-hidden="true"
+        ></lucide-icon>
       </button>
-    }
+      <div
+        ngbDropdownMenu
+        class="model-menu shadow"
+        role="menu"
+        aria-label="Chat models"
+        i18n-aria-label
+      >
+        <div class="model-menu-label" i18n>Choose a model</div>
+        <div class="model-options">
+          @for (model of models; track model.id) {
+            <button
+              type="button"
+              ngbDropdownItem
+              class="model-option"
+              role="menuitemradio"
+              [attr.aria-checked]="selectedModel === model.id"
+              [class.selected]="selectedModel === model.id"
+              [disabled]="loading || modelsLoading"
+              (click)="selectedModel = model.id"
+            >
+              <span class="model-details">
+                <span class="model-option-name">{{ model.name }}</span>
+                <span class="model-provider">{{ model.provider }}</span>
+              </span>
+              @if (selectedModel === model.id) {
+                <lucide-icon name="check" aria-hidden="true"></lucide-icon>
+              }
+            </button>
+          } @empty {
+            <div class="model-menu-empty" i18n>Using the default model</div>
+          }
+        </div>
+        <div class="dropdown-divider"></div>
+        <button
+          type="button"
+          ngbDropdownItem
+          class="refresh-models"
+          (click)="loadModels()"
+          [disabled]="loading || modelsLoading"
+        >
+          <lucide-icon name="arrow-clockwise" aria-hidden="true"></lucide-icon>
+          <span i18n>Refresh models</span>
+        </button>
+      </div>
+    </div>
     <button
       type="button"
-      class="btn btn-sm btn-link"
-      (click)="loadModels()"
-      [disabled]="loading || modelsLoading"
-      i18n
+      class="btn new-chat"
+      (click)="clear()"
+      [disabled]="loading || !canClear"
+      title="Clear conversation"
+      i18n-title
     >
-      Refresh models
+      <lucide-icon name="plus" aria-hidden="true"></lucide-icon>
+      <span i18n>New chat</span>
     </button>
   </div>
   @if (modelsError) {
-    <small class="text-danger" role="status" i18n
-      >Could not load models. Refresh to try again, or use the default
-      model.</small
-    >
+    <div class="model-error" role="status">
+      <lucide-icon
+        name="exclamation-circle-fill"
+        aria-hidden="true"
+      ></lucide-icon>
+      <span i18n
+        >Could not refresh models. You can still use the current model.</span
+      >
+      <button
+        type="button"
+        class="btn btn-link btn-sm"
+        (click)="loadModels()"
+        [disabled]="loading || modelsLoading"
+        i18n
+      >
+        Try again
+      </button>
+    </div>
   }
   <div
     class="chat-container"
@@ -55,7 +110,32 @@
     aria-label="Conversation"
     i18n-aria-label
   >
-    @for (message of messages; track $index) {
+    @let conversation = conversationMessages;
+    @if (!conversation.length) {
+      <div class="chat-empty">
+        <div class="empty-icon">
+          <lucide-icon name="stars" aria-hidden="true"></lucide-icon>
+        </div>
+        @if (documentId !== undefined) {
+          <h3 i18n>Ask about this document</h3>
+          <p i18n>
+            Find key details, summarize the content, or ask a follow-up
+            question.
+          </p>
+        } @else {
+          <h3 i18n>Ask your documents</h3>
+          @if (welcome) {
+            <p>{{ welcome }}</p>
+          } @else {
+            <p i18n>
+              Find answers, compare details, and explore your documents with
+              sources.
+            </p>
+          }
+        }
+      </div>
+    }
+    @for (message of conversation; track $index) {
       <div
         class="chat-message"
         [class.user-message]="message.role === 'user'"
@@ -205,20 +285,23 @@
 
             <!-- Sources actually cited -->
             @if (citedReferences(message).length) {
-              <div class="chat-references list-group mt-2">
-                @for (
-                  reference of citedReferences(message);
-                  track reference.documentId
-                ) {
-                  <a
-                    class="list-group-item list-group-item-action"
-                    [routerLink]="['/documents', reference.documentId]"
-                  >
-                    <span class="ref-marker">{{ reference.marker }}</span>
-                    <lucide-icon name="file-text" class="mx-1"></lucide-icon>
-                    <span class="ref-title">{{ reference.title }}</span>
-                  </a>
-                }
+              <div class="chat-references">
+                <div class="references-label" i18n>Sources</div>
+                <div class="reference-list">
+                  @for (
+                    reference of citedReferences(message);
+                    track reference.documentId
+                  ) {
+                    <a
+                      class="chat-reference"
+                      [routerLink]="['/documents', reference.documentId]"
+                      [title]="reference.title"
+                    >
+                      <span class="ref-marker">{{ reference.marker }}</span>
+                      <span class="ref-title">{{ reference.title }}</span>
+                    </a>
+                  }
+                </div>
               </div>
             }
           } @else {
@@ -249,37 +332,50 @@
   </div>
 
   <form class="chat-form" (submit)="$event.preventDefault(); sendMessage()">
-    <div class="input-group">
-      <input
+    <div class="composer">
+      <textarea
         #chatInput
-        type="text"
-        class="form-control"
+        class="form-control chat-input"
+        cdkTextareaAutosize
+        [cdkAutosizeMinRows]="1"
+        [cdkAutosizeMaxRows]="6"
+        rows="1"
         [placeholder]="placeholder"
         [(ngModel)]="input"
         name="message"
         autocomplete="off"
+        (keydown.enter)="onComposerEnter($event)"
         aria-label="Message"
         i18n-aria-label
-      />
+      ></textarea>
       @if (loading) {
         <button
           type="button"
-          class="btn btn-outline-secondary"
+          class="btn btn-outline-secondary composer-action stop-action"
           (click)="stop()"
-          i18n
+          aria-label="Stop response"
+          i18n-aria-label
+          title="Stop response"
+          i18n-title
         >
-          Stop
+          <span class="stop-square" aria-hidden="true"></span>
         </button>
       } @else {
         <button
           type="submit"
-          class="btn btn-primary"
+          class="btn btn-primary composer-action"
           [disabled]="!input.trim()"
-          i18n
+          aria-label="Send message"
+          i18n-aria-label
+          title="Send message"
+          i18n-title
         >
-          Send
+          <lucide-icon name="send" aria-hidden="true"></lucide-icon>
         </button>
       }
+    </div>
+    <div class="composer-hint">
+      <span i18n>Enter to send · Shift+Enter for a new line</span>
     </div>
   </form>
 </div>

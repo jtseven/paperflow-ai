@@ -1,3 +1,4 @@
+import { TextFieldModule } from '@angular/cdk/text-field'
 import { CommonModule } from '@angular/common'
 import {
   ChangeDetectorRef,
@@ -13,6 +14,7 @@ import {
 } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { Router, RouterModule } from '@angular/router'
+import { NgbDropdownModule } from '@ng-bootstrap/ng-bootstrap'
 import { LucideAngularModule } from 'lucide-angular'
 import { Subscription } from 'rxjs'
 import { ChatHistoryService } from 'src/app/services/chat-history.service'
@@ -49,6 +51,8 @@ const CHAT_HISTORY_TURNS = 6
   imports: [
     CommonModule,
     FormsModule,
+    TextFieldModule,
+    NgbDropdownModule,
     RouterModule,
     LucideAngularModule,
     ChatMarkdownPipe,
@@ -57,12 +61,12 @@ const CHAT_HISTORY_TURNS = 6
 export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
   /** When set, chat is scoped to this document; otherwise it is agentic. */
   @Input() documentId?: number
-  /** Optional greeting shown as the first assistant message. */
+  /** Optional greeting shown in the empty state. */
   @Input() welcome: string | null = null
   @Input() placeholder: string = $localize`Ask me anything`
 
   @ViewChild('chatContainer') chatContainer!: ElementRef<HTMLDivElement>
-  @ViewChild('chatInput') chatInput!: ElementRef<HTMLInputElement>
+  @ViewChild('chatInput') chatInput!: ElementRef<HTMLTextAreaElement>
 
   public messages: ChatMessage[] = []
   public input = ''
@@ -205,6 +209,21 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     return this.messages.some((m) => m.role === 'user')
   }
 
+  public get modelLabel(): string {
+    return (
+      this.models.find((model) => model.id === this.selectedModel)?.name ||
+      $localize`Default model`
+    )
+  }
+
+  /** The greeting belongs to the empty state, rather than the transcript. */
+  public get conversationMessages(): ChatMessage[] {
+    const first = this.messages[0]
+    return first?.role === 'assistant' && first.content === this.welcome
+      ? this.messages.slice(1)
+      : this.messages
+  }
+
   public clear(): void {
     if (this.loading) {
       return
@@ -213,6 +232,16 @@ export class ChatPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.messages = this.welcome
       ? [{ role: 'assistant', content: this.welcome }]
       : []
+    this.input = ''
+    this.hoveredCitation = null
+    this.focusInput()
+    this.render()
+  }
+
+  public onComposerEnter(event: KeyboardEvent): void {
+    if (event.shiftKey || event.isComposing) return
+    event.preventDefault()
+    this.sendMessage()
   }
 
   sendMessage(): void {

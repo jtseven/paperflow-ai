@@ -61,4 +61,27 @@ describe('ChatComponent', () => {
       fixture.nativeElement.querySelector('pngx-chat-panel')
     ).not.toBeNull()
   })
+
+  it('keeps the conversation open when the nested model menu is used', async () => {
+    fixture.detectChanges()
+    fixture.nativeElement.querySelector('#chatDropdown').click()
+    fixture.detectChanges()
+    fixture.nativeElement.querySelector('.model-toggle').click()
+    fixture.detectChanges()
+
+    const refresh = fixture.nativeElement.querySelector('.refresh-models')
+    refresh.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    refresh.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    refresh.click()
+    // ng-bootstrap defers dismissal until after the pointer events complete.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    fixture.detectChanges()
+    expect(
+      fixture.nativeElement.querySelector('[aria-labelledby="chatDropdown"]')
+        .classList
+    ).toContain('show')
+    expect(
+      fixture.nativeElement.querySelector('.model-menu').classList
+    ).not.toContain('show')
+  })
 })

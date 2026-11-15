@@ -15041,6 +15041,90 @@
         <source>Response interrupted. You can retry.</source>
         <target state="final">Antwort unterbrochen. Du kannst es erneut versuchen.</target>
       </trans-unit>
+      <trans-unit id="5940739669310408490" datatype="html" approved="yes">
+        <source>Chat model:</source>
+        <target state="final">Chat-Modell:</target>
+      </trans-unit>
+      <trans-unit id="2417720517068241371" datatype="html" approved="yes">
+        <source>Loading models…</source>
+        <target state="final">Modelle werden geladen…</target>
+      </trans-unit>
+      <trans-unit id="4841683272541856984" datatype="html" approved="yes">
+        <source>Chat models</source>
+        <target state="final">Chat-Modelle</target>
+      </trans-unit>
+      <trans-unit id="8270482541242244674" datatype="html" approved="yes">
+        <source>Choose a model</source>
+        <target state="final">Modell auswählen</target>
+      </trans-unit>
+      <trans-unit id="8005364149501053035" datatype="html" approved="yes">
+        <source>Using the default model</source>
+        <target state="final">Das Standardmodell wird verwendet</target>
+      </trans-unit>
+      <trans-unit id="721361286205481798" datatype="html" approved="yes">
+        <source>Refresh models</source>
+        <target state="final">Modelle aktualisieren</target>
+      </trans-unit>
+      <trans-unit id="7151632936989469818" datatype="html" approved="yes">
+        <source>New chat</source>
+        <target state="final">Neuer Chat</target>
+      </trans-unit>
+      <trans-unit id="6950404724889393721" datatype="html" approved="yes">
+        <source>Could not refresh models. You can still use the current model.</source>
+        <target state="final">Die Modelle konnten nicht aktualisiert werden. Du kannst das aktuelle Modell weiterhin verwenden.</target>
+      </trans-unit>
+      <trans-unit id="5717355661357017349" datatype="html" approved="yes">
+        <source> Try again </source>
+        <target state="final"> Erneut versuchen </target>
+      </trans-unit>
+      <trans-unit id="4717491147966397069" datatype="html" approved="yes">
+        <source>Conversation</source>
+        <target state="final">Unterhaltung</target>
+      </trans-unit>
+      <trans-unit id="8530886323963716365" datatype="html" approved="yes">
+        <source> Find key details, summarize the content, or ask a follow-up question. </source>
+        <target state="final"> Finde wichtige Details, fasse den Inhalt zusammen oder stelle eine weitere Frage. </target>
+      </trans-unit>
+      <trans-unit id="5489231474480397746" datatype="html" approved="yes">
+        <source>Ask your documents</source>
+        <target state="final">Frag deine Dokumente</target>
+      </trans-unit>
+      <trans-unit id="3732798522396253488" datatype="html" approved="yes">
+        <source> Find answers, compare details, and explore your documents with sources. </source>
+        <target state="final"> Finde Antworten, vergleiche Details und erkunde deine Dokumente mit Quellenangaben. </target>
+      </trans-unit>
+      <trans-unit id="3430809883776383982" datatype="html" approved="yes">
+        <source> Retry response </source>
+        <target state="final"> Antwort erneut anfordern </target>
+      </trans-unit>
+      <trans-unit id="7598534782851115865" datatype="html" approved="yes">
+        <source>Stop response</source>
+        <target state="final">Antwort stoppen</target>
+      </trans-unit>
+      <trans-unit id="8740036082299980043" datatype="html" approved="yes">
+        <source>Send message</source>
+        <target state="final">Nachricht senden</target>
+      </trans-unit>
+      <trans-unit id="8376764877434886445" datatype="html" approved="yes">
+        <source>Enter to send · Shift+Enter for a new line</source>
+        <target state="final">Enter zum Senden · Umschalt+Enter für einen Zeilenumbruch</target>
+      </trans-unit>
+      <trans-unit id="6830002466723262197" datatype="html" approved="yes">
+        <source>Response stopped.</source>
+        <target state="final">Antwort gestoppt.</target>
+      </trans-unit>
+      <trans-unit id="7709116731157658296" datatype="html" approved="yes">
+        <source>Default model</source>
+        <target state="final">Standardmodell</target>
+      </trans-unit>
+      <trans-unit id="7846211491702658651" datatype="html" approved="yes">
+        <source>Research steps: <x id="INTERPOLATION" equiv-text="{{ message.steps.length }}"/></source>
+        <target state="final">Rechercheschritte: <x id="INTERPOLATION" equiv-text="{{ message.steps.length }}"/></target>
+      </trans-unit>
+      <trans-unit id="4381811205635365412" datatype="html" approved="yes">
+        <source><x id="INTERPOLATION" equiv-text="{{ step.count ?? 0 }}"/> results</source>
+        <target state="final"><x id="INTERPOLATION" equiv-text="{{ step.count ?? 0 }}"/> Ergebnisse</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
