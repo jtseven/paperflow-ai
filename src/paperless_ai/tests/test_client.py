@@ -79,6 +79,8 @@ def test_get_llm_openai(mock_ai_config, mock_openai_llm):
         additional_kwargs={},
         http_client=ANY,
         async_http_client=ANY,
+        openai_client=ANY,
+        async_openai_client=ANY,
     )
     assert client.llm == mock_openai_llm.return_value
 

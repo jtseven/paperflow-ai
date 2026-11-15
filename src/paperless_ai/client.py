@@ -95,6 +95,9 @@ class AIClient:
         elif self.settings.llm_backend == LLMBackend.OPENAI_LIKE:
             from llama_index.llms.openai_like import OpenAILike
 
+            from paperless_ai.openai_compat import CompatibleAsyncOpenAI
+            from paperless_ai.openai_compat import CompatibleOpenAI
+
             endpoint = self.settings.llm_endpoint or None
             http_client = None
             async_http_client = None
@@ -109,6 +112,12 @@ class AIClient:
                     allow_internal=self.settings.llm_allow_internal_endpoints,
                     timeout=self.settings.llm_request_timeout,
                 )
+            sdk_options = {
+                "api_key": self.settings.llm_api_key or PLACEHOLDER_API_KEY,
+                "base_url": endpoint,
+                "timeout": self.settings.llm_request_timeout,
+                "max_retries": 3,
+            }
             return OpenAILike(
                 model=self.settings.llm_model or "gpt-3.5-turbo",
                 api_base=endpoint,
@@ -131,6 +140,14 @@ class AIClient:
                 additional_kwargs=self.settings.llm_extra_params,
                 http_client=http_client,
                 async_http_client=async_http_client,
+                openai_client=CompatibleOpenAI(
+                    **sdk_options,
+                    http_client=http_client,
+                ),
+                async_openai_client=CompatibleAsyncOpenAI(
+                    **sdk_options,
+                    http_client=async_http_client,
+                ),
             )
         else:
             raise ValueError(f"Unsupported LLM backend: {self.settings.llm_backend}")
